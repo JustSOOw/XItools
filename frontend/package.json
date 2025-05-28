@@ -1,0 +1,40 @@
+{
+  "name": "frontend",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "XItools - 智能任务看板前端应用",
+  "devDependencies": {
+    "@types/react": "^19.1.6",
+    "@types/react-dom": "^19.1.5",
+    "@typescript-eslint/eslint-plugin": "^8.33.0",
+    "@typescript-eslint/parser": "^8.33.0",
+    "@vitejs/plugin-react": "^4.5.0",
+    "eslint": "^9.27.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-prettier": "^5.4.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  },
+  "dependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "socket.io-client": "^4.8.1",
+    "tailwindcss": "^4.1.7",
+    "zustand": "^5.0.5"
+  }
+}

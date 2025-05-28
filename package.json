@@ -1,0 +1,37 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "MCP服务 - 为智能任务看板提供后端支持",
+  "dependencies": {
+    "@fastify/websocket": "^11.1.0",
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "@prisma/client": "^6.8.2",
+    "@types/node": "^22.15.23",
+    "fastify": "^5.3.3",
+    "socket.io": "^4.8.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3",
+    "zod": "^3.25.32"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.33.0",
+    "@typescript-eslint/parser": "^8.33.0",
+    "eslint": "^9.27.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-prettier": "^5.4.0",
+    "prettier": "^3.5.3"
+  }
+} 

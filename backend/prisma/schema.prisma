@@ -1,0 +1,82 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 任务模型
+model Task {
+  id                 String   @id @default(uuid())
+  title              String
+  description        String   @default("")
+  status             String
+  priority           String?
+  dueDate            DateTime?
+  assignee           String?
+  tags               String[] @default([])
+  parentId           String?
+  acceptanceCriteria String   @default("")
+  estimatedEffort    Float?
+  loggedTime         Float?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @default(now()) @updatedAt
+
+  // 关系定义
+  parent    Task?  @relation("ParentChild", fields: [parentId], references: [id], onDelete: SetNull)
+  subTasks  Task[] @relation("ParentChild")
+
+  @@index([status])
+  @@index([parentId])
+}
+
+// 子任务模型
+model Subtask {
+  id        String   @id @default(uuid())
+  title     String
+  completed Boolean  @default(false)
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// 标签模型
+model Tag {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  tasks     Task[]   @relation("TaskToTag")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// MCP会话模型
+model MCPSession {
+  id        String       @id @default(uuid())
+  sessionId String       @unique
+  modelId   String
+  status    String       @default("active") // active, archived
+  messages  MCPMessage[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+// MCP消息模型
+model MCPMessage {
+  id        String     @id @default(uuid())
+  sessionId String
+  role      String     // user, assistant
+  content   String     @db.Text
+  session   MCPSession @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}

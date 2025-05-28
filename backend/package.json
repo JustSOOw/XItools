@@ -1,0 +1,44 @@
+{
+  "name": "xitools-backend",
+  "version": "0.1.0",
+  "description": "XItools MCP服务",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "build": "rimraf dist && tsc",
+    "start": "node dist/index.js",
+    "lint": "eslint src/**/*.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate:dev": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy"
+  },
+  "keywords": [
+    "mcp",
+    "task",
+    "kanban",
+    "api"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@fastify/cors": "^8.2.0",
+    "@fastify/swagger": "^8.2.1",
+    "@modelcontextprotocol/sdk": "^2.1.0",
+    "@prisma/client": "^5.0.0",
+    "dotenv": "^16.0.3",
+    "fastify": "^4.17.0",
+    "socket.io": "^4.6.1",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^18.15.11",
+    "@typescript-eslint/eslint-plugin": "^5.59.0",
+    "@typescript-eslint/parser": "^5.59.0",
+    "eslint": "^8.38.0",
+    "prettier": "^2.8.7",
+    "prisma": "^5.0.0",
+    "rimraf": "^4.4.1",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.0.4"
+  }
+}
