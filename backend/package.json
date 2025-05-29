@@ -11,7 +11,10 @@
     "lint": "eslint src/**/*.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
-    "prisma:migrate:deploy": "prisma migrate deploy"
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "test:mcp-tools": "node scripts/test-mcp-tools.js",
+    "test:mcp-sdk": "node scripts/test-mcp-sdk.js",
+    "test:mcp-native": "node scripts/test-mcp-native.js"
   },
   "keywords": [
     "mcp",
@@ -26,9 +29,11 @@
     "@fastify/swagger": "^8.2.1",
     "@modelcontextprotocol/sdk": "^1.12.0",
     "@prisma/client": "^5.0.0",
+    "axios": "^1.6.8",
     "dotenv": "^16.0.3",
     "fastify": "^4.17.0",
     "socket.io": "^4.6.1",
+    "uuid": "^9.0.1",
     "zod": "^3.22.0"
   },
   "devDependencies": {

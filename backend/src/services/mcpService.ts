@@ -10,7 +10,15 @@ import { randomUUID } from 'crypto';
 // 初始化Prisma客户端
 const prisma = new PrismaClient();
 
-// 定义MCP服务及工具
+/**
+ * 设置MCP服务及其工具
+ * 
+ * MCP服务是本应用程序的核心，它提供了一组标准化的工具接口，使外部LLM（如Cursor中的AI）
+ * 能够与任务看板进行交互，包括查询任务数据、提交任务数据集和更新任务状态等。
+ * 
+ * @param server Fastify实例，用于注册HTTP路由
+ * @param io Socket.IO服务器实例，用于实时通信
+ */
 export function setupMCPService(server: FastifyInstance, io: SocketIOServer): void {
   console.log('开始配置MCP服务...');
 
@@ -24,45 +32,30 @@ export function setupMCPService(server: FastifyInstance, io: SocketIOServer): vo
     },
   });
   
+  // 创建存储活跃传输实例的映射
+  const transports: Record<string, StreamableHTTPServerTransport> = {};
+  
+  // 使用sessionIdGenerator确保会话ID的生成
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: () => randomUUID(),
+    onsessioninitialized: (sessionId) => {
+      if (sessionId) {
+        console.log(`MCP会话初始化，会话ID：${sessionId}`);
+        transports[sessionId] = transport;
+      }
+    }
   });
   
-  // 配置路由
-  server.post('/mcp', async (request, reply) => {
-    await transport.handleRequest(request.raw, reply.raw, request.body);
-  });
-
-  server.get('/mcp', async (request, reply) => {
-    await transport.handleRequest(request.raw, reply.raw);
-  });
+  // 注册MCP工具 - 必须在连接到传输层之前完成
   
-  // 当WebSocket客户端连接时
-  io.on('connection', (socket) => {
-    console.log('前端连接成功, socket id:', socket.id);
-
-    // 监听客户端加入看板事件
-    socket.on('join_board', (boardId) => {
-      console.log(`客户端 ${socket.id} 加入看板: ${boardId}`);
-      socket.join(`board:${boardId}`);
-    });
-
-    // 监听客户端离开看板事件
-    socket.on('leave_board', (boardId) => {
-      console.log(`客户端 ${socket.id} 离开看板: ${boardId}`);
-      socket.leave(`board:${boardId}`);
-    });
-
-    socket.on('disconnect', () => {
-      console.log('前端断开连接, socket id:', socket.id);
-    });
-  });
-
-  // 注册MCP工具
-  
-  // 工具1: 获取任务Schema
+  /**
+   * 工具1: get_task_schema
+   * 
+   * 获取任务对象的JSON Schema，用于指导LLM生成正确的数据格式。
+   * 这个工具对于确保LLM生成的任务数据符合应用程序的预期格式至关重要。
+   */
   mcpServer.tool("get_task_schema", "获取任务对象的JSON Schema，用于指导LLM生成正确的数据格式", {}, 
-    async () => {
+    async (args) => {
       // 返回预定义的任务Schema
       const schema = taskSchema.describe();
       return {
@@ -76,7 +69,13 @@ export function setupMCPService(server: FastifyInstance, io: SocketIOServer): vo
     }
   );
 
-  // 工具2: 提交任务数据集
+  /**
+   * 工具2: submit_task_dataset
+   * 
+   * 提交从PRD解析出的结构化任务数据集，服务器将处理并存储这些任务。
+   * 此工具接收LLM解析PRD后生成的任务列表，验证数据格式，将任务存入数据库，
+   * 并通过Socket.IO广播tasks_added事件，通知前端有新任务添加。
+   */
   mcpServer.tool("submit_task_dataset", "提交从PRD解析出的结构化任务数据集，服务器将处理并存储这些任务", 
     {
       tasks: z.array(taskSchema.partial().required({ title: true, status: true }))
@@ -137,12 +136,25 @@ export function setupMCPService(server: FastifyInstance, io: SocketIOServer): vo
         };
       } catch (error) {
         console.error('创建任务失败:', error);
-        throw new Error('创建任务失败');
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({ success: false, error: '创建任务失败' })
+            }
+          ],
+          isError: true
+        };
       }
     }
   );
 
-  // 工具3: 获取任务列表
+  /**
+   * 工具3: list_tasks
+   * 
+   * 获取当前任务列表，支持过滤条件。
+   * 此工具允许LLM查询任务数据，可按状态、优先级、负责人和标签等条件进行过滤。
+   */
   mcpServer.tool("list_tasks", "获取当前任务列表，支持过滤条件",
     {
       filter_options: z.object({
@@ -203,7 +215,12 @@ export function setupMCPService(server: FastifyInstance, io: SocketIOServer): vo
     }
   );
 
-  // 工具4: 获取任务详情
+  /**
+   * 工具4: get_task_details
+   * 
+   * 获取特定任务的详细信息。
+   * 此工具允许LLM查询单个任务的详细信息，包括其子任务和标签。
+   */
   mcpServer.tool("get_task_details", "获取特定任务的详细信息",
     {
       task_id: z.string().describe('要查询的任务ID')
@@ -242,7 +259,13 @@ export function setupMCPService(server: FastifyInstance, io: SocketIOServer): vo
     }
   );
 
-  // 工具5: 更新任务
+  /**
+   * 工具5: update_task
+   * 
+   * 更新现有任务的一个或多个属性。
+   * 此工具允许LLM更新任务的属性，如标题、描述、状态等，并通过Socket.IO广播task_updated事件，
+   * 通知前端任务已更新。
+   */
   mcpServer.tool("update_task", "更新现有任务的一个或多个属性",
     {
       task_id: z.string().describe('要更新的任务ID'),
@@ -296,7 +319,12 @@ export function setupMCPService(server: FastifyInstance, io: SocketIOServer): vo
     }
   );
 
-  // 工具6: 删除任务
+  /**
+   * 工具6: delete_task
+   * 
+   * 删除指定的任务。
+   * 此工具允许LLM删除任务，并通过Socket.IO广播task_deleted事件，通知前端任务已删除。
+   */
   mcpServer.tool("delete_task", "删除指定的任务",
     {
       task_id: z.string().describe('要删除的任务ID')
@@ -335,9 +363,92 @@ export function setupMCPService(server: FastifyInstance, io: SocketIOServer): vo
       }
     }
   );
-
-  // 注册完所有工具后再连接到传输层
+  
+  // 在注册完所有工具后连接到传输层
   mcpServer.connect(transport);
+  
+  // 配置MCP HTTP路由
+  server.post('/mcp', async (request, reply) => {
+    const sessionId = request.headers['mcp-session-id'] as string | undefined;
+    
+    try {
+      if (sessionId && transports[sessionId]) {
+        // 使用现有的传输实例处理请求
+        console.log(`使用现有会话处理请求: ${sessionId}`);
+        await transports[sessionId].handleRequest(request.raw, reply.raw, request.body);
+      } else {
+        // 处理初始化请求
+        console.log('处理新的MCP请求');
+        await transport.handleRequest(request.raw, reply.raw, request.body);
+      }
+    } catch (error) {
+      console.error('处理MCP请求时出错:', error);
+      if (!reply.sent) {
+        reply.status(500).send({
+          jsonrpc: '2.0',
+          error: {
+            code: -32603,
+            message: '内部服务器错误',
+          },
+          id: null,
+        });
+      }
+    }
+  });
+
+  server.get('/mcp', async (request, reply) => {
+    const sessionId = request.headers['mcp-session-id'] as string | undefined;
+    
+    try {
+      if (sessionId && transports[sessionId]) {
+        console.log(`使用现有会话建立SSE流: ${sessionId}`);
+        await transports[sessionId].handleRequest(request.raw, reply.raw);
+      } else {
+        console.log('无效的会话ID，拒绝建立SSE流');
+        reply.status(400).send({
+          jsonrpc: '2.0',
+          error: {
+            code: -32000,
+            message: '无效的会话ID',
+          },
+          id: null,
+        });
+      }
+    } catch (error) {
+      console.error('处理SSE请求时出错:', error);
+      if (!reply.sent) {
+        reply.status(500).send({
+          jsonrpc: '2.0',
+          error: {
+            code: -32603,
+            message: '内部服务器错误',
+          },
+          id: null,
+        });
+      }
+    }
+  });
+  
+  // 当WebSocket客户端连接时的处理逻辑
+  io.on('connection', (socket) => {
+    console.log('前端连接成功, socket id:', socket.id);
+
+    // 监听客户端加入看板事件
+    socket.on('join_board', (boardId) => {
+      console.log(`客户端 ${socket.id} 加入看板: ${boardId}`);
+      socket.join(`board:${boardId}`);
+    });
+
+    // 监听客户端离开看板事件
+    socket.on('leave_board', (boardId) => {
+      console.log(`客户端 ${socket.id} 离开看板: ${boardId}`);
+      socket.leave(`board:${boardId}`);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('前端断开连接, socket id:', socket.id);
+    });
+  });
 
   console.log('MCP 服务配置完成，已准备就绪');
 } 
