@@ -32,6 +32,7 @@
     "vite": "^6.3.5"
   },
   "dependencies": {
+    "classnames": "^2.5.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "socket.io-client": "^4.8.1",

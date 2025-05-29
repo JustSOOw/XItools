@@ -4,57 +4,122 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* 浅色主题 (Light Theme) 基础变量 */
+    --color-primary: 79 70 229; /* #4F46E5 */
+    --color-secondary: 16 185 129; /* #10B981 */
+    --color-accent: 245 158 11; /* #F59E0B */
+    --color-background: 255 255 255; /* #FFFFFF */
+    --color-surface: 243 244 246; /* #F3F4F6 */
+    --color-text-primary: 17 24 39; /* #111827 */
+    --color-text-secondary: 107 114 128; /* #6B7280 */
+    --color-success: 16 185 129; /* #10B981 */
+    --color-warning: 251 191 36; /* #FBBF24 */
+    --color-error: 239 68 68; /* #EF4444 */
+    
+    /* 卡片毛玻璃效果 */
+    --card-blur: 10px;
+    --card-bg-opacity-light: 0.2;
+    --card-bg-opacity-dark: 0.3;
+    
+    /* 通用 UI 变量 */
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 199 89% 48%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 199 89% 48%;
+    --ring: var(--color-primary);
     --radius: 0.5rem;
   }
  
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* 深色主题 (Dark Theme) 基础变量 */
+    --color-primary: 99 102 241; /* #6366F1 */
+    --color-secondary: 52 211 153; /* #34D399 */
+    --color-accent: 251 191 36; /* #FBBF24 */
+    --color-background: 31 41 55; /* #1F2937 */
+    --color-surface: 55 65 81; /* #374151 */
+    --color-text-primary: 249 250 251; /* #F9FAFB */
+    --color-text-secondary: 209 213 219; /* #D1D5DB */
+    --color-success: 52 211 153; /* #34D399 */
+    --color-warning: 251 191 36; /* #FBBF24 */
+    --color-error: 248 113 113; /* #F87171 */
+    
+    /* 通用 UI 变量 */
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-    --primary: 199 89% 48%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 199 89% 48%;
+  }
+
+  /* 柔和主题 (Soft Theme) */
+  .theme-soft {
+    --color-primary: 246 211 101; /* #F6D365 */
+    --color-secondary: 253 160 133; /* #FDA085 */
+    --color-accent: 161 196 253; /* #A1C4FD */
+    --color-background: 255 255 255; /* #FFFFFF */
+    --color-surface: 255 245 225; /* #FFF5E1 */
+    --color-text-primary: 51 51 51; /* #333333 */
+    --color-text-secondary: 85 85 85; /* #555555 */
+    --color-success: 163 230 53; /* #A3E635 */
+    --color-warning: 250 204 21; /* #FACC15 */
+    --color-error: 244 114 114; /* #F47272 */
+  }
+
+  /* 艺术主题 (Artistic Theme) */
+  .theme-artistic {
+    --color-primary: 142 68 173; /* #8E44AD */
+    --color-secondary: 52 152 219; /* #3498DB */
+    --color-accent: 231 76 60; /* #E74C3C */
+    --color-background: 252 243 207; /* #FCF3CF */
+    --color-surface: 253 254 254; /* #FDFEFE */
+    --color-text-primary: 44 62 80; /* #2C3E50 */
+    --color-text-secondary: 127 140 141; /* #7F8C8D */
+    --color-success: 39 174 96; /* #27AE60 */
+    --color-warning: 241 196 15; /* #F1C40F */
+    --color-error: 192 57 43; /* #C0392B */
   }
 }
 
 @layer base {
   * {
-    @apply border-0;
+    @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-text-primary;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white bg-opacity-20 backdrop-blur-md border border-white/30 rounded-lg shadow-lg;
+  }
+  .dark .card {
+    @apply bg-dark-surface bg-opacity-30 border-gray-100/10;
+  }
+  
+  .btn-primary {
+    @apply bg-primary text-white rounded-md py-2 px-4 hover:bg-primary/90 transition-colors;
+  }
+  
+  .btn-secondary {
+    @apply bg-secondary text-white rounded-md py-2 px-4 hover:bg-secondary/90 transition-colors;
+  }
+  
+  .tag {
+    @apply bg-accent bg-opacity-20 text-accent px-2 py-1 rounded;
   }
 } 
