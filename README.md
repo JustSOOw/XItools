@@ -6,9 +6,19 @@ XItools是一个基于React和Node.js的智能任务看板应用，集成了MCP�
 
 项目采用前后端分离架构：
 
-- `frontend/`: 前端React应用
-- `backend/`: 后端Node.js服务
-- `shared-types/`: 前后端共享的TypeScript类型定义
+```
+XItools/
+├── frontend/          # 前端React应用
+├── backend/           # 后端Node.js服务
+├── shared-types/      # 前后端共享的TypeScript类型定义
+├── word_md/           # 项目文档
+├── docker-compose.yml # Docker配置
+├── package.json       # 主项目依赖
+├── tsconfig.json      # TypeScript配置
+├── .prettierrc        # 代码格式化配置
+├── .eslintrc.js       # ESLint配置
+└── .gitignore         # Git忽略配置
+```
 
 ## 后端服务 (MCP服务)
 
@@ -34,15 +44,17 @@ XItools是一个基于React和Node.js的智能任务看板应用，集成了MCP�
 backend/
 ├── src/
 │   ├── config/         # 配置文件
-│   ├── controllers/    # 控制器
-│   ├── models/         # 数据模型
 │   ├── routes/         # 路由定义
 │   ├── services/       # 业务逻辑服务
 │   ├── types/          # TypeScript类型定义
-│   ├── utils/          # 工具函数
 │   └── index.ts        # 应用入口
 ├── prisma/             # Prisma ORM配置
-└── package.json        # 依赖管理
+├── scripts/            # 脚本工具
+├── package.json        # 依赖管理
+├── tsconfig.json       # TypeScript配置
+├── .eslintrc.js        # ESLint配置
+├── .prettierrc         # Prettier配置
+└── .gitignore          # Git忽略配置
 ```
 
 ## 后端MCP服务
@@ -78,34 +90,34 @@ backend/
 ### 开发设置
 
 1. 安装依赖：
-   ```
+   ```bash
    cd backend
    npm install
    ```
 
 2. 创建`.env`文件或运行初始化脚本:
-   ```
+   ```bash
    node scripts/init.js
    ```
 
 3. 启动PostgreSQL数据库:
-   ```
+   ```bash
    docker compose up -d
    ```
 
 4. 生成Prisma客户端并运行数据库迁移:
-   ```
+   ```bash
    npm run prisma:generate
    npm run prisma:migrate:dev
    ```
 
 5. 启动开发服务器:
-   ```
+   ```bash
    npm run dev
    ```
 
 6. 访问API文档:
-   ```
+   ```bash
    http://localhost:3000/documentation
    ```
 
@@ -120,7 +132,47 @@ backend/
 - **语言**: TypeScript
 - **状态管理**: Zustand
 - **样式**: Tailwind CSS
-- **UI组件**: Shadcn UI
+- **实时通信**: Socket.IO-client
+- **桌面应用打包**: Electron
+
+### 目录结构
+
+```
+frontend/
+├── public/             # 静态资源
+│   └── favicon.svg     # 网站图标
+├── src/
+│   ├── assets/         # 图片、字体等资源
+│   ├── components/     # 可复用组件
+│   ├── hooks/          # 自定义钩子
+│   ├── pages/          # 页面组件
+│   ├── services/       # API服务
+│   ├── store/          # 状态管理
+│   ├── types/          # 类型定义
+│   ├── utils/          # 工具函数
+│   ├── App.tsx         # 应用主组件
+│   ├── main.tsx        # 应用入口
+│   └── index.css       # 全局样式
+├── .eslintrc.js        # ESLint配置
+├── .prettierrc         # Prettier配置
+├── .gitignore          # Git忽略配置
+├── index.html          # HTML模板
+├── package.json        # 项目依赖
+├── postcss.config.js   # PostCSS配置
+├── tailwind.config.js  # Tailwind配置
+├── tsconfig.json       # TypeScript配置
+├── tsconfig.node.json  # Node模块TypeScript配置
+└── vite.config.ts      # Vite配置
+```
+
+### 主题系统
+
+前端支持四套主题配色方案：
+
+1. 浅色主题 (Light Theme)
+2. 深色主题 (Dark Theme) 
+3. 柔和主题 (Soft Theme)
+4. 艺术主题 (Artistic Theme)
 
 ## 开发指南
 

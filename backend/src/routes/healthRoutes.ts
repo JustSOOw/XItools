@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../generated/prisma';
 
 const prisma = new PrismaClient();
 
@@ -16,7 +16,7 @@ export default async function healthRoutes(fastify: FastifyInstance): Promise<vo
       await prisma.$queryRaw`SELECT 1`;
       return { status: 'ok', message: '数据库连接正常' };
     } catch (error) {
-      console.error('数据库连接检查失败:', error);
+      console.error('数据库连接检查失败', error);
       return { status: 'error', message: '数据库连接失败', error: String(error) };
     }
   });
