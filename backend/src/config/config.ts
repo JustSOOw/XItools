@@ -22,15 +22,10 @@ export interface CorsConfig {
   allowedOrigins: string | string[];
 }
 
-export interface McpConfig {
-  port: number;
-}
-
 export interface Config {
   server: ServerConfig;
   database: DatabaseConfig;
   cors: CorsConfig;
-  mcp: McpConfig;
 }
 
 // 加载配置
@@ -45,9 +40,6 @@ export function loadConfig(): Config {
     },
     cors: {
       allowedOrigins: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:5173']
-    },
-    mcp: {
-      port: parseInt(process.env.MCP_PORT || '3001', 10)
     }
   };
 } 

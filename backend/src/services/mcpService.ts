@@ -45,7 +45,7 @@ export function setupMCPService(server: FastifyInstance, io: SocketIOServer): vo
       }
     }
   });
-  
+
   // 注册MCP工具 - 必须在连接到传输层之前完成
   
   /**
@@ -55,9 +55,87 @@ export function setupMCPService(server: FastifyInstance, io: SocketIOServer): vo
    * 这个工具对于确保LLM生成的任务数据符合应用程序的预期格式至关重要。
    */
   mcpServer.tool("get_task_schema", "获取任务对象的JSON Schema，用于指导LLM生成正确的数据格式", {}, 
-    async (args) => {
-      // 返回预定义的任务Schema
-      const schema = taskSchema.describe();
+    async (_args: any) => {
+      // 创建预定义的任务Schema
+      const schema = {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Task",
+        "description": "Schema for a single task item",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the task (e.g., UUID)",
+            "readOnly": true
+          },
+          "title": {
+            "type": "string",
+            "description": "The main title or name of the task"
+          },
+          "description": {
+            "type": "string",
+            "description": "Detailed description of the task (can be Markdown)"
+          },
+          "status": {
+            "type": "string",
+            "description": "Current status of the task (e.g., 'To Do', 'In Progress', 'Done') - 通常对应看板的列名"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["High", "Medium", "Low", null],
+            "description": "Priority of the task"
+          },
+          "dueDate": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Optional due date for the task"
+          },
+          "assignee": {
+            "type": ["string", "null"],
+            "description": "Identifier of the person assigned to the task (e.g., user ID or name)"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of tags associated with the task"
+          },
+          "parentId": {
+            "type": ["string", "null"],
+            "description": "ID of the parent task, if this is a sub-task"
+          },
+          "acceptanceCriteria": {
+            "type": "string",
+            "description": "Acceptance criteria for completing the task"
+          },
+          "estimatedEffort": {
+            "type": ["number", "null"],
+            "description": "Estimated effort in hours or points"
+          },
+          "loggedTime": {
+            "type": ["number", "null"],
+            "description": "Actual time logged for the task"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp of when the task was created",
+            "readOnly": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp of when the task was last updated",
+            "readOnly": true
+          }
+        },
+        "required": [
+          "title",
+          "status"
+        ]
+      };
+      
       return {
         content: [
           {
@@ -363,7 +441,7 @@ export function setupMCPService(server: FastifyInstance, io: SocketIOServer): vo
       }
     }
   );
-  
+
   // 在注册完所有工具后连接到传输层
   mcpServer.connect(transport);
   
@@ -371,7 +449,39 @@ export function setupMCPService(server: FastifyInstance, io: SocketIOServer): vo
   server.post('/mcp', async (request, reply) => {
     const sessionId = request.headers['mcp-session-id'] as string | undefined;
     
+    // 打印请求详情
+    console.log('收到MCP请求:', {
+      headers: request.headers,
+      body: request.body,
+      url: request.url,
+      method: request.method
+    });
+    
+    // 设置响应的Content-Type
+    reply.header('Content-Type', 'application/json');
+    // 设置允许的Accept类型
+    reply.header('Accept', 'application/json');
+    // 允许任何内容类型
+    reply.header('Vary', '*');
+
+    // 配置fastify处理此请求时不要应用406限制
+    reply['sent'] = false;
+    
     try {
+      // 检查请求是否有请求体并且是JSON-RPC格式
+      if (request.body && typeof request.body === 'object' && 
+          'jsonrpc' in request.body && 'method' in request.body) {
+          
+        const body = request.body as any;
+        
+        // 如果是list_tasks方法，使用我们的自定义处理
+        if (body.method === 'list_tasks') {
+          console.log('使用自定义处理函数处理list_tasks请求');
+          return await handleMcpRequest(request, reply);
+        }
+      }
+      
+      // 非自定义处理的请求使用MCP传输层处理
       if (sessionId && transports[sessionId]) {
         // 使用现有的传输实例处理请求
         console.log(`使用现有会话处理请求: ${sessionId}`);
@@ -398,6 +508,9 @@ export function setupMCPService(server: FastifyInstance, io: SocketIOServer): vo
 
   server.get('/mcp', async (request, reply) => {
     const sessionId = request.headers['mcp-session-id'] as string | undefined;
+    
+    // 设置响应的Content-Type
+    reply.header('Content-Type', 'application/json');
     
     try {
       if (sessionId && transports[sessionId]) {
@@ -449,6 +562,106 @@ export function setupMCPService(server: FastifyInstance, io: SocketIOServer): vo
       console.log('前端断开连接, socket id:', socket.id);
     });
   });
+
+  // 手动处理JSON-RPC请求的函数
+  const handleMcpRequest = async (request: any, reply: any) => {
+    try {
+      const body = request.body;
+      
+      if (!body || typeof body !== 'object' || !body.jsonrpc || body.jsonrpc !== '2.0' || !body.method) {
+        return reply.status(400).send({
+          jsonrpc: '2.0',
+          error: {
+            code: -32600,
+            message: '无效的请求',
+          },
+          id: body?.id || null,
+        });
+      }
+      
+      // 根据方法名分派到对应的工具处理函数
+      switch (body.method) {
+        case 'list_tasks':
+          const filterOptions = body.params?.filter_options || {};
+          
+          try {
+            // 构建查询条件
+            const where: any = {};
+
+            if (filterOptions) {
+              if (filterOptions.status) {
+                where.status = filterOptions.status;
+              }
+              if (filterOptions.priority) {
+                where.priority = filterOptions.priority;
+              }
+              if (filterOptions.assignee) {
+                where.assignee = filterOptions.assignee;
+              }
+              if (filterOptions.tags && filterOptions.tags.length > 0) {
+                where.tags = {
+                  some: {
+                    name: {
+                      in: filterOptions.tags
+                    }
+                  }
+                };
+              }
+            }
+
+            // 查询数据库
+            const tasks = await prisma.task.findMany({
+              where,
+              include: {
+                tags: true,
+              },
+              orderBy: { createdAt: 'desc' }
+            });
+            
+            console.log(`MCP方法返回 ${tasks.length} 个任务`);
+            
+            // 返回JSON-RPC格式的响应
+            return reply.send({
+              jsonrpc: '2.0',
+              result: tasks,
+              id: body.id,
+            });
+          } catch (error) {
+            console.error('查询任务列表失败:', error);
+            return reply.status(500).send({
+              jsonrpc: '2.0',
+              error: {
+                code: -32603,
+                message: '查询任务列表失败',
+              },
+              id: body.id,
+            });
+          }
+          
+        // 其他方法处理...
+        default:
+          // 如果方法未实现，仍然使用MCP传输层处理
+          return reply.status(400).send({
+            jsonrpc: '2.0',
+            error: {
+              code: -32601,
+              message: `方法 ${body.method} 未实现`,
+            },
+            id: body.id,
+          });
+      }
+    } catch (error) {
+      console.error('处理请求时出错:', error);
+      return reply.status(500).send({
+        jsonrpc: '2.0',
+        error: {
+          code: -32603,
+          message: '内部服务器错误',
+        },
+        id: null,
+      });
+    }
+  };
 
   console.log('MCP 服务配置完成，已准备就绪');
 } 

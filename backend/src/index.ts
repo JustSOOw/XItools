@@ -8,7 +8,17 @@ import { setupMCPService } from './services/mcpService';
 
 // 加载配置
 const config = loadConfig();
-const server = fastify({ logger: true });
+const server = fastify({ 
+  logger: true,
+  // 确保正确处理JSON请求
+  ajv: {
+    customOptions: {
+      removeAdditional: false,
+      useDefaults: true,
+      coerceTypes: 'array'
+    }
+  }
+});
 
 // 注册插件
 server.register(fastifyCors, {

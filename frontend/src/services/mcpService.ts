@@ -1,0 +1,276 @@
+import axios from 'axios';
+import { Task, PartialTask, TaskUpdate } from '../types/Task';
+
+/**
+ * MCP服务客户端
+ * 提供调用MCP工具的方法，与后端MCP服务交互
+ */
+class McpService {
+  private baseUrl: string;
+  private requestTimeout: number;
+  private headers: Record<string, string>;
+  
+  constructor(baseUrl: string = 'http://localhost:3000/mcp', timeout: number = 5000) {
+    this.baseUrl = baseUrl;
+    this.requestTimeout = timeout;
+    this.headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    };
+    
+    // 添加请求拦截器
+    axios.interceptors.request.use(
+      config => {
+        console.log('发送请求:', {
+          url: config.url,
+          method: config.method,
+          headers: config.headers,
+          data: config.data
+        });
+        return config;
+      },
+      error => {
+        console.error('请求错误:', error);
+        return Promise.reject(error);
+      }
+    );
+    
+    // 添加响应拦截器
+    axios.interceptors.response.use(
+      response => {
+        console.log('收到响应:', {
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers,
+          data: response.data
+        });
+        return response;
+      },
+      error => {
+        if (error.response) {
+          console.error('响应错误:', {
+            status: error.response.status,
+            statusText: error.response.statusText,
+            headers: error.response.headers,
+            data: error.response.data
+          });
+        } else {
+          console.error('请求失败:', error.message);
+        }
+        return Promise.reject(error);
+      }
+    );
+  }
+  
+  /**
+   * 获取任务Schema
+   * 对应MCP工具: get_task_schema
+   */
+  async getTaskSchema() {
+    try {
+      const response = await axios.post(this.baseUrl, {
+        jsonrpc: '2.0',
+        method: 'get_task_schema',
+        params: {},
+        id: this.generateRequestId(),
+      }, { 
+        timeout: this.requestTimeout,
+        headers: this.headers
+      });
+      
+      return response.data.result;
+    } catch (error) {
+      console.error('获取任务Schema失败:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * 提交任务数据集
+   * 对应MCP工具: submit_task_dataset
+   * @param tasks 要提交的任务列表
+   */
+  async submitTaskDataset(tasks: PartialTask[]): Promise<Task[]> {
+    try {
+      const response = await axios.post(this.baseUrl, {
+        jsonrpc: '2.0',
+        method: 'submit_task_dataset',
+        params: { tasks },
+        id: this.generateRequestId(),
+      }, { 
+        timeout: this.requestTimeout,
+        headers: this.headers
+      });
+      
+      return response.data.result;
+    } catch (error) {
+      console.error('提交任务数据集失败:', error);
+      // 如果后端服务不可用，返回空数组，不抛出错误
+      if (this.isServerUnavailableError(error)) {
+        return [];
+      }
+      throw error;
+    }
+  }
+  
+  /**
+   * 获取任务列表
+   * 对应MCP工具: list_tasks
+   * @param filterOptions 过滤选项
+   */
+  async listTasks(filterOptions?: Record<string, any>): Promise<Task[]> {
+    try {
+      console.log('开始获取任务列表，过滤选项:', filterOptions);
+      
+      // 首先尝试使用直接API端点
+      try {
+        console.log('尝试使用直接API端点获取任务列表');
+        const directApiResponse = await axios.post('http://localhost:3000/api/tasks/list', 
+          { filter_options: filterOptions || {} }, 
+          { 
+            timeout: this.requestTimeout,
+            headers: this.headers
+          }
+        );
+        
+        if (directApiResponse.data && directApiResponse.data.success) {
+          console.log('使用直接API端点获取任务列表成功');
+          return directApiResponse.data.data;
+        }
+      } catch (directApiError) {
+        console.error('直接API端点获取任务列表失败，尝试MCP方法:', directApiError);
+      }
+      
+      // 如果直接API失败，回退到MCP方法
+      console.log('尝试使用MCP方法获取任务列表');
+      const response = await axios.post(this.baseUrl, {
+        jsonrpc: '2.0',
+        method: 'list_tasks',
+        params: { filter_options: filterOptions || {} },
+        id: this.generateRequestId(),
+      }, { 
+        timeout: this.requestTimeout,
+        headers: this.headers
+      });
+      
+      return response.data.result;
+    } catch (error) {
+      console.error('获取任务列表失败:', error);
+      // 如果后端服务不可用，返回空数组，不抛出错误
+      if (this.isServerUnavailableError(error)) {
+        return [];
+      }
+      throw error;
+    }
+  }
+  
+  /**
+   * 获取任务详情
+   * 对应MCP工具: get_task_details
+   * @param taskId 任务ID
+   */
+  async getTaskDetails(taskId: string): Promise<Task | null> {
+    try {
+      const response = await axios.post(this.baseUrl, {
+        jsonrpc: '2.0',
+        method: 'get_task_details',
+        params: { task_id: taskId },
+        id: this.generateRequestId(),
+      }, { 
+        timeout: this.requestTimeout,
+        headers: this.headers
+      });
+      
+      return response.data.result;
+    } catch (error) {
+      console.error('获取任务详情失败:', error);
+      // 如果后端服务不可用，返回null
+      if (this.isServerUnavailableError(error)) {
+        return null;
+      }
+      throw error;
+    }
+  }
+  
+  /**
+   * 更新任务
+   * 对应MCP工具: update_task
+   * @param taskId 任务ID
+   * @param updates 要更新的字段
+   */
+  async updateTask(taskId: string, updates: TaskUpdate): Promise<Task | null> {
+    try {
+      const response = await axios.post(this.baseUrl, {
+        jsonrpc: '2.0',
+        method: 'update_task',
+        params: { task_id: taskId, updates },
+        id: this.generateRequestId(),
+      }, { 
+        timeout: this.requestTimeout,
+        headers: this.headers
+      });
+      
+      return response.data.result;
+    } catch (error) {
+      console.error('更新任务失败:', error);
+      // 如果后端服务不可用，返回null
+      if (this.isServerUnavailableError(error)) {
+        return null;
+      }
+      throw error;
+    }
+  }
+  
+  /**
+   * 删除任务
+   * 对应MCP工具: delete_task
+   * @param taskId 任务ID
+   */
+  async deleteTask(taskId: string): Promise<boolean> {
+    try {
+      const response = await axios.post(this.baseUrl, {
+        jsonrpc: '2.0',
+        method: 'delete_task',
+        params: { task_id: taskId },
+        id: this.generateRequestId(),
+      }, { 
+        timeout: this.requestTimeout,
+        headers: this.headers
+      });
+      
+      return response.data.result;
+    } catch (error) {
+      console.error('删除任务失败:', error);
+      // 如果后端服务不可用，返回false
+      if (this.isServerUnavailableError(error)) {
+        return false;
+      }
+      throw error;
+    }
+  }
+  
+  /**
+   * 检查错误是否是服务器不可用错误
+   */
+  private isServerUnavailableError(error: any): boolean {
+    return (
+      axios.isAxiosError(error) && 
+      (error.code === 'ECONNABORTED' || 
+       error.code === 'ECONNREFUSED' || 
+       !error.response || 
+       error.response.status >= 500 ||
+       error.response.status === 406) // 加入406错误码的处理
+    );
+  }
+  
+  /**
+   * 生成请求ID
+   */
+  private generateRequestId(): string {
+    return `request_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+}
+
+// 创建单例实例
+const mcpService = new McpService();
+export default mcpService; 

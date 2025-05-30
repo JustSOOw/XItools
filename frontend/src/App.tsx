@@ -1,53 +1,70 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Layout from './components/Layout';
 import Column from './components/Column';
 import Card from './components/Card';
 import Button from './components/Button';
 import Modal from './components/Modal';
 import useTheme from './hooks/useTheme';
-
-// 定义任务类型
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-  status: string;
-}
-
-// 定义列类型
-interface ColumnType {
-  id: string;
-  title: string;
-  tasks: Task[];
-}
+import useMcpConnection from './hooks/useMcpConnection';
+import useTaskStore from './store/taskStore';
+import mcpService from './services/mcpService';
+import { Task as TaskType, PartialTask } from './types/Task';
+import { testAxios } from './utils/testAxios';
 
 function App() {
   const { theme, toggleTheme } = useTheme();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [columns, setColumns] = useState<ColumnType[]>([
-    { id: 'todo', title: '待办', tasks: [] },
-    { id: 'in-progress', title: '进行中', tasks: [] },
-    { id: 'done', title: '已完成', tasks: [] },
-  ]);
-
-  // 模拟一些任务数据用于演示
+  const [newTask, setNewTask] = useState<PartialTask>({
+    title: '',
+    description: '',
+    status: 'todo',
+  });
+  
+  // 测试axios是否工作正常
   useEffect(() => {
-    // 示例数据
-    const mockTasks: Task[] = [
-      { id: '1', title: '实现基础布局', description: '创建应用的基础布局和可重用组件', status: 'in-progress' },
-      { id: '2', title: '设计数据模型', description: '设计任务数据的结构和关系', status: 'todo' },
-      { id: '3', title: '实现主题切换', description: '添加多种主题切换功能', status: 'done' },
-      { id: '4', title: '添加拖拽功能', description: '实现卡片的拖拽排序功能', status: 'todo' },
-    ];
-    
-    // 更新列数据
-    setColumns(prev => 
-      prev.map(column => ({
-        ...column,
-        tasks: mockTasks.filter(task => task.status === column.id)
-      }))
-    );
+    testAxios().then(result => {
+      console.log('Axios测试结果:', result);
+    });
   }, []);
+  
+  // 使用MCP连接
+  const { isConnected, reconnect } = useMcpConnection();
+  
+  // 从store获取状态 - 使用selector函数避免不必要的重渲染
+  const tasks = useTaskStore(state => state.tasks);
+  const columns = useTaskStore(state => state.columns);
+  const isLoading = useTaskStore(state => state.isLoading);
+  const error = useTaskStore(state => state.error);
+  const setError = useTaskStore(state => state.setError);
+  
+  // 创建任务
+  const handleCreateTask = async () => {
+    if (!newTask.title) {
+      setError('任务标题不能为空');
+      return;
+    }
+    
+    try {
+      await mcpService.submitTaskDataset([newTask]);
+      setIsModalOpen(false);
+      setNewTask({
+        title: '',
+        description: '',
+        status: 'todo',
+      });
+    } catch (error) {
+      console.error('创建任务失败:', error);
+      setError('创建任务失败，请稍后重试');
+    }
+  };
+  
+  // 按列组织任务 - 使用useMemo避免不必要的重计算
+  const tasksByColumn = useMemo(() => {
+    return columns.reduce((acc, column) => {
+      acc[column.id] = tasks.filter(task => task.status === column.id);
+      return acc;
+    }, {} as Record<string, TaskType[]>);
+  }, [columns, tasks]);
 
   return (
     <Layout>
@@ -57,6 +74,23 @@ function App() {
           <h1 className="text-2xl font-bold text-text-primary">智能任务看板</h1>
           
           <div className="flex items-center space-x-4">
+            <div className="flex items-center">
+              <span className={`w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
+              <span className="text-xs text-text-secondary">
+                {isConnected ? '已连接' : '未连接'}
+              </span>
+            </div>
+            
+            {!isConnected && (
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={reconnect}
+              >
+                重新连接MCP服务
+              </Button>
+            )}
+            
             <Button
               variant="secondary"
               size="sm"
@@ -84,32 +118,74 @@ function App() {
           </div>
         </header>
         
-        {/* 看板内容区 */}
-        <div className="flex-1 overflow-x-auto p-6">
-          <div className="flex h-full space-x-4">
-            {columns.map(column => (
-              <Column
-                key={column.id}
-                id={column.id}
-                title={column.title}
-                count={column.tasks.length}
-                onAddCard={() => setIsModalOpen(true)}
-              >
-                {column.tasks.map(task => (
-                  <Card key={task.id} variant="default" isHoverable isInteractive>
-                    <h3 className="text-sm font-medium text-text-primary">{task.title}</h3>
-                    <p className="text-xs text-text-secondary mt-1">{task.description}</p>
-                    <div className="flex items-center justify-between mt-3">
-                      <span className="text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full">
-                        ID: {task.id}
-                      </span>
-                    </div>
-                  </Card>
-                ))}
-              </Column>
-            ))}
+        {/* 错误提示 */}
+        {error && (
+          <div className="bg-danger/10 border border-danger text-danger px-4 py-2 m-4 rounded-md flex justify-between items-center">
+            <p>{error}</p>
+          <button
+              className="text-sm underline"
+              onClick={() => setError(null)}
+          >
+              关闭
+          </button>
           </div>
+        )}
+        
+        {/* 连接状态提示 */}
+        {!isConnected && !error && (
+          <div className="bg-warning/10 border border-warning text-warning px-4 py-2 m-4 rounded-md">
+            <p>未连接到MCP服务，部分功能可能不可用</p>
+          </div>
+        )}
+        
+        {/* 加载状态 */}
+        {isLoading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            <p className="ml-2 text-text-secondary">加载中...</p>
+          </div>
+        ) : (
+          /* 看板内容区 */
+          <div className="flex-1 overflow-x-auto p-6">
+            {columns.length > 0 ? (
+              <div className="flex h-full space-x-4">
+                {columns.map(column => (
+                  <Column
+                    key={column.id}
+                    id={column.id}
+                    title={column.name}
+                    count={tasksByColumn[column.id]?.length || 0}
+                    onAddCard={() => {
+                      setNewTask({...newTask, status: column.id});
+                      setIsModalOpen(true);
+                    }}
+                  >
+                    {tasksByColumn[column.id]?.map(task => (
+                      <Card key={task.id} variant="default" isHoverable isInteractive>
+                        <h3 className="text-sm font-medium text-text-primary">{task.title}</h3>
+                        {task.description && (
+                          <p className="text-xs text-text-secondary mt-1">{task.description}</p>
+                        )}
+                        <div className="flex items-center justify-between mt-3">
+                          <span className="text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full">
+                            {task.priority || '普通'}
+                          </span>
+                          <span className="text-xs text-text-secondary">
+                            ID: {task.id.substring(0, 8)}
+                          </span>
+                        </div>
+                      </Card>
+                    ))}
+                  </Column>
+                ))}
+              </div>
+            ) : (
+              <div className="flex-1 flex items-center justify-center">
+                <p className="text-text-secondary">暂无看板列</p>
+              </div>
+            )}
         </div>
+        )}
       </div>
       
       {/* 新建任务模态框 */}
@@ -123,13 +199,23 @@ function App() {
             <Button variant="ghost" onClick={() => setIsModalOpen(false)}>
               取消
             </Button>
-            <Button variant="primary" onClick={() => setIsModalOpen(false)}>
+            <Button 
+              variant="primary" 
+              onClick={handleCreateTask}
+              disabled={!isConnected}
+            >
               创建
             </Button>
           </>
         }
       >
         <div className="space-y-4">
+          {!isConnected && (
+            <div className="bg-warning/10 border border-warning text-warning px-4 py-2 rounded-md text-sm">
+              未连接到MCP服务，无法创建任务
+            </div>
+          )}
+          
           <div>
             <label className="block text-sm font-medium text-text-primary mb-1">
               标题
@@ -138,6 +224,9 @@ function App() {
               type="text"
               className="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
               placeholder="输入任务标题"
+              value={newTask.title}
+              onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+              disabled={!isConnected}
             />
           </div>
           
@@ -148,6 +237,9 @@ function App() {
             <textarea
               className="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 min-h-[100px]"
               placeholder="输入任务描述"
+              value={newTask.description || ''}
+              onChange={(e) => setNewTask({...newTask, description: e.target.value})}
+              disabled={!isConnected}
             />
           </div>
           
@@ -157,13 +249,33 @@ function App() {
             </label>
             <select
               className="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
+              value={newTask.status}
+              onChange={(e) => setNewTask({...newTask, status: e.target.value})}
+              disabled={!isConnected}
             >
-              <option value="todo">待办</option>
-              <option value="in-progress">进行中</option>
-              <option value="done">已完成</option>
+              {columns.map((column) => (
+                <option key={column.id} value={column.id}>{column.name}</option>
+              ))}
             </select>
           </div>
-        </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-text-primary mb-1">
+              优先级
+            </label>
+            <select
+              className="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
+              value={newTask.priority || ''}
+              onChange={(e) => setNewTask({...newTask, priority: e.target.value || null})}
+              disabled={!isConnected}
+            >
+              <option value="">普通</option>
+              <option value="High">高</option>
+              <option value="Medium">中</option>
+              <option value="Low">低</option>
+            </select>
+      </div>
+    </div>
       </Modal>
     </Layout>
   );

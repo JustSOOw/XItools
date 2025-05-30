@@ -2,6 +2,46 @@
 
 XItools是一个基于React和Node.js的智能任务看板应用，集成了MCP（Model Context Protocol）服务，提供智能化的任务管理体验。
 
+## 快速启动
+
+项目提供了便捷的启动脚本，可以同时启动前端、后端和浏览器工具服务：
+
+### 使用npm脚本启动（推荐）
+```bash
+# 启动所有服务
+npm run start:all
+
+# 或者单独启动各服务
+npm run start:frontend  # 启动前端
+npm run start:backend   # 启动后端
+npm run start:browser-tools  # 启动浏览器工具
+```
+
+### 直接使用脚本文件
+
+#### Windows系统
+```bash
+# 在PowerShell中运行时，需要添加".\"前缀
+.\start-services.bat
+
+# 在CMD命令提示符中运行时，可直接使用
+start-services.bat
+```
+
+#### Linux/macOS系统
+```bash
+# 给脚本添加执行权限
+chmod +x start-services.sh
+
+# 运行脚本
+./start-services.sh
+```
+
+该脚本将同时启动:
+- 前端开发服务器 (frontend目录下的npm run dev)
+- 后端API服务器 (backend目录下的npm run dev)
+- 浏览器工具服务器 (@agentdeskai/browser-tools-server)
+
 ## 项目结构
 
 项目采用前后端分离架构：
@@ -234,6 +274,93 @@ frontend/
 2. 深色主题 (Dark Theme) 
 3. 柔和主题 (Soft Theme)
 4. 艺术主题 (Artistic Theme)
+
+### 前端状态管理
+
+前端使用Zustand作为状态管理库，主要管理以下状态：
+
+#### 任务状态管理 (Task Store)
+
+`frontend/src/store/taskStore.ts`提供了任务相关的状态管理：
+
+- **状态**:
+  - `tasks`: 所有任务列表
+  - `columns`: 看板列配置
+  - `isLoading`: 加载状态
+  - `error`: 错误信息
+
+- **操作方法**:
+  - `setTasks`: 设置任务列表
+  - `addTasks`: 添加新任务
+  - `updateTask`: 更新任务
+  - `deleteTask`: 删除任务
+  - `setColumns`: 设置看板列配置
+  - `setLoading`: 设置加载状态
+  - `setError`: 设置错误信息
+
+#### 示例使用:
+
+```tsx
+import useTaskStore from '../store/taskStore';
+
+// 在组件中使用
+const { tasks, isLoading, error } = useTaskStore(state => ({
+  tasks: state.tasks,
+  isLoading: state.isLoading,
+  error: state.error
+}));
+
+// 更新状态
+useTaskStore.getState().addTasks([newTask]);
+```
+
+### WebSocket连接与实时通信
+
+前端通过Socket.IO与后端MCP服务建立WebSocket连接，实现实时数据同步：
+
+#### WebSocket服务 (Socket Service)
+
+`frontend/src/services/socketService.ts`提供了WebSocket连接管理：
+
+- **功能**:
+  - 建立与MCP服务的WebSocket连接
+  - 监听任务相关事件（`tasks_added`, `task_updated`, `task_deleted`）
+  - 更新本地任务状态
+
+#### MCP服务客户端 (MCP Service)
+
+`frontend/src/services/mcpService.ts`提供了与MCP服务交互的方法：
+
+- **方法**:
+  - `getTaskSchema`: 获取任务Schema
+  - `submitTaskDataset`: 提交任务数据集
+  - `listTasks`: 获取任务列表
+  - `getTaskDetails`: 获取任务详情
+  - `updateTask`: 更新任务
+  - `deleteTask`: 删除任务
+
+#### MCP连接钩子 (useMcpConnection)
+
+`frontend/src/hooks/useMcpConnection.ts`是一个自定义React钩子，用于初始化MCP连接：
+
+- **功能**:
+  - 连接到MCP服务WebSocket
+  - 加载初始任务数据
+  - 提供连接状态和重连方法
+
+#### 示例使用:
+
+```tsx
+import useMcpConnection from '../hooks/useMcpConnection';
+
+// 在组件中使用
+const { isConnected, reconnect } = useMcpConnection();
+
+// 重新连接
+if (!isConnected) {
+  reconnect();
+}
+```
 
 ## 开发指南
 
