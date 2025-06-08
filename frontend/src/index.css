@@ -122,4 +122,45 @@
   .tag {
     @apply bg-accent bg-opacity-20 text-accent px-2 py-1 rounded;
   }
-} 
+
+  /* 拖拽相关样式 */
+  .dragging {
+    @apply opacity-50 transform rotate-3 scale-105;
+  }
+
+  .drag-overlay {
+    @apply transform rotate-3 scale-105 shadow-2xl opacity-95;
+    z-index: 9999;
+  }
+
+  .drop-zone-active {
+    @apply ring-2 ring-primary ring-opacity-50 bg-primary/5 scale-105;
+  }
+
+  .sortable-ghost {
+    @apply opacity-50;
+  }
+
+  .sortable-chosen {
+    @apply transform rotate-3 scale-105;
+  }
+
+  .sortable-drag {
+    @apply opacity-0;
+  }
+
+  /* 文本截断样式 */
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+}

@@ -6,6 +6,13 @@ import { loadConfig } from './config/config';
 import { setupRoutes } from './routes';
 import { setupMCPService } from './services/mcpService';
 
+// 扩展FastifyInstance类型以包含io属性
+declare module 'fastify' {
+  interface FastifyInstance {
+    io?: Server;
+  }
+}
+
 // 加载配置
 const config = loadConfig();
 const server = fastify({ 
@@ -27,7 +34,6 @@ server.register(fastifyCors, {
 });
 
 server.register(fastifySwagger, {
-  routePrefix: '/documentation',
   swagger: {
     info: {
       title: 'XItools API Documentation',
@@ -35,7 +41,6 @@ server.register(fastifySwagger, {
       version: '0.1.0'
     },
   },
-  exposeRoute: true
 });
 
 // 注册路由
@@ -52,8 +57,11 @@ const start = async () => {
       }
     });
 
+    // 将io实例附加到server上，以便在路由中使用
+    server.io = io;
+
     // 设置MCP服务
-    setupMCPService(server, io);
+    await setupMCPService(server, io);
     
     // 启动HTTP服务器
     const address = await server.listen({ port: config.server.port, host: config.server.host });

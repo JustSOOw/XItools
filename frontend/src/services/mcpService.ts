@@ -248,29 +248,77 @@ class McpService {
       throw error;
     }
   }
+
+  /**
+   * 迁移任务状态数据
+   * 对应MCP工具: migrate_task_status
+   */
+  async migrateTaskStatus(): Promise<any> {
+    try {
+      const response = await axios.post(this.baseUrl, {
+        jsonrpc: '2.0',
+        method: 'migrate_task_status',
+        params: {},
+        id: this.generateRequestId(),
+      }, {
+        timeout: this.requestTimeout,
+        headers: this.headers
+      });
+
+      console.log('数据迁移成功:', response.data.result);
+      return response.data.result;
+    } catch (error) {
+      console.error('数据迁移失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 更新任务颜色
+   * 对应MCP工具: update_task_color
+   */
+  async updateTaskColor(taskId: string, color: string): Promise<any> {
+    try {
+      const response = await axios.post(this.baseUrl, {
+        jsonrpc: '2.0',
+        method: 'update_task_color',
+        params: {
+          task_id: taskId,
+          color: color
+        },
+        id: this.generateRequestId(),
+      }, {
+        timeout: this.requestTimeout,
+        headers: this.headers
+      });
+
+      console.log('任务颜色更新成功:', response.data.result);
+      return response.data.result;
+    } catch (error) {
+      console.error('任务颜色更新失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 生成随机请求ID
+   */
+  private generateRequestId(): string {
+    return `req_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+  }
   
   /**
-   * 检查错误是否是服务器不可用错误
+   * 判断是否为服务器不可用错误
    */
   private isServerUnavailableError(error: any): boolean {
     return (
-      axios.isAxiosError(error) && 
-      (error.code === 'ECONNABORTED' || 
-       error.code === 'ECONNREFUSED' || 
-       !error.response || 
-       error.response.status >= 500 ||
-       error.response.status === 406) // 加入406错误码的处理
+      !error.response || // 服务器未响应
+      error.code === 'ECONNABORTED' || // 请求超时
+      error.message.includes('Network Error') // 网络错误
     );
-  }
-  
-  /**
-   * 生成请求ID
-   */
-  private generateRequestId(): string {
-    return `request_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 }
 
-// 创建单例实例
+// 导出单例实例
 const mcpService = new McpService();
 export default mcpService; 

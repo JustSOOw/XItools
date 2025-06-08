@@ -8,7 +8,6 @@ export interface ColumnProps {
   className?: string;
   onAddCard?: () => void;
   id?: string;
-  isDropDisabled?: boolean;
 }
 
 const Column: React.FC<ColumnProps> = ({
@@ -18,26 +17,32 @@ const Column: React.FC<ColumnProps> = ({
   className,
   onAddCard,
   id,
-  isDropDisabled,
 }) => {
+  // 计算子元素数量
+  const childrenCount = React.Children.count(children);
+  
   return (
     <div
       id={id}
       className={classNames(
-        'flex flex-col h-full min-h-[500px] w-72 bg-surface rounded-lg shadow',
-        isDropDisabled ? 'opacity-60' : '',
+        'flex flex-col w-72 rounded-lg shadow transition-colors duration-200',
+        'bg-surface',
         className
       )}
+      style={{ minHeight: '120px' }}
+      data-column-id={id}
     >
       {/* 列标题 */}
       <div className="p-3 border-b border-border flex items-center justify-between">
         <div className="flex items-center">
-          <h3 className="font-medium text-text-primary">{title}</h3>
+          <h3 className="font-medium text-text-primary flex items-center">
+            <span>{title}</span>
           {typeof count === 'number' && (
             <span className="ml-2 px-2 py-0.5 bg-accent/10 text-accent rounded-full text-xs">
               {count}
             </span>
           )}
+          </h3>
         </div>
         {onAddCard && (
           <button
@@ -53,8 +58,18 @@ const Column: React.FC<ColumnProps> = ({
       </div>
       
       {/* 列内容区 */}
-      <div className="flex-1 p-2 overflow-y-auto space-y-2">
-        {children}
+      <div className="flex-1 p-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
+        {/* 如果列为空，显示提示 */}
+        {React.Children.count(children) === 0 ? (
+          <div className="h-20 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg flex items-center justify-center text-text-secondary text-sm">
+            暂无任务
+          </div>
+        ) : (
+          /* 卡片容器 */
+          <div className="space-y-2 min-h-full" data-column-cards-container={id}>
+            {children}
+          </div>
+        )}
       </div>
     </div>
   );

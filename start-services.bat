@@ -1,16 +1,14 @@
 @echo off
 echo Starting XItools services...
 
-:: Start browser tools service
-start cmd /c "npx @agentdeskai/browser-tools-server@latest"
+echo Starting browser tools service...
+start "XItools-Browser" cmd /k "npx @agentdeskai/browser-tools-server@latest"
 
-:: Start backend service
-start cmd /c "cd backend && npm run dev"
+echo Starting backend service...
+start "XItools-Backend" cmd /k "cd backend && npm run dev"
 
-:: Start frontend service
-start cmd /c "cd frontend && npm run dev"
+echo Starting frontend service...
+start "XItools-Frontend" cmd /k "cd frontend && npm run dev"
 
-echo All services started!
-echo Browser tools service: Started in new window
-echo Backend service: Started in new window
-echo Frontend service: Started in new window 
+echo All services started successfully.
+echo 要停止服务，请在任务管理器中手动关闭相关的命令窗口 

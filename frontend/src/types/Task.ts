@@ -15,12 +15,14 @@ export interface Task {
   priority?: 'High' | 'Medium' | 'Low' | null;
   dueDate?: string | null;
   assignee?: string | null;
+  color?: string | null; // 任务卡片颜色
   tags?: string[];
   parentId?: string | null;
   subTasks?: Task[];
   acceptanceCriteria?: string;
   estimatedEffort?: number | null;
   loggedTime?: number | null;
+  sortOrder?: number; // 用于列内排序
 }
 
 /**

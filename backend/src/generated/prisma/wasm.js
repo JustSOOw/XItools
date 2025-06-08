@@ -122,6 +122,16 @@ exports.Prisma.TransactionIsolationLevel = makeStrictEnum({
   Serializable: 'Serializable'
 });
 
+exports.Prisma.BoardColumnScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  order: 'order',
+  color: 'color',
+  isDefault: 'isDefault',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.TaskScalarFieldEnum = {
   id: 'id',
   title: 'title',
@@ -130,10 +140,12 @@ exports.Prisma.TaskScalarFieldEnum = {
   priority: 'priority',
   dueDate: 'dueDate',
   assignee: 'assignee',
+  color: 'color',
   parentId: 'parentId',
   acceptanceCriteria: 'acceptanceCriteria',
   estimatedEffort: 'estimatedEffort',
   loggedTime: 'loggedTime',
+  sortOrder: 'sortOrder',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -180,6 +192,7 @@ exports.Prisma.NullsOrder = {
 
 
 exports.Prisma.ModelName = {
+  BoardColumn: 'BoardColumn',
   Task: 'Task',
   Tag: 'Tag',
   MCPSession: 'MCPSession',
