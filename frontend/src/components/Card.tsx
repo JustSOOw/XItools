@@ -8,6 +8,7 @@ export interface CardProps {
   isHoverable?: boolean;
   isInteractive?: boolean;
   noPadding?: boolean;
+  style?: React.CSSProperties;
 }
 
 const Card: React.FC<CardProps> = ({
@@ -17,12 +18,16 @@ const Card: React.FC<CardProps> = ({
   isHoverable = false,
   isInteractive = false,
   noPadding = false,
+  style,
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const baseClasses = 'rounded-lg transition-all';
   
+  // 如果有自定义背景色，不应用默认背景色
+  const hasCustomBackground = style?.background || style?.backgroundColor;
+
   const variantClasses = {
-    default: 'bg-surface shadow-md',
+    default: hasCustomBackground ? 'shadow-md' : 'bg-surface shadow-md',
     glassmorphic: 'bg-white/20 backdrop-blur-md border border-white/30 shadow-lg',
     outlined: 'border border-border bg-transparent',
   };
@@ -51,7 +56,7 @@ const Card: React.FC<CardProps> = ({
   }, [variant]);
 
   return (
-    <div ref={cardRef} className={cardClasses}>
+    <div ref={cardRef} className={cardClasses} style={style}>
       {children}
     </div>
   );

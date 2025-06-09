@@ -2,7 +2,6 @@ import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import DroppableColumn from './DroppableColumn';
-import ColumnPlaceholder from './ColumnPlaceholder';
 import { BoardColumn } from '../store/taskStore';
 
 interface DraggableColumnProps {
@@ -52,15 +51,16 @@ const DraggableColumn: React.FC<DraggableColumnProps> = ({
     transition,
   };
 
-  // 如果正在被拖拽，显示占位符
+  // 如果正在被拖拽，显示完全透明占位符（保持布局稳定）
   if (isSortableDragging) {
     return (
       <div
         ref={setNodeRef}
         style={style}
-        className="transition-all duration-200 ease-in-out"
+        className="w-72 min-h-[400px] opacity-0 transition-all duration-200 ease-in-out"
       >
-        <ColumnPlaceholder />
+        {/* 完全透明的占位符，保持原有尺寸但不可见 */}
+        <div className="w-full h-full rounded-lg border-2 border-dashed border-transparent bg-transparent" />
       </div>
     );
   }

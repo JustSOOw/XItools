@@ -74,7 +74,9 @@ const TaskCard: React.FC<TaskCardProps> = ({
   };
   
   const { color, text } = getPriorityInfo();
-  
+
+
+
   return (
     <>
     <Card
@@ -83,7 +85,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
       isHoverable
       isInteractive
       style={{
-        backgroundColor: task.color || undefined,
+        background: task.color || undefined,
       }}
     >
       {/* 更多按钮 - 悬停时显示 */}

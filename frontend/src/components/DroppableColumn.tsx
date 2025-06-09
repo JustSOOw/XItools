@@ -91,7 +91,7 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
       )}
       style={{
         minHeight: '120px',
-        backgroundColor: color || 'var(--color-surface)',
+        background: color || 'var(--color-surface)',
       }}
       data-column-id={id}
     >

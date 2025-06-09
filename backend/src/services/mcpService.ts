@@ -776,10 +776,15 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
           data: {
             color: color || null,
             updatedAt: new Date()
+          },
+          include: {
+            tags: true,
           }
         });
 
-        console.log(`任务颜色已更新: ${task_id} -> ${color || '清除'}`);
+        // 广播任务更新事件
+        io.emit('task_updated', updatedTask);
+        console.log(`任务颜色已更新: ${task_id} -> ${color || '清除'} 并广播通知`);
 
         return {
           content: [
@@ -1668,10 +1673,15 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
               data: {
                 color: color || null,
                 updatedAt: new Date()
+              },
+              include: {
+                tags: true,
               }
             });
 
-            console.log(`任务颜色已更新: ${task_id} -> ${color || '清除'}`);
+            // 广播任务更新事件
+            io.emit('task_updated', updatedTask);
+            console.log(`任务颜色已更新: ${task_id} -> ${color || '清除'} 并广播通知`);
 
             reply.send({
               jsonrpc: '2.0',
