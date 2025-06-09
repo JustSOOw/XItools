@@ -50,6 +50,7 @@ const DraggableTaskCard: React.FC<DraggableTaskCardProps> = ({
         transition-all duration-200 ease-in-out
         ${isSortableDragging ? 'z-50 rotate-3 scale-105' : ''}
         ${isDragging ? 'opacity-50' : ''}
+
       `}
     >
       <TaskCard

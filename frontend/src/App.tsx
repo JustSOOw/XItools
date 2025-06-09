@@ -5,6 +5,7 @@ import {
   closestCenter,
   closestCorners,
   rectIntersection,
+  pointerWithin,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -18,14 +19,14 @@ import {
   arrayMove,
   sortableKeyboardCoordinates,
   SortableContext,
-  horizontalListSortingStrategy
+  horizontalListSortingStrategy,
+  verticalListSortingStrategy
 } from '@dnd-kit/sortable';
 import Layout from './components/Layout';
 import Button from './components/Button';
 import Modal from './components/Modal';
 import TaskDetailModal from './components/TaskDetailModal';
 import DraggableTaskCard from './components/DraggableTaskCard';
-import DroppableColumn from './components/DroppableColumn';
 import TaskDragOverlay from './components/TaskDragOverlay';
 import ColumnInsertIndicator from './components/ColumnInsertIndicator';
 import ColumnDropZone from './components/ColumnDropZone';
@@ -33,6 +34,7 @@ import AddColumnButton from './components/AddColumnButton';
 import DraggableColumn from './components/DraggableColumn';
 import ColumnDragOverlay from './components/ColumnDragOverlay';
 import useTheme from './hooks/useTheme';
+
 import useMcpConnection from './hooks/useMcpConnection';
 import useTaskStore from './store/taskStore';
 import mcpService from './services/mcpService';
@@ -56,6 +58,16 @@ function App() {
     columnId: string;
     position: 'before' | 'after';
   } | null>(null);
+
+  // 拖拽开始时的原始状态
+  const [dragStartState, setDragStartState] = useState<{
+    tasks: TaskType[];
+    activeTaskId: string | null;
+  } | null>(null);
+
+
+
+
   
   // 测试axios是否工作正常
   useEffect(() => {
@@ -100,7 +112,6 @@ function App() {
   const setError = useTaskStore(state => state.setError);
   const setActiveTaskId = useTaskStore(state => state.setActiveTaskId);
   const setActiveColumnId = useTaskStore(state => state.setActiveColumnId);
-  const moveTask = useTaskStore(state => state.moveTask);
   const reorderTasksInColumn = useTaskStore(state => state.reorderTasksInColumn);
   const addColumn = useTaskStore(state => state.addColumn);
   const updateColumn = useTaskStore(state => state.updateColumn);
@@ -121,7 +132,7 @@ function App() {
     })
   );
 
-  // 自定义碰撞检测算法 - 针对列拖拽优化
+  // 自定义碰撞检测算法 - 基于@dnd-kit官方多容器示例
   const customCollisionDetection: CollisionDetection = (args) => {
     const { active, droppableContainers } = args;
 
@@ -136,7 +147,6 @@ function App() {
       });
 
       if (dropZoneCollisions.length > 0) {
-        // 如果有拖拽区域碰撞，优先返回
         return dropZoneCollisions;
       }
 
@@ -151,7 +161,44 @@ function App() {
       return columnCollisions;
     }
 
-    // 对于任务拖拽，使用默认的 closestCenter
+    // 如果拖拽的是任务，使用官方多容器碰撞检测策略
+    if (active.data.current?.type === 'task') {
+      // 首先找到指针相交的容器
+      const pointerIntersections = pointerWithin(args);
+      const intersections = pointerIntersections.length > 0
+        ? pointerIntersections
+        : rectIntersection(args);
+
+      let overId = intersections[0]?.id;
+
+      if (overId != null) {
+        // 如果相交的是列容器
+        const overColumn = columns.find(col => col.id === overId);
+        if (overColumn) {
+          const columnTasks = tasksByColumn[overId] || [];
+
+          // 如果列有任务，找到最近的任务
+          if (columnTasks.length > 0) {
+            const taskIds = columnTasks.map(task => task.id);
+            const taskCollisions = closestCenter({
+              ...args,
+              droppableContainers: Array.from(droppableContainers.values()).filter(
+                container => taskIds.includes(container.id as string)
+              )
+            });
+
+            if (taskCollisions.length > 0) {
+              overId = taskCollisions[0].id;
+            }
+          }
+          // 如果列为空，直接返回列ID
+        }
+
+        return [{ id: overId }];
+      }
+    }
+
+    // 默认使用最近中心算法
     return closestCenter(args);
   };
 
@@ -194,15 +241,23 @@ function App() {
     const { active } = event;
     const activeData = active.data.current;
 
-    // 清除插入指示器
+    // 清除所有状态
     setInsertIndicator(null);
 
     if (activeData?.type === 'task') {
-      setActiveTaskId(active.id as string);
+      const activeTaskId = active.id as string;
+      setActiveTaskId(activeTaskId);
       setActiveColumnId(null);
+
+      // 保存拖拽开始时的原始状态
+      setDragStartState({
+        tasks: [...tasks], // 深拷贝当前任务状态
+        activeTaskId,
+      });
     } else if (activeData?.type === 'column') {
       setActiveColumnId(active.id as string);
       setActiveTaskId(null);
+      setDragStartState(null); // 列拖拽不需要保存任务状态
     }
   };
 
@@ -210,12 +265,18 @@ function App() {
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
 
+    // 清除拖拽状态
     setActiveTaskId(null);
     setActiveColumnId(null);
-    setInsertIndicator(null); // 清除插入指示器
+    setInsertIndicator(null);
 
     if (!over) {
       console.log('拖拽结束：没有有效的放置目标');
+      // 恢复到拖拽开始时的状态
+      if (dragStartState) {
+        setTasks(dragStartState.tasks);
+      }
+      setDragStartState(null);
       return;
     }
 
@@ -301,66 +362,75 @@ function App() {
       return;
     }
 
-    // 处理任务拖拽（原有逻辑）
+    // 处理任务拖拽 - 多容器逻辑
     const activeTask = tasks.find(task => task.id === activeId);
-    if (!activeTask) return;
+    if (!activeTask || !dragStartState) {
+      // 如果找不到任务或没有原始状态，恢复到拖拽开始时的状态
+      if (dragStartState) {
+        setTasks(dragStartState.tasks);
+      }
+      setDragStartState(null);
+      return;
+    }
 
-    // 判断是否跨列拖拽（使用已声明的overData变量）
+    // 获取原始状态（拖拽开始时的状态）
+    const originalTask = dragStartState.tasks.find(task => task.id === activeId);
+    const originalStatus = originalTask?.status || activeTask.status;
+
+    // 确定最终目标列
+    let finalColumn: string;
     if (overData?.type === 'column') {
-      // 拖拽到列上
-      const newStatus = overData.columnId || overId;
-      if (activeTask.status !== newStatus) {
+      finalColumn = overData.columnId || overId;
+    } else if (overData?.type === 'task') {
+      const overTask = tasks.find(task => task.id === overId);
+      if (!overTask) {
+        // 恢复到拖拽开始时的状态
+        setTasks(dragStartState.tasks);
+        setDragStartState(null);
+        return;
+      }
+      finalColumn = overTask.status;
+    } else {
+      // 无效目标，恢复到拖拽开始时的状态
+      setTasks(dragStartState.tasks);
+      setDragStartState(null);
+      return;
+    }
 
-
-        // 同步到后端，不先更新本地状态
-        try {
-          await mcpService.updateTask(activeId, { status: newStatus });
-
-          // 成功后通过Socket.IO会自动更新状态，不需要手动调用moveTask
-        } catch (error) {
-          console.error('更新任务状态失败:', error);
-          setError('更新任务状态失败');
-          // 失败时重新加载数据以恢复正确状态
-          const updatedTasks = await mcpService.listTasks();
-          setTasks(updatedTasks);
-        }
+    // 如果是跨列拖拽，使用精确的插入位置
+    if (originalStatus !== finalColumn) {
+      try {
+        // 同步到后端
+        await mcpService.updateTask(activeId, { status: finalColumn });
+        // 成功后，Socket.IO会广播更新事件，前端会自动同步
+      } catch (error) {
+        console.error('跨列移动任务失败:', error);
+        setError('移动任务失败');
+        // 失败时恢复到拖拽开始时的状态
+        setTasks(dragStartState.tasks);
       }
     } else if (overData?.type === 'task') {
-      // 拖拽到任务上，需要重新排序
-      const overTask = tasks.find(task => task.id === overId);
-      if (!overTask) return;
+      // 同列内排序
+      const columnTasks = tasks
+        .filter(task => task.status === finalColumn)
+        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
-      if (activeTask.status === overTask.status) {
-        // 同列内排序
-        const columnTasks = tasks
-          .filter(task => task.status === activeTask.status)
-          .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+      const oldIndex = columnTasks.findIndex(task => task.id === activeId);
+      const newIndex = columnTasks.findIndex(task => task.id === overId);
 
-        const oldIndex = columnTasks.findIndex(task => task.id === activeId);
-        const newIndex = columnTasks.findIndex(task => task.id === overId);
+      if (oldIndex !== newIndex && oldIndex !== -1 && newIndex !== -1) {
+        // 使用@dnd-kit的arrayMove进行重排序
+        const reorderedTasks = arrayMove(columnTasks, oldIndex, newIndex);
+        const taskIds = reorderedTasks.map(task => task.id);
 
-        if (oldIndex !== newIndex) {
-          const reorderedTasks = arrayMove(columnTasks, oldIndex, newIndex);
-          const taskIds = reorderedTasks.map(task => task.id);
-          reorderTasksInColumn(activeTask.status, taskIds);
-        }
-      } else {
-        // 跨列移动到特定位置
+        // 更新本地状态
+        reorderTasksInColumn(finalColumn, taskIds);
 
-
-        try {
-          await mcpService.updateTask(activeId, { status: overTask.status });
-
-          // 成功后通过Socket.IO会自动更新状态
-        } catch (error) {
-          console.error('更新任务状态失败:', error);
-          setError('更新任务状态失败');
-          // 失败时重新加载数据以恢复正确状态
-          const updatedTasks = await mcpService.listTasks();
-          setTasks(updatedTasks);
-        }
       }
     }
+
+    // 清除拖拽开始时的状态
+    setDragStartState(null);
   };
 
   // 列管理事件处理函数
@@ -436,7 +506,7 @@ function App() {
     }
   };
   
-  // 按列组织任务 - 使用useMemo避免不必要的重计算
+  // 按列组织任务 - 支持多容器拖拽
   const tasksByColumn = useMemo(() => {
     const result = columns.reduce((acc, column) => {
       // 仅筛选当前列的任务，按sortOrder排序
@@ -458,11 +528,19 @@ function App() {
     return result;
   }, [columns, tasks]);
 
+
+
+
+
   // 获取当前拖拽的任务和列
   const activeTask = activeTaskId ? tasks.find(task => task.id === activeTaskId) : null;
   const activeColumn = activeColumnId ? columns.find(col => col.id === activeColumnId) : null;
 
-  // 拖拽悬停事件 - 用于跨列拖拽的实时反馈
+
+
+
+
+  // 拖拽悬停事件 - 基于@dnd-kit官方多容器示例
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
 
@@ -474,38 +552,71 @@ function App() {
     const activeData = active.data.current;
     const overData = over.data.current;
 
-    // 调试日志
-    if (activeData?.type === 'column') {
-      console.log('列拖拽悬停:', {
-        activeColumn: active.id,
-        overTarget: over.id,
-        overType: overData?.type,
-        overPosition: overData?.position,
-        overColumnId: overData?.columnId
-      });
-    }
-
-    // 只在拖拽列时显示插入指示器
+    // 处理列拖拽
     if (activeData?.type === 'column') {
       if (overData?.type === 'column-drop-zone') {
-        // 显示插入指示器
         setInsertIndicator({
           columnId: overData.columnId,
           position: overData.position,
         });
       } else {
-        // 清除插入指示器
         setInsertIndicator(null);
       }
-    } else {
-      // 非列拖拽时清除插入指示器
-      setInsertIndicator(null);
+      return;
     }
 
-    // 处理任务拖拽到列上的情况
-    if (activeData?.type === 'task' && overData?.type === 'column') {
-      // 这里可以添加拖拽悬停的视觉反馈
+    // 处理任务拖拽 - 关键：实时移动任务以显示正确预览
+    if (activeData?.type === 'task') {
+      const activeId = active.id as string;
+      const overId = over.id as string;
+
+      // 找到活动任务
+      const activeTask = tasks.find(task => task.id === activeId);
+      if (!activeTask) return;
+
+      // 确定目标容器
+      let overContainer: string | null = null;
+      if (overData?.type === 'column') {
+        overContainer = overData.columnId || overId;
+      } else if (overData?.type === 'task') {
+        const overTask = tasks.find(task => task.id === overId);
+        overContainer = overTask?.status || null;
+      }
+
+      // 如果是跨列拖拽，实时移动任务
+      if (overContainer && activeTask.status !== overContainer) {
+        const activeIndex = tasks.findIndex(task => task.id === activeId);
+        const overIndex = tasks.findIndex(task => task.id === overId);
+
+        // 创建新的任务列表
+        const newTasks = [...tasks];
+
+        // 移除活动任务
+        const [movedTask] = newTasks.splice(activeIndex, 1);
+
+        // 更新任务状态
+        movedTask.status = overContainer;
+
+        // 计算插入位置
+        let insertIndex = newTasks.length;
+        if (overData?.type === 'task' && overIndex !== -1) {
+          // 调整索引（因为我们已经移除了一个任务）
+          const adjustedOverIndex = overIndex > activeIndex ? overIndex - 1 : overIndex;
+          insertIndex = adjustedOverIndex + 1;
+        } else {
+          // 如果拖拽到列上，插入到该列的末尾
+          const targetColumnTasks = newTasks.filter(task => task.status === overContainer);
+          insertIndex = newTasks.findIndex(task => task.status === overContainer) + targetColumnTasks.length;
+        }
+
+        // 插入任务到新位置
+        newTasks.splice(insertIndex, 0, movedTask);
+
+        setTasks(newTasks);
+      }
     }
+
+    setInsertIndicator(null);
   };
 
   return (
@@ -616,9 +727,12 @@ function App() {
                     </ColumnDropZone>
                   )}
 
-                  {columns.map((column, index) => {
+                  {columns.map((column) => {
                     const columnTasks = tasksByColumn[column.id] || [];
                     const taskIds = columnTasks.map(task => task.id);
+
+                    // 直接使用taskIds，空列时为空数组
+                    const sortableItems = taskIds;
 
                     return (
                       <React.Fragment key={column.id}>
@@ -634,22 +748,28 @@ function App() {
                             onTitleEdit={(newTitle) => handleUpdateColumnTitle(column.id, newTitle)}
                             onDelete={() => handleDeleteColumn(column.id)}
                             onColorChange={(color) => handleColumnColorChange(column.id, color)}
-                            isDeletable={!column.isDefault}
+                            isDeletable={true}
                             isEditable={true}
                             isDragging={activeColumnId === column.id}
                             isDraggingTask={!!activeTaskId}
                           >
-                            {columnTasks.map(task => (
-                              <div key={task.id} className="mb-2">
-                                <DraggableTaskCard
-                                  task={task}
-                                  onClick={handleTaskClick}
-                                  isDragging={activeTaskId === task.id}
-                                  onColorChange={(color) => handleTaskColorChange(task.id, color)}
-                                  onDelete={() => handleTaskDelete(task.id)}
-                                />
-                              </div>
-                            ))}
+                            {/* 为每个列创建独立的SortableContext - 即使是空列也需要 */}
+                            <SortableContext
+                              items={sortableItems}
+                              strategy={verticalListSortingStrategy}
+                            >
+                              {columnTasks.map(task => (
+                                <div key={task.id} className="mb-2">
+                                  <DraggableTaskCard
+                                    task={task}
+                                    onClick={handleTaskClick}
+                                    isDragging={activeTaskId === task.id}
+                                    onColorChange={(color) => handleTaskColorChange(task.id, color)}
+                                    onDelete={() => handleTaskDelete(task.id)}
+                                  />
+                                </div>
+                              ))}
+                            </SortableContext>
                           </DraggableColumn>
                         </div>
 

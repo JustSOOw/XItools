@@ -1,6 +1,5 @@
 import React, { ReactNode, useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import classNames from 'classnames';
 import EditableColumnTitle from './EditableColumnTitle';
 import MoreButton, { MoreMenuItem } from './MoreButton';
@@ -175,27 +174,26 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
       
       {/* 列内容区 */}
       <div className="flex-1 p-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
-        <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-          {/* 如果列为空，显示提示 */}
-          {React.Children.count(children) === 0 ? (
-            <div
-              className={classNames(
-                'h-20 border-2 border-dashed rounded-lg flex items-center justify-center text-text-secondary text-sm transition-all duration-200',
-                {
-                  'border-primary bg-primary/5': isOver && isDraggingTask,
-                  'border-gray-200 dark:border-gray-700': !isOver || !isDraggingTask,
-                }
-              )}
-            >
-              {isOver && isDraggingTask ? '放置任务到这里' : '暂无任务'}
-            </div>
-          ) : (
-            /* 卡片容器 */
-            <div className="space-y-2 min-h-full" data-column-cards-container={id}>
-              {children}
-            </div>
-          )}
-        </SortableContext>
+        {/* 移除内部SortableContext，现在由App.tsx中的多容器架构管理 */}
+        {/* 如果列为空，显示提示 - 确保有足够的拖拽区域 */}
+        {React.Children.count(children) === 0 ? (
+          <div
+            className={classNames(
+              'h-20 border-2 border-dashed rounded-lg flex items-center justify-center text-text-secondary text-sm transition-all duration-200',
+              {
+                'border-primary bg-primary/5': isOver && isDraggingTask,
+                'border-gray-200 dark:border-gray-700': !isOver || !isDraggingTask,
+              }
+            )}
+          >
+            {isOver && isDraggingTask ? '放置任务到这里' : '暂无任务'}
+          </div>
+        ) : (
+          /* 卡片容器 */
+          <div className="space-y-2 min-h-full" data-column-cards-container={id}>
+            {children}
+          </div>
+        )}
       </div>
 
       {/* 颜色选择器模态框 */}
