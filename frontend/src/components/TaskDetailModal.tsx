@@ -36,7 +36,9 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
             priority: taskDetails.priority || null,
             dueDate: taskDetails.dueDate || null,
             assignee: taskDetails.assignee || '',
-            tags: taskDetails.tags || [],
+            tags: Array.isArray(taskDetails.tags)
+              ? taskDetails.tags.map(tag => typeof tag === 'string' ? tag : tag.name)
+              : [],
             acceptanceCriteria: taskDetails.acceptanceCriteria || '',
             estimatedEffort: taskDetails.estimatedEffort || null,
             loggedTime: taskDetails.loggedTime || null,
@@ -345,7 +347,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
               <div className="flex flex-wrap gap-1">
                 {(task.tags && task.tags.length > 0) ? task.tags.map((tag, index) => (
                   <span key={index} className="px-2 py-0.5 bg-accent/10 text-accent rounded-full text-xs">
-                    {tag}
+                    {typeof tag === 'string' ? tag : (tag as any)?.name || '标签'}
                   </span>
                 )) : <span className="text-text-secondary">无标签</span>}
               </div>

@@ -16,7 +16,7 @@ export interface Task {
   dueDate?: string | null;
   assignee?: string | null;
   color?: string | null; // 任务卡片颜色
-  tags?: string[];
+  tags?: string[] | Array<{id: string; name: string; createdAt: string; updatedAt: string}>;
   parentId?: string | null;
   subTasks?: Task[];
   acceptanceCriteria?: string;

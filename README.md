@@ -456,3 +456,56 @@ npm run build
 ```
 
 2. 将`dist`目录部署到Web服务器。
+
+## 📚 文档
+
+- [前端功能设计](./word_md/frontend_features.md) - 前端功能模块详细设计
+- [MCP服务设计](./word_md/mcp_service_design.md) - MCP服务架构和接口设计
+- [项目PRD](./word_md/PROJECT_PRD.md) - 产品需求文档
+- [MCP工具规范](./word_md/mcp_tools_specification.md) - MCP工具完整规范文档
+- [MCP快速参考](./word_md/mcp_quick_reference.md) - MCP工具快速参考卡片
+
+## 🔧 MCP工具使用
+
+XItools集成了完整的MCP（Model Context Protocol）工具，支持通过AI编辑器直接管理任务：
+
+### 配置MCP服务器
+
+在您的编辑器（如Cursor）中配置：
+
+```json
+{
+  "mcpServers": {
+    "xitools-mcp-server": {
+      "command": "node",
+      "args": [
+        "D:/Users/JUSTsoo/Desktop/XItools/backend/mcp-client-wrapper.cjs"
+      ],
+      "env": {
+        "NODE_ENV": "production"
+      }
+    }
+  }
+}
+```
+
+### 可用工具
+
+- `get_task_schema` - 获取任务数据结构
+- `submit_task_dataset` - 批量创建任务
+- `list_tasks` - 查询任务列表
+- `get_task_details` - 获取任务详情
+- `update_task` - 更新任务
+- `delete_task` - 删除任务
+
+### 使用示例
+
+```
+请使用submit_task_dataset工具创建一个任务：
+- 标题："实现用户登录功能"
+- 状态："41c632df-4c6e-470b-b1a5-bef81432a6b0"
+- 优先级："High"
+- 标签：["前端", "认证"]
+```
+
+详细使用方法请参考 [MCP工具规范文档](./word_md/mcp_tools_specification.md)。

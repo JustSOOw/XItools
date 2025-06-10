@@ -130,7 +130,8 @@ const TaskCard: React.FC<TaskCardProps> = ({
             {/* 任务标签 (显示第一个) */}
             {task.tags && task.tags.length > 0 && (
               <span className="px-2 py-0.5 bg-accent/10 text-accent rounded-full text-xs">
-                {task.tags[0]}{task.tags.length > 1 ? ` +${task.tags.length - 1}` : ''}
+                {typeof task.tags[0] === 'string' ? task.tags[0] : (task.tags[0] as any)?.name || '标签'}
+                {task.tags.length > 1 ? ` +${task.tags.length - 1}` : ''}
               </span>
             )}
           </div>
