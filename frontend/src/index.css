@@ -367,6 +367,18 @@
     @apply ring-2 ring-primary ring-opacity-50 bg-primary/5 scale-105;
   }
 
+  /* 确保下拉菜单始终在最顶层 */
+  .dropdown-menu {
+    z-index: 9999 !important;
+    position: relative;
+  }
+
+  /* 任务卡片更多按钮容器 */
+  .task-more-button {
+    z-index: 100;
+    position: relative;
+  }
+
   .sortable-ghost {
     @apply opacity-50;
   }

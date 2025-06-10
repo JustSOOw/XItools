@@ -51,7 +51,7 @@ function App() {
 
 
 
-  // 拖拽开始时的原始状态
+  // 拖拽开始时的原始状态（仅用于错误恢复）
   const [dragStartState, setDragStartState] = useState<{
     tasks: TaskType[];
     activeTaskId: string | null;
@@ -104,13 +104,17 @@ function App() {
   const setError = useTaskStore(state => state.setError);
   const setActiveTaskId = useTaskStore(state => state.setActiveTaskId);
   const setActiveColumnId = useTaskStore(state => state.setActiveColumnId);
-  const reorderTasksInColumn = useTaskStore(state => state.reorderTasksInColumn);
+  // const reorderTasksInColumn = useTaskStore(state => state.reorderTasksInColumn); // 暂时不使用乐观更新
   const addColumn = useTaskStore(state => state.addColumn);
   const updateColumn = useTaskStore(state => state.updateColumn);
   const deleteColumn = useTaskStore(state => state.deleteColumn);
   const setColumns = useTaskStore(state => state.setColumns);
   const reorderColumns = useTaskStore(state => state.reorderColumns);
   const setTasks = useTaskStore(state => state.setTasks);
+  const setColumnSort = useTaskStore(state => state.setColumnSort);
+  const clearColumnSort = useTaskStore(state => state.clearColumnSort);
+  const moveTask = useTaskStore(state => state.moveTask);
+  const reorderTasksInColumn = useTaskStore(state => state.reorderTasksInColumn);
 
   // 配置拖拽传感器
   const sensors = useSensors(
@@ -223,15 +227,22 @@ function App() {
       setActiveTaskId(activeTaskId);
       setActiveColumnId(null);
 
-      // 保存拖拽开始时的原始状态
+      // 保存拖拽开始时的原始状态（仅用于错误恢复）
       setDragStartState({
-        tasks: [...tasks], // 深拷贝当前任务状态
+        tasks: [...tasks],
         activeTaskId,
       });
+
+      // 当用户开始拖拽任务时，清除所有列的排序状态，回到手动排序
+      const activeTask = tasks.find(task => task.id === activeTaskId);
+      if (activeTask) {
+        clearColumnSort(activeTask.status);
+        console.log(`任务拖拽开始，清除列 ${activeTask.status} 的排序状态`);
+      }
     } else if (activeData?.type === 'column') {
       setActiveColumnId(active.id as string);
       setActiveTaskId(null);
-      setDragStartState(null); // 列拖拽不需要保存任务状态
+      setDragStartState(null);
     }
   };
 
@@ -326,35 +337,102 @@ function App() {
       return;
     }
 
-    // 如果是跨列拖拽，使用精确的插入位置
-    if (originalStatus !== finalColumn) {
-      try {
-        // 同步到后端
-        await mcpService.updateTask(activeId, { status: finalColumn });
-        // 成功后，Socket.IO会广播更新事件，前端会自动同步
-      } catch (error) {
-        console.error('跨列移动任务失败:', error);
-        setError('移动任务失败');
-        // 失败时恢复到拖拽开始时的状态
-        setTasks(dragStartState.tasks);
+    try {
+      // 立即更新本地状态，确保UI响应
+
+      // 统一使用后端排序API处理所有拖拽操作
+      let targetTaskId = overId;
+      let insertPosition = 'before';
+
+      if (overData?.type === 'column') {
+        // 拖拽到列上（空白区域）
+        const targetColumnTasks = dragStartState.tasks
+          .filter(task => task.status === finalColumn && task.id !== activeId)
+          .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+
+        if (targetColumnTasks.length > 0) {
+          targetTaskId = targetColumnTasks[targetColumnTasks.length - 1].id;
+          insertPosition = 'after';
+        } else {
+          // 空列，立即更新本地状态
+          moveTask(activeId, finalColumn);
+          // 后台持久化
+          mcpService.updateTask(activeId, { status: finalColumn })
+            .catch((error) => {
+              console.error('空列移动持久化失败:', error);
+              setError('任务保存失败，但界面已更新');
+            });
+          return;
+        }
+      } else if (overData?.type === 'task') {
+        // 拖拽到具体任务上
+        if (originalStatus === finalColumn) {
+          // 同列拖拽，计算插入位置
+          const columnTasks = dragStartState.tasks
+            .filter(task => task.status === finalColumn)
+            .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+
+          const activeIndex = columnTasks.findIndex(task => task.id === activeId);
+          const overIndex = columnTasks.findIndex(task => task.id === overId);
+
+          insertPosition = activeIndex < overIndex ? 'after' : 'before';
+        }
+        targetTaskId = overId;
       }
-    } else if (overData?.type === 'task') {
-      // 同列内排序
-      const columnTasks = tasks
-        .filter(task => task.status === finalColumn)
-        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
-      const oldIndex = columnTasks.findIndex(task => task.id === activeId);
-      const newIndex = columnTasks.findIndex(task => task.id === overId);
+      // 立即更新本地状态
+      if (originalStatus === finalColumn) {
+        // 同列拖拽：重新排序
+        const columnTasks = dragStartState.tasks
+          .filter(task => task.status === finalColumn)
+          .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
 
-      if (oldIndex !== newIndex && oldIndex !== -1 && newIndex !== -1) {
-        // 使用@dnd-kit的arrayMove进行重排序
-        const reorderedTasks = arrayMove(columnTasks, oldIndex, newIndex);
-        const taskIds = reorderedTasks.map(task => task.id);
+        const activeIndex = columnTasks.findIndex(task => task.id === activeId);
+        const overIndex = columnTasks.findIndex(task => task.id === overId);
 
-        // 更新本地状态
-        reorderTasksInColumn(finalColumn, taskIds);
+        if (activeIndex !== -1 && overIndex !== -1) {
+          // 计算新的任务顺序
+          const reorderedTasks = [...columnTasks];
+          const [movedTask] = reorderedTasks.splice(activeIndex, 1);
 
+          let newIndex = overIndex;
+          if (insertPosition === 'after') {
+            newIndex = activeIndex < overIndex ? overIndex : overIndex + 1;
+          } else {
+            newIndex = activeIndex < overIndex ? overIndex - 1 : overIndex;
+          }
+
+          reorderedTasks.splice(newIndex, 0, movedTask);
+          const newTaskIds = reorderedTasks.map(task => task.id);
+
+          // 立即更新本地状态
+          reorderTasksInColumn(finalColumn, newTaskIds);
+          console.log(`同列拖拽本地状态已更新: ${activeId} 在列 ${finalColumn} 中重排序`);
+        }
+      } else {
+        // 跨列拖拽：移动任务
+        moveTask(activeId, finalColumn);
+        console.log(`跨列拖拽本地状态已更新: ${activeId} 移动到列 ${finalColumn}`);
+      }
+
+      // 后台调用API进行数据持久化（不阻塞UI）
+      console.log(`拖拽操作: ${activeId} -> ${finalColumn} (${insertPosition} ${targetTaskId})`);
+      mcpService.sortTask(activeId, targetTaskId, finalColumn, insertPosition)
+        .then(() => {
+          console.log(`任务拖拽持久化成功: ${activeId}`);
+        })
+        .catch((error) => {
+          console.error('任务拖拽持久化失败:', error);
+          // 持久化失败时，可以选择显示警告但不回滚UI
+          setError('任务保存失败，但界面已更新');
+        });
+
+    } catch (error) {
+      console.error('任务拖拽失败:', error);
+      setError('任务移动失败');
+      // 失败时恢复到拖拽开始时的状态
+      if (dragStartState) {
+        setTasks(dragStartState.tasks);
       }
     }
 
@@ -432,6 +510,28 @@ function App() {
     } catch (error) {
       console.error('删除任务失败:', error);
       setError('删除任务失败，请重试');
+    }
+  };
+
+  const handleColumnSort = async (columnId: string, sortOption: string) => {
+    try {
+      console.log(`开始对列 ${columnId} 进行 ${sortOption} 排序`);
+
+      // 更新本地状态
+      setColumnSort(columnId, sortOption as any);
+
+      // 调用后端排序API
+      const result = await mcpService.sortColumnTasks(columnId, sortOption);
+
+      console.log(`列排序完成:`, result);
+
+      // 重新加载任务列表以确保一致性
+      const updatedTasks = await mcpService.listTasks();
+      setTasks(updatedTasks);
+
+    } catch (error) {
+      console.error('列排序失败:', error);
+      setError('列排序失败，请重试');
     }
   };
   
@@ -584,10 +684,10 @@ function App() {
         
         {/* 错误提示 */}
         {error && (
-          <div className="modern-card mx-4 mt-4 bg-danger/10 border border-danger text-danger px-4 py-2 flex justify-between items-center">
+          <div className="modern-card mx-4 mt-4 bg-red-50 border border-red-500 text-red-700 px-4 py-2 flex justify-between items-center">
             <p>{error}</p>
           <button
-              className="text-sm underline"
+              className="text-sm underline hover:text-red-900"
               onClick={() => setError(null)}
           >
               关闭
@@ -638,6 +738,7 @@ function App() {
                         onTitleEdit={(newTitle) => handleUpdateColumnTitle(column.id, newTitle)}
                         onDelete={() => handleDeleteColumn(column.id)}
                         onColorChange={(color) => handleColumnColorChange(column.id, color)}
+                        onSort={(sortOption) => handleColumnSort(column.id, sortOption)}
                         isDeletable={true}
                         isEditable={true}
                         isDragging={activeColumnId === column.id}

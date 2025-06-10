@@ -12,6 +12,7 @@ interface DraggableColumnProps {
   onTitleEdit?: (newTitle: string) => void;
   onDelete?: () => void;
   onColorChange?: (color: string) => void;
+  onSort?: (sortOption: string) => void; // 新增：排序回调
   isDeletable?: boolean;
   isEditable?: boolean;
   isDragging?: boolean;
@@ -27,6 +28,7 @@ const DraggableColumn: React.FC<DraggableColumnProps> = ({
   onTitleEdit,
   onDelete,
   onColorChange,
+  onSort,
   isDeletable = true,
   isEditable = true,
   isDragging = false,
@@ -86,11 +88,13 @@ const DraggableColumn: React.FC<DraggableColumnProps> = ({
         onTitleEdit={onTitleEdit}
         onDelete={onDelete}
         onColorChange={onColorChange}
+        onSort={onSort}
         isDeletable={isDeletable}
         isEditable={isEditable}
         dragHandleProps={{ ...attributes, ...listeners }}
         isDraggingTask={isDraggingTask}
         color={column.color}
+        sortOption={column.sortOption}
       >
         {children}
       </DroppableColumn>

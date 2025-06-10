@@ -1313,6 +1313,7 @@ export namespace Prisma {
     name: string | null
     order: number | null
     color: string | null
+    sortOption: string | null
     isDefault: boolean | null
     createdAt: Date | null
     updatedAt: Date | null
@@ -1323,6 +1324,7 @@ export namespace Prisma {
     name: string | null
     order: number | null
     color: string | null
+    sortOption: string | null
     isDefault: boolean | null
     createdAt: Date | null
     updatedAt: Date | null
@@ -1333,6 +1335,7 @@ export namespace Prisma {
     name: number
     order: number
     color: number
+    sortOption: number
     isDefault: number
     createdAt: number
     updatedAt: number
@@ -1353,6 +1356,7 @@ export namespace Prisma {
     name?: true
     order?: true
     color?: true
+    sortOption?: true
     isDefault?: true
     createdAt?: true
     updatedAt?: true
@@ -1363,6 +1367,7 @@ export namespace Prisma {
     name?: true
     order?: true
     color?: true
+    sortOption?: true
     isDefault?: true
     createdAt?: true
     updatedAt?: true
@@ -1373,6 +1378,7 @@ export namespace Prisma {
     name?: true
     order?: true
     color?: true
+    sortOption?: true
     isDefault?: true
     createdAt?: true
     updatedAt?: true
@@ -1470,6 +1476,7 @@ export namespace Prisma {
     name: string
     order: number
     color: string | null
+    sortOption: string | null
     isDefault: boolean
     createdAt: Date
     updatedAt: Date
@@ -1499,6 +1506,7 @@ export namespace Prisma {
     name?: boolean
     order?: boolean
     color?: boolean
+    sortOption?: boolean
     isDefault?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -1509,6 +1517,7 @@ export namespace Prisma {
     name?: boolean
     order?: boolean
     color?: boolean
+    sortOption?: boolean
     isDefault?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -1519,6 +1528,7 @@ export namespace Prisma {
     name?: boolean
     order?: boolean
     color?: boolean
+    sortOption?: boolean
     isDefault?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -1533,6 +1543,7 @@ export namespace Prisma {
       name: string
       order: number
       color: string | null
+      sortOption: string | null
       isDefault: boolean
       createdAt: Date
       updatedAt: Date
@@ -1933,6 +1944,7 @@ export namespace Prisma {
     readonly name: FieldRef<"BoardColumn", 'String'>
     readonly order: FieldRef<"BoardColumn", 'Int'>
     readonly color: FieldRef<"BoardColumn", 'String'>
+    readonly sortOption: FieldRef<"BoardColumn", 'String'>
     readonly isDefault: FieldRef<"BoardColumn", 'Boolean'>
     readonly createdAt: FieldRef<"BoardColumn", 'DateTime'>
     readonly updatedAt: FieldRef<"BoardColumn", 'DateTime'>
@@ -6244,6 +6256,7 @@ export namespace Prisma {
     name: 'name',
     order: 'order',
     color: 'color',
+    sortOption: 'sortOption',
     isDefault: 'isDefault',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
@@ -6410,6 +6423,7 @@ export namespace Prisma {
     name?: StringFilter<"BoardColumn"> | string
     order?: IntFilter<"BoardColumn"> | number
     color?: StringNullableFilter<"BoardColumn"> | string | null
+    sortOption?: StringNullableFilter<"BoardColumn"> | string | null
     isDefault?: BoolFilter<"BoardColumn"> | boolean
     createdAt?: DateTimeFilter<"BoardColumn"> | Date | string
     updatedAt?: DateTimeFilter<"BoardColumn"> | Date | string
@@ -6420,6 +6434,7 @@ export namespace Prisma {
     name?: SortOrder
     order?: SortOrder
     color?: SortOrderInput | SortOrder
+    sortOption?: SortOrderInput | SortOrder
     isDefault?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -6433,6 +6448,7 @@ export namespace Prisma {
     NOT?: BoardColumnWhereInput | BoardColumnWhereInput[]
     name?: StringFilter<"BoardColumn"> | string
     color?: StringNullableFilter<"BoardColumn"> | string | null
+    sortOption?: StringNullableFilter<"BoardColumn"> | string | null
     isDefault?: BoolFilter<"BoardColumn"> | boolean
     createdAt?: DateTimeFilter<"BoardColumn"> | Date | string
     updatedAt?: DateTimeFilter<"BoardColumn"> | Date | string
@@ -6443,6 +6459,7 @@ export namespace Prisma {
     name?: SortOrder
     order?: SortOrder
     color?: SortOrderInput | SortOrder
+    sortOption?: SortOrderInput | SortOrder
     isDefault?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -6461,6 +6478,7 @@ export namespace Prisma {
     name?: StringWithAggregatesFilter<"BoardColumn"> | string
     order?: IntWithAggregatesFilter<"BoardColumn"> | number
     color?: StringNullableWithAggregatesFilter<"BoardColumn"> | string | null
+    sortOption?: StringNullableWithAggregatesFilter<"BoardColumn"> | string | null
     isDefault?: BoolWithAggregatesFilter<"BoardColumn"> | boolean
     createdAt?: DateTimeWithAggregatesFilter<"BoardColumn"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"BoardColumn"> | Date | string
@@ -6754,6 +6772,7 @@ export namespace Prisma {
     name: string
     order: number
     color?: string | null
+    sortOption?: string | null
     isDefault?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -6764,6 +6783,7 @@ export namespace Prisma {
     name: string
     order: number
     color?: string | null
+    sortOption?: string | null
     isDefault?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -6774,6 +6794,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     order?: IntFieldUpdateOperationsInput | number
     color?: NullableStringFieldUpdateOperationsInput | string | null
+    sortOption?: NullableStringFieldUpdateOperationsInput | string | null
     isDefault?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -6784,6 +6805,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     order?: IntFieldUpdateOperationsInput | number
     color?: NullableStringFieldUpdateOperationsInput | string | null
+    sortOption?: NullableStringFieldUpdateOperationsInput | string | null
     isDefault?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -6794,6 +6816,7 @@ export namespace Prisma {
     name: string
     order: number
     color?: string | null
+    sortOption?: string | null
     isDefault?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -6804,6 +6827,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     order?: IntFieldUpdateOperationsInput | number
     color?: NullableStringFieldUpdateOperationsInput | string | null
+    sortOption?: NullableStringFieldUpdateOperationsInput | string | null
     isDefault?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -6814,6 +6838,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     order?: IntFieldUpdateOperationsInput | number
     color?: NullableStringFieldUpdateOperationsInput | string | null
+    sortOption?: NullableStringFieldUpdateOperationsInput | string | null
     isDefault?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -7201,6 +7226,7 @@ export namespace Prisma {
     name?: SortOrder
     order?: SortOrder
     color?: SortOrder
+    sortOption?: SortOrder
     isDefault?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -7215,6 +7241,7 @@ export namespace Prisma {
     name?: SortOrder
     order?: SortOrder
     color?: SortOrder
+    sortOption?: SortOrder
     isDefault?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -7225,6 +7252,7 @@ export namespace Prisma {
     name?: SortOrder
     order?: SortOrder
     color?: SortOrder
+    sortOption?: SortOrder
     isDefault?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder

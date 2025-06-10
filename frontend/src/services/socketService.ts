@@ -66,16 +66,32 @@ class SocketService {
       useTaskStore.getState().addTasks(tasks);
     });
     
-    // 更新任务事件
+    // 更新任务事件 - 暂时禁用自动更新，避免干扰乐观更新
     this.socket.on('task_updated', (task: Task) => {
-      console.log('收到任务更新:', task);
-      useTaskStore.getState().updateTask(task);
+      console.log('收到任务更新（已忽略）:', task.id);
+      // 完全禁用WebSocket自动更新，让乐观更新生效
+      // useTaskStore.getState().updateTask(task);
     });
     
     // 删除任务事件
     this.socket.on('task_deleted', ({ taskId }: { taskId: string }) => {
       console.log('收到任务删除:', taskId);
       useTaskStore.getState().deleteTask(taskId);
+    });
+
+    // 列任务重排序事件 - 完全禁用，避免干扰乐观更新
+    this.socket.on('column_tasks_reordered', ({ columnId, taskIds }: { columnId: string; taskIds: string[] }) => {
+      console.log('收到列任务重排序（已忽略）:', { columnId, taskCount: taskIds.length });
+      // 完全禁用，让乐观更新生效
+    });
+
+    // 列任务排序事件
+    this.socket.on('column_tasks_sorted', ({ columnId, sortOption, tasks }: { columnId: string; sortOption: string; tasks: any[] }) => {
+      console.log('收到列任务排序:', { columnId, sortOption, tasksCount: tasks.length });
+      // 延迟刷新，避免与其他操作冲突
+      setTimeout(() => {
+        this.refreshTasks();
+      }, 100);
     });
   }
   
@@ -85,6 +101,21 @@ class SocketService {
   onConnect(callback: () => void): void {
     if (this.socket) {
       this.socket.on('connect', callback);
+    }
+  }
+
+  /**
+   * 刷新任务列表
+   */
+  private async refreshTasks(): Promise<void> {
+    try {
+      // 动态导入mcpService以避免循环依赖
+      const { default: mcpService } = await import('./mcpService');
+      const tasks = await mcpService.listTasks();
+      useTaskStore.getState().setTasks(tasks);
+      console.log('任务列表已刷新');
+    } catch (error) {
+      console.error('刷新任务列表失败:', error);
     }
   }
   

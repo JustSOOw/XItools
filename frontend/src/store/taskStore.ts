@@ -11,6 +11,9 @@
 import { create } from 'zustand';
 import { Task } from '../types/Task';
 
+// 定义排序选项类型
+export type SortOption = 'manual' | 'priority' | 'created_asc' | 'created_desc' | 'title_asc' | 'title_desc' | 'due_date';
+
 // 定义看板列类型
 export interface BoardColumn {
   id: string;
@@ -20,6 +23,7 @@ export interface BoardColumn {
   isDefault?: boolean; // 是否为默认列（可选）
   createdAt?: string; // 创建时间（可选）
   updatedAt?: string; // 更新时间（可选）
+  sortOption?: SortOption; // 列的排序方式（可选）
 }
 
 // 定义任务状态的类型
@@ -54,6 +58,9 @@ interface TaskState {
   updateColumn: (columnId: string, updates: Partial<BoardColumn>) => void;
   deleteColumn: (columnId: string) => void;
   reorderColumns: (columnIds: string[]) => void;
+  // 列排序方法
+  setColumnSort: (columnId: string, sortOption: SortOption) => void;
+  clearColumnSort: (columnId: string) => void;
 }
 
 // 创建状态存储
@@ -156,6 +163,19 @@ const useTaskStore = create<TaskState>((set) => ({
 
     return { columns: reorderedColumns };
   }),
+
+  // 列排序方法实现
+  setColumnSort: (columnId, sortOption) => set((state) => ({
+    columns: state.columns.map(column =>
+      column.id === columnId ? { ...column, sortOption } : column
+    )
+  })),
+
+  clearColumnSort: (columnId) => set((state) => ({
+    columns: state.columns.map(column =>
+      column.id === columnId ? { ...column, sortOption: 'manual' } : column
+    )
+  })),
 }));
 
 export default useTaskStore; 

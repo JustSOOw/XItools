@@ -127,6 +127,7 @@ exports.Prisma.BoardColumnScalarFieldEnum = {
   name: 'name',
   order: 'order',
   color: 'color',
+  sortOption: 'sortOption',
   isDefault: 'isDefault',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'

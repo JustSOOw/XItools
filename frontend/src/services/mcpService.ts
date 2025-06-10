@@ -301,6 +301,64 @@ class McpService {
   }
 
   /**
+   * 任务排序（跨列拖拽）
+   * 直接调用后端API而不是MCP工具
+   */
+  async sortTask(taskId: string, targetId: string, columnId: string, insertPosition: string = 'before'): Promise<any> {
+    try {
+      const response = await axios.post('http://localhost:3000/api/tasks/sort', {
+        taskId,
+        targetId,
+        columnId,
+        insertPosition
+      }, {
+        timeout: this.requestTimeout,
+        headers: this.headers
+      });
+
+      if (!response.data.success) {
+        throw new Error(response.data.error || '任务排序失败');
+      }
+
+      return response.data.data;
+    } catch (error: any) {
+      console.error('任务排序失败:', error);
+      // 正确提取axios错误响应中的错误信息
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw new Error(error.message || '任务排序失败');
+    }
+  }
+
+  /**
+   * 列任务排序
+   * 对指定列的任务按照指定方式排序
+   */
+  async sortColumnTasks(columnId: string, sortOption: string): Promise<any> {
+    try {
+      const response = await axios.post(`http://localhost:3000/api/columns/${columnId}/sort`, {
+        sortOption
+      }, {
+        timeout: this.requestTimeout,
+        headers: this.headers
+      });
+
+      if (!response.data.success) {
+        throw new Error(response.data.error || '列任务排序失败');
+      }
+
+      return response.data;
+    } catch (error: any) {
+      console.error('列任务排序失败:', error);
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw new Error(error.message || '列任务排序失败');
+    }
+  }
+
+  /**
    * 生成随机请求ID
    */
   private generateRequestId(): string {

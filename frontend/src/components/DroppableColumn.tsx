@@ -16,11 +16,13 @@ export interface DroppableColumnProps {
   onTitleEdit?: (newTitle: string) => void;
   onDelete?: () => void;
   onColorChange?: (color: string) => void;
+  onSort?: (sortOption: string) => void; // 新增：排序回调
   isDeletable?: boolean;
   isEditable?: boolean;
   dragHandleProps?: any;
   isDraggingTask?: boolean; // 新增：是否正在拖拽任务
   color?: string; // 列的背景颜色
+  sortOption?: string; // 新增：当前排序方式
 }
 
 const DroppableColumn: React.FC<DroppableColumnProps> = ({
@@ -34,14 +36,17 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
   onTitleEdit,
   onDelete,
   onColorChange,
+  onSort,
   isDeletable = true,
   isEditable = true,
   dragHandleProps,
   isDraggingTask = false,
   color,
+  sortOption = 'manual',
 }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showSortMenu, setShowSortMenu] = useState(false);
   const { setNodeRef, isOver } = useDroppable({
     id: id,
     data: {
@@ -50,7 +55,15 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
     },
   });
 
-  // 更多按钮菜单项
+  // 排序选项定义 - 精简为最常用的几种
+  const sortOptions = [
+    { value: 'manual', label: '手动排序', icon: '🔧', desc: '通过拖拽自定义顺序' },
+    { value: 'priority', label: '按优先级', icon: '⭐', desc: '高优先级在前' },
+    { value: 'created_desc', label: '按创建时间', icon: '🆕', desc: '最新创建在前' },
+    { value: 'title_asc', label: '按标题排序', icon: '🔤', desc: '按字母顺序排列' },
+  ];
+
+  // 更多按钮菜单项 - 简化菜单
   const moreMenuItems: MoreMenuItem[] = [
     {
       id: 'set-color',
@@ -62,6 +75,18 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
       ),
       onClick: () => {
         setShowColorPicker(true);
+      },
+    },
+    {
+      id: 'sort-tasks',
+      label: '任务排序',
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+        </svg>
+      ),
+      onClick: () => {
+        setShowSortMenu(true);
       },
     },
     ...(isDeletable ? [{
@@ -207,6 +232,63 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
         isOpen={showColorPicker}
         title="设置列颜色"
       />
+
+      {/* 排序选择器弹窗 */}
+      {showSortMenu && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-80 max-w-sm mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                任务排序
+              </h3>
+              <button
+                onClick={() => setShowSortMenu(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {sortOptions.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => {
+                    if (onSort) {
+                      onSort(option.value);
+                    }
+                    setShowSortMenu(false);
+                  }}
+                  className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                    sortOption === option.value
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                      : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <span className="text-lg">{option.icon}</span>
+                      <div>
+                        <div className="font-medium">{option.label}</div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                          {option.desc}
+                        </div>
+                      </div>
+                    </div>
+                    {sortOption === option.value && (
+                      <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

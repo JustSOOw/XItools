@@ -49,9 +49,13 @@ class ColumnService {
         return response.data.data;
       }
       throw new Error(response.data.error || '获取列详情失败');
-    } catch (error) {
+    } catch (error: any) {
       console.error('获取列详情失败:', error);
-      throw error;
+      // 正确提取axios错误响应中的错误信息
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw new Error(error.message || '获取列详情失败');
     }
   }
 
@@ -65,9 +69,13 @@ class ColumnService {
         return response.data.data;
       }
       throw new Error(response.data.error || '创建列失败');
-    } catch (error) {
+    } catch (error: any) {
       console.error('创建列失败:', error);
-      throw error;
+      // 正确提取axios错误响应中的错误信息
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw new Error(error.message || '创建列失败');
     }
   }
 
@@ -81,9 +89,13 @@ class ColumnService {
         return response.data.data;
       }
       throw new Error(response.data.error || '更新列失败');
-    } catch (error) {
+    } catch (error: any) {
       console.error('更新列失败:', error);
-      throw error;
+      // 正确提取axios错误响应中的错误信息
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw new Error(error.message || '更新列失败');
     }
   }
 
@@ -96,9 +108,13 @@ class ColumnService {
       if (!response.data.success) {
         throw new Error(response.data.error || '删除列失败');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('删除列失败:', error);
-      throw error;
+      // 正确提取axios错误响应中的错误信息
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw new Error(error.message || '删除列失败');
     }
   }
 
@@ -114,9 +130,13 @@ class ColumnService {
         return response.data.data;
       }
       throw new Error(response.data.error || '重新排序列失败');
-    } catch (error) {
+    } catch (error: any) {
       console.error('重新排序列失败:', error);
-      throw error;
+      // 正确提取axios错误响应中的错误信息
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw new Error(error.message || '重新排序列失败');
     }
   }
 
@@ -130,9 +150,13 @@ class ColumnService {
         return response.data.data;
       }
       throw new Error(response.data.error || '初始化默认列失败');
-    } catch (error) {
+    } catch (error: any) {
       console.error('初始化默认列失败:', error);
-      throw error;
+      // 正确提取axios错误响应中的错误信息
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw new Error(error.message || '初始化默认列失败');
     }
   }
 }

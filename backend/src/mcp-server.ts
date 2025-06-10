@@ -267,7 +267,10 @@ async function registerMCPTools(server: McpServer): Promise<void> {
           include: {
             tags: true,
           },
-          orderBy: { createdAt: 'desc' }
+          orderBy: [
+            { sortOrder: 'asc' },
+            { createdAt: 'desc' }
+          ]
         });
 
         return {

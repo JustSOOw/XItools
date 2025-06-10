@@ -288,7 +288,10 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
           include: {
             tags: true,
           },
-          orderBy: { createdAt: 'desc' }
+          orderBy: [
+            { sortOrder: 'asc' },
+            { createdAt: 'desc' }
+          ]
         });
 
         return {
@@ -1072,7 +1075,10 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
               include: {
                 tags: true,
               },
-              orderBy: { createdAt: 'desc' }
+              orderBy: [
+                { sortOrder: 'asc' },
+                { createdAt: 'desc' }
+              ]
             });
             
             console.log(`MCP方法返回 ${tasks.length} 个任务`);

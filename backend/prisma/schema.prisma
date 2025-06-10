@@ -16,13 +16,14 @@ datasource db {
 
 // 看板列模型
 model BoardColumn {
-  id        String   @id @default(uuid())
-  name      String   // 列名称，如"待办"、"进行中"、"已完成"
-  order     Int      @unique // 列的排序顺序
-  color     String?  // 列的背景色（可选）
-  isDefault Boolean  @default(false) // 是否为默认列
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
+  id         String   @id @default(uuid())
+  name       String   // 列名称，如"待办"、"进行中"、"已完成"
+  order      Int      @unique // 列的排序顺序
+  color      String?  // 列的背景色（可选）
+  sortOption String?  @default("manual") // 列的排序方式：manual, priority, created_asc, created_desc, title_asc, title_desc, due_date
+  isDefault  Boolean  @default(false) // 是否为默认列
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
 
   @@index([order])
 }
