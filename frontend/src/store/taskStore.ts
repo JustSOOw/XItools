@@ -16,6 +16,10 @@ export interface BoardColumn {
   id: string;
   name: string;
   order: number;
+  color?: string; // 列的背景颜色（可选）
+  isDefault?: boolean; // 是否为默认列（可选）
+  createdAt?: string; // 创建时间（可选）
+  updatedAt?: string; // 更新时间（可选）
 }
 
 // 定义任务状态的类型

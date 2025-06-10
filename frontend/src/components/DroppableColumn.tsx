@@ -95,7 +95,7 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
       data-column-id={id}
     >
       {/* 列标题 */}
-      <div className="p-2.5 border-b border-border">
+      <div className="p-2.5 border-b border-black/10 dark:border-white/10">
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center flex-1">
             {/* 拖拽手柄 */}

@@ -24,16 +24,20 @@ const ColumnDragOverlay: React.FC<ColumnDragOverlayProps> = ({
   return (
     <div className="transform rotate-2 scale-105 shadow-2xl opacity-95" style={{ width: '224px' }}>
       <div
-        className="flex flex-col rounded-lg shadow bg-surface border border-border max-h-96 overflow-hidden"
+        className="flex flex-col rounded-lg shadow border border-border max-h-96 overflow-hidden"
         style={{
           width: '224px',
           minWidth: '224px',
           maxWidth: '224px',
-          boxSizing: 'border-box'
+          boxSizing: 'border-box',
+          background: column.color || 'var(--color-surface)'
         }}
       >
         {/* 列标题 */}
-        <div className="p-2.5 border-b border-border bg-surface">
+        <div
+          className="p-2.5 border-b border-black/10 dark:border-white/10"
+          style={{ background: column.color || 'var(--color-surface)' }}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               {/* 拖拽手柄图标 */}
@@ -68,8 +72,12 @@ const ColumnDragOverlay: React.FC<ColumnDragOverlayProps> = ({
               {tasks.slice(0, 3).map((task) => (
                 <div
                   key={task.id}
-                  className="p-2 bg-white dark:bg-gray-800 rounded-lg border border-border shadow-sm opacity-90"
-                  style={{ maxWidth: '100%', overflow: 'hidden' }}
+                  className="p-2 rounded-lg border border-border shadow-sm opacity-90"
+                  style={{
+                    maxWidth: '100%',
+                    overflow: 'hidden',
+                    background: task.color || 'var(--color-surface)'
+                  }}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
