@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   DndContext,
   DragOverlay,
   closestCenter,
-  closestCorners,
   rectIntersection,
   pointerWithin,
   KeyboardSensor,
@@ -28,8 +27,6 @@ import Modal from './components/Modal';
 import TaskDetailModal from './components/TaskDetailModal';
 import DraggableTaskCard from './components/DraggableTaskCard';
 import TaskDragOverlay from './components/TaskDragOverlay';
-import ColumnInsertIndicator from './components/ColumnInsertIndicator';
-import ColumnDropZone from './components/ColumnDropZone';
 import AddColumnButton from './components/AddColumnButton';
 import DraggableColumn from './components/DraggableColumn';
 import ColumnDragOverlay from './components/ColumnDragOverlay';
@@ -56,11 +53,7 @@ function App() {
     status: 'todo',
   });
 
-  // 插入指示器状态
-  const [insertIndicator, setInsertIndicator] = useState<{
-    columnId: string;
-    position: 'before' | 'after';
-  } | null>(null);
+
 
   // 拖拽开始时的原始状态
   const [dragStartState, setDragStartState] = useState<{
@@ -139,29 +132,14 @@ function App() {
   const customCollisionDetection: CollisionDetection = (args) => {
     const { active, droppableContainers } = args;
 
-    // 如果拖拽的是列，优先检测拖拽区域
+    // 如果拖拽的是列，使用标准的closestCenter检测
     if (active.data.current?.type === 'column') {
-      // 首先检查所有拖拽区域
-      const dropZoneCollisions = rectIntersection({
-        ...args,
-        droppableContainers: Array.from(droppableContainers.values()).filter(
-          container => container.data.current?.type === 'column-drop-zone'
-        )
-      });
-
-      if (dropZoneCollisions.length > 0) {
-        return dropZoneCollisions;
-      }
-
-      // 如果没有拖拽区域碰撞，检测列本身
-      const columnCollisions = closestCorners({
+      return closestCenter({
         ...args,
         droppableContainers: Array.from(droppableContainers.values()).filter(
           container => container.data.current?.type === 'column'
         )
       });
-
-      return columnCollisions;
     }
 
     // 如果拖拽的是任务，使用官方多容器碰撞检测策略
@@ -244,9 +222,6 @@ function App() {
     const { active } = event;
     const activeData = active.data.current;
 
-    // 清除所有状态
-    setInsertIndicator(null);
-
     if (activeData?.type === 'task') {
       const activeTaskId = active.id as string;
       setActiveTaskId(activeTaskId);
@@ -271,7 +246,6 @@ function App() {
     // 清除拖拽状态
     setActiveTaskId(null);
     setActiveColumnId(null);
-    setInsertIndicator(null);
 
     if (!over) {
       console.log('拖拽结束：没有有效的放置目标');
@@ -290,52 +264,8 @@ function App() {
 
 
 
-    // 处理列拖拽
-    if (activeData?.type === 'column') {
-      // 处理拖拽到列拖拽区域
-      if (overData?.type === 'column-drop-zone') {
-        const activeColumn = columns.find(col => col.id === activeId);
-        const targetColumnId = overData.columnId;
-        const position = overData.position;
-
-        if (activeColumn && targetColumnId) {
-          const activeIndex = columns.findIndex(col => col.id === activeId);
-          const targetIndex = columns.findIndex(col => col.id === targetColumnId);
-
-          let newIndex = targetIndex;
-          if (position === 'after') {
-            newIndex = targetIndex + 1;
-          }
-
-          // 如果拖拽到自己的位置，不做任何操作
-          if (activeIndex === newIndex || (activeIndex === newIndex - 1 && position === 'after')) {
-            return;
-          }
-
-          // 重新排序列
-          const reorderedColumns = [...columns];
-          const [movedColumn] = reorderedColumns.splice(activeIndex, 1);
-          reorderedColumns.splice(newIndex > activeIndex ? newIndex - 1 : newIndex, 0, movedColumn);
-
-          const columnIds = reorderedColumns.map(col => col.id);
-
-          // 更新本地状态
-          reorderColumns(columnIds);
-
-          // 同步到后端
-          try {
-            await columnService.reorderColumns(columnIds);
-          } catch (error) {
-            console.error('重新排序列失败:', error);
-            setError('重新排序列失败');
-            // 回滚本地状态
-            setColumns(columns);
-          }
-        }
-        return;
-      }
-
-      // 处理拖拽到列上（原有逻辑）
+    // 处理列拖拽 - 使用标准sortable逻辑
+    if (activeData?.type === 'column' && overData?.type === 'column') {
       const activeColumn = columns.find(col => col.id === activeId);
       const overColumn = columns.find(col => col.id === overId);
 
@@ -344,7 +274,7 @@ function App() {
         const newIndex = columns.findIndex(col => col.id === overId);
 
         if (oldIndex !== newIndex) {
-          // 重新排序列
+          // 使用@dnd-kit的arrayMove进行重新排序
           const reorderedColumns = arrayMove(columns, oldIndex, newIndex);
           const columnIds = reorderedColumns.map(col => col.id);
 
@@ -548,23 +478,15 @@ function App() {
     const { active, over } = event;
 
     if (!over) {
-      setInsertIndicator(null);
       return;
     }
 
     const activeData = active.data.current;
     const overData = over.data.current;
 
-    // 处理列拖拽
+    // 处理列拖拽 - 简化逻辑，让@dnd-kit处理挤压动画
     if (activeData?.type === 'column') {
-      if (overData?.type === 'column-drop-zone') {
-        setInsertIndicator({
-          columnId: overData.columnId,
-          position: overData.position,
-        });
-      } else {
-        setInsertIndicator(null);
-      }
+      // 让sortable自己处理动画
       return;
     }
 
@@ -618,8 +540,6 @@ function App() {
         setTasks(newTasks);
       }
     }
-
-    setInsertIndicator(null);
   };
 
   return (
@@ -716,20 +636,6 @@ function App() {
                   items={columns.map(col => col.id)}
                   strategy={horizontalListSortingStrategy}
                 >
-                  {/* 最左侧拖拽区域 */}
-                  {columns.length > 0 && (
-                    <ColumnDropZone
-                      id={`drop-zone-start`}
-                      position="before"
-                      columnId={columns[0].id}
-                      isActive={!!activeColumnId}
-                    >
-                      {insertIndicator?.columnId === columns[0].id && insertIndicator?.position === 'before' && (
-                        <ColumnInsertIndicator isVisible={true} position="left" />
-                      )}
-                    </ColumnDropZone>
-                  )}
-
                   {columns.map((column) => {
                     const columnTasks = tasksByColumn[column.id] || [];
                     const taskIds = columnTasks.map(task => task.id);
@@ -738,56 +644,41 @@ function App() {
                     const sortableItems = taskIds;
 
                     return (
-                      <React.Fragment key={column.id}>
-                        {/* 列组件 */}
-                        <div className="relative">
-                          <DraggableColumn
-                            column={column}
-                            taskIds={taskIds}
-                            onAddCard={() => {
-                              setNewTask({...newTask, status: column.id});
-                              setIsCreateModalOpen(true);
-                            }}
-                            onTitleEdit={(newTitle) => handleUpdateColumnTitle(column.id, newTitle)}
-                            onDelete={() => handleDeleteColumn(column.id)}
-                            onColorChange={(color) => handleColumnColorChange(column.id, color)}
-                            isDeletable={true}
-                            isEditable={true}
-                            isDragging={activeColumnId === column.id}
-                            isDraggingTask={!!activeTaskId}
-                          >
-                            {/* 为每个列创建独立的SortableContext - 即使是空列也需要 */}
-                            <SortableContext
-                              items={sortableItems}
-                              strategy={verticalListSortingStrategy}
-                            >
-                              {columnTasks.map(task => (
-                                <div key={task.id} className="mb-1.5">
-                                  <DraggableTaskCard
-                                    task={task}
-                                    onClick={handleTaskClick}
-                                    isDragging={activeTaskId === task.id}
-                                    onColorChange={(color) => handleTaskColorChange(task.id, color)}
-                                    onDelete={() => handleTaskDelete(task.id)}
-                                  />
-                                </div>
-                              ))}
-                            </SortableContext>
-                          </DraggableColumn>
-                        </div>
-
-                        {/* 列之间的拖拽区域 */}
-                        <ColumnDropZone
-                          id={`drop-zone-after-${column.id}`}
-                          position="after"
-                          columnId={column.id}
-                          isActive={!!activeColumnId}
+                      <DraggableColumn
+                        key={column.id}
+                        column={column}
+                        taskIds={taskIds}
+                        onAddCard={() => {
+                          setNewTask({...newTask, status: column.id});
+                          setIsCreateModalOpen(true);
+                        }}
+                        onTitleEdit={(newTitle) => handleUpdateColumnTitle(column.id, newTitle)}
+                        onDelete={() => handleDeleteColumn(column.id)}
+                        onColorChange={(color) => handleColumnColorChange(column.id, color)}
+                        isDeletable={true}
+                        isEditable={true}
+                        isDragging={activeColumnId === column.id}
+                        isDraggingTask={!!activeTaskId}
+                        isColumnDragging={!!activeColumnId}
+                      >
+                        {/* 为每个列创建独立的SortableContext - 即使是空列也需要 */}
+                        <SortableContext
+                          items={sortableItems}
+                          strategy={verticalListSortingStrategy}
                         >
-                          {insertIndicator?.columnId === column.id && insertIndicator?.position === 'after' && (
-                            <ColumnInsertIndicator isVisible={true} position="right" />
-                          )}
-                        </ColumnDropZone>
-                      </React.Fragment>
+                          {columnTasks.map(task => (
+                            <div key={task.id} className="mb-1.5">
+                              <DraggableTaskCard
+                                task={task}
+                                onClick={handleTaskClick}
+                                isDragging={activeTaskId === task.id}
+                                onColorChange={(color) => handleTaskColorChange(task.id, color)}
+                                onDelete={() => handleTaskDelete(task.id)}
+                              />
+                            </div>
+                          ))}
+                        </SortableContext>
+                      </DraggableColumn>
                     );
                   })}
                 </SortableContext>

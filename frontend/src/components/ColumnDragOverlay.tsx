@@ -22,8 +22,16 @@ const ColumnDragOverlay: React.FC<ColumnDragOverlayProps> = ({
   tasks
 }) => {
   return (
-    <div className="transform rotate-2 scale-105 shadow-2xl opacity-95">
-      <div className="flex flex-col w-56 rounded-lg shadow bg-surface border border-border max-h-96 overflow-hidden">
+    <div className="transform rotate-2 scale-105 shadow-2xl opacity-95" style={{ width: '224px' }}>
+      <div
+        className="flex flex-col rounded-lg shadow bg-surface border border-border max-h-96 overflow-hidden"
+        style={{
+          width: '224px',
+          minWidth: '224px',
+          maxWidth: '224px',
+          boxSizing: 'border-box'
+        }}
+      >
         {/* 列标题 */}
         <div className="p-2.5 border-b border-border bg-surface">
           <div className="flex items-center justify-between">
@@ -54,21 +62,22 @@ const ColumnDragOverlay: React.FC<ColumnDragOverlayProps> = ({
         </div>
 
         {/* 列内容 - 显示实际的任务卡片 */}
-        <div className="flex-1 p-1.5 overflow-y-auto">
+        <div className="flex-1 p-1.5 overflow-y-auto" style={{ maxWidth: '100%' }}>
           {tasks.length > 0 ? (
             <div className="space-y-1.5">
-              {tasks.map((task) => (
+              {tasks.slice(0, 3).map((task) => (
                 <div
                   key={task.id}
-                  className="p-2.5 bg-white dark:bg-gray-800 rounded-lg border border-border shadow-sm opacity-90"
+                  className="p-2 bg-white dark:bg-gray-800 rounded-lg border border-border shadow-sm opacity-90"
+                  style={{ maxWidth: '100%', overflow: 'hidden' }}
                 >
                   <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h4 className="text-sm font-medium text-text-primary line-clamp-2">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-medium text-text-primary line-clamp-1 truncate">
                         {task.title}
                       </h4>
                       {task.description && (
-                        <p className="text-xs text-text-secondary mt-1 line-clamp-1">
+                        <p className="text-xs text-text-secondary mt-1 line-clamp-1 truncate">
                           {task.description}
                         </p>
                       )}
@@ -76,7 +85,7 @@ const ColumnDragOverlay: React.FC<ColumnDragOverlayProps> = ({
 
                     {task.priority && (
                       <span className={`
-                        ml-2 px-1.5 py-0.5 text-xs rounded-full font-medium
+                        ml-1 px-1 py-0.5 text-xs rounded-full font-medium flex-shrink-0
                         ${task.priority === 'High' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' : ''}
                         ${task.priority === 'Medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' : ''}
                         ${task.priority === 'Low' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : ''}
@@ -87,9 +96,14 @@ const ColumnDragOverlay: React.FC<ColumnDragOverlayProps> = ({
                   </div>
                 </div>
               ))}
+              {tasks.length > 3 && (
+                <div className="text-center text-xs text-text-secondary py-1">
+                  还有 {tasks.length - 3} 个任务...
+                </div>
+              )}
             </div>
           ) : (
-            <div className="h-20 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg flex items-center justify-center text-text-secondary text-sm">
+            <div className="h-16 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg flex items-center justify-center text-text-secondary text-xs">
               暂无任务
             </div>
           )}

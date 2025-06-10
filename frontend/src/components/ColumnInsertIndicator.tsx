@@ -3,7 +3,7 @@ import React from 'react';
 /**
  * 列插入指示器组件
  *
- * 使用与占位符一致的虚线样式，保持视觉协调性
+ * 隐藏虚线样式，保持功能性但不显示视觉指示器
  */
 
 interface ColumnInsertIndicatorProps {
@@ -17,19 +17,8 @@ const ColumnInsertIndicator: React.FC<ColumnInsertIndicatorProps> = ({
   position,
   className = ''
 }) => {
-  if (!isVisible) return null;
-
-  return (
-    <div
-      className={`
-        absolute top-0 bottom-0 w-1 z-50
-        border-l-2 border-dashed border-gray-300 dark:border-gray-600
-        transition-all duration-200 ease-in-out
-        ${position === 'left' ? '-left-1' : '-right-1'}
-        ${className}
-      `}
-    />
-  );
+  // 完全隐藏插入指示器，不显示任何视觉元素
+  return null;
 };
 
 export default ColumnInsertIndicator;

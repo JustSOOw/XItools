@@ -16,6 +16,7 @@ interface DraggableColumnProps {
   isEditable?: boolean;
   isDragging?: boolean;
   isDraggingTask?: boolean; // 新增：是否正在拖拽任务
+  isColumnDragging?: boolean; // 新增：是否有列正在拖拽
 }
 
 const DraggableColumn: React.FC<DraggableColumnProps> = ({
@@ -30,6 +31,7 @@ const DraggableColumn: React.FC<DraggableColumnProps> = ({
   isEditable = true,
   isDragging = false,
   isDraggingTask = false,
+  isColumnDragging = false,
 }) => {
   const {
     attributes,
@@ -48,7 +50,7 @@ const DraggableColumn: React.FC<DraggableColumnProps> = ({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: isColumnDragging ? 'transform 200ms ease-in-out, width 200ms ease-in-out' : transition,
   };
 
   // 如果正在被拖拽，显示完全透明占位符（保持布局稳定）
@@ -71,7 +73,8 @@ const DraggableColumn: React.FC<DraggableColumnProps> = ({
       style={style}
       className={`
         transition-all duration-200 ease-in-out
-        ${isDragging ? 'opacity-60' : ''}
+        ${isDragging ? 'opacity-60 scale-105 rotate-2' : ''}
+        ${isColumnDragging && !isDragging ? 'scale-95' : ''}
       `}
     >
       <DroppableColumn
