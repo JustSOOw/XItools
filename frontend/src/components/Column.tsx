@@ -25,7 +25,7 @@ const Column: React.FC<ColumnProps> = ({
     <div
       id={id}
       className={classNames(
-        'flex flex-col w-72 rounded-lg shadow transition-colors duration-200',
+        'flex flex-col w-56 rounded-lg shadow transition-colors duration-200',
         'bg-surface',
         className
       )}

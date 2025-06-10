@@ -81,7 +81,7 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
     <div
       ref={setNodeRef}
       className={classNames(
-        'flex flex-col w-72 rounded-lg shadow transition-all duration-200 border border-border',
+        'flex flex-col w-56 rounded-card shadow-sm transition-all duration-200 border border-border/30',
         {
           'ring-2 ring-primary ring-opacity-50': isOver,
           'scale-105': isOver,
@@ -95,14 +95,14 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
       data-column-id={id}
     >
       {/* 列标题 */}
-      <div className="p-3 border-b border-border">
-        <div className="flex items-center justify-between mb-2">
+      <div className="p-2.5 border-b border-border">
+        <div className="flex items-center justify-between mb-1">
           <div className="flex items-center flex-1">
             {/* 拖拽手柄 */}
             {dragHandleProps && (
               <div
                 {...dragHandleProps}
-                className="mr-2 p-1 cursor-grab active:cursor-grabbing hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors"
+                className="mr-2 p-1 cursor-grab active:cursor-grabbing hover:bg-black/5 dark:hover:bg-white/5 rounded-small transition-colors"
                 title="拖拽重排序列"
               >
                 <svg className="w-4 h-4 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -128,7 +128,7 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
             {onAddCard && (
               <button
                 onClick={onAddCard}
-                className="p-1 rounded-md hover:bg-black/5 text-text-secondary hover:text-primary transition-colors"
+                className="p-1 rounded-small hover:bg-black/5 text-text-secondary hover:text-primary transition-colors"
                 aria-label="添加任务"
                 title="添加任务"
               >
@@ -173,13 +173,13 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
       </div>
       
       {/* 列内容区 */}
-      <div className="flex-1 p-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
+      <div className="flex-1 p-1.5 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
         {/* 移除内部SortableContext，现在由App.tsx中的多容器架构管理 */}
         {/* 如果列为空，显示提示 - 确保有足够的拖拽区域 */}
         {React.Children.count(children) === 0 ? (
           <div
             className={classNames(
-              'h-20 border-2 border-dashed rounded-lg flex items-center justify-center text-text-secondary text-sm transition-all duration-200',
+              'h-20 border-2 border-dashed rounded-element flex items-center justify-center text-text-secondary text-sm transition-all duration-200',
               {
                 'border-primary bg-primary/5': isOver && isDraggingTask,
                 'border-gray-200 dark:border-gray-700': !isOver || !isDraggingTask,
@@ -190,7 +190,7 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
           </div>
         ) : (
           /* 卡片容器 */
-          <div className="space-y-2 min-h-full" data-column-cards-container={id}>
+          <div className="space-y-1.5 min-h-full" data-column-cards-container={id}>
             {children}
           </div>
         )}

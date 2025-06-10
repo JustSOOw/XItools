@@ -21,7 +21,7 @@ const Card: React.FC<CardProps> = ({
   style,
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
-  const baseClasses = 'rounded-lg transition-all';
+  const baseClasses = 'rounded-card transition-all duration-200';
   
   // 如果有自定义背景色，不应用默认背景色
   const hasCustomBackground = style?.background || style?.backgroundColor;
@@ -34,7 +34,7 @@ const Card: React.FC<CardProps> = ({
   
   const interactiveClasses = isInteractive ? 'cursor-pointer' : '';
   const hoverClasses = isHoverable ? 'hover:shadow-lg hover:translate-y-[-2px]' : '';
-  const paddingClasses = noPadding ? '' : 'p-4';
+  const paddingClasses = noPadding ? '' : 'p-3';
   
   const cardClasses = classNames(
     baseClasses,

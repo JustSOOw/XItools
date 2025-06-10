@@ -66,11 +66,11 @@ const Modal: React.FC<ModalProps> = ({
   
   // 设置大小类
   const sizeClasses = {
-    sm: 'max-w-sm',
-    md: 'max-w-md',
-    lg: 'max-w-lg',
-    xl: 'max-w-xl',
-    full: 'max-w-full mx-4',
+    sm: 'max-w-sm max-h-[80vh]',
+    md: 'max-w-md max-h-[85vh]',
+    lg: 'max-w-2xl max-h-[90vh]',
+    xl: 'max-w-4xl max-h-[90vh]',
+    full: 'max-w-full max-h-[95vh] mx-4',
   };
   
   if (!isOpen) return null;
@@ -83,7 +83,7 @@ const Modal: React.FC<ModalProps> = ({
       <div
         ref={modalRef}
         className={classNames(
-          'bg-background rounded-lg shadow-xl overflow-hidden w-full transition-all',
+          'bg-background rounded-lg shadow-xl w-full transition-all flex flex-col',
           sizeClasses[size],
           className
         )}
@@ -108,11 +108,11 @@ const Modal: React.FC<ModalProps> = ({
         )}
         
         {/* 模态框内容 */}
-        <div className="px-6 py-4">{children}</div>
+        <div className="px-6 py-4 overflow-y-auto flex-1">{children}</div>
         
         {/* 模态框底部 */}
         {footer && (
-          <div className="flex justify-end space-x-2 px-6 py-4 border-t border-border">
+          <div className="flex justify-end space-x-2 px-6 py-4 border-t border-border flex-shrink-0">
             {footer}
           </div>
         )}

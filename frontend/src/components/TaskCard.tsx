@@ -114,13 +114,13 @@ const TaskCard: React.FC<TaskCardProps> = ({
         
         {/* 任务描述 (如果有) */}
         {task.description && (
-          <p className="mt-2 text-sm text-text-secondary line-clamp-2">
+          <p className="mt-1.5 text-sm text-text-secondary line-clamp-2">
             {task.description}
           </p>
         )}
-        
+
         {/* 底部信息栏 */}
-        <div className="mt-4 flex items-center justify-between">
+        <div className="mt-2.5 flex items-center justify-between">
           <div className="flex items-center space-x-1">
             {/* 优先级标签 */}
             <span className={`px-2 py-0.5 rounded-full text-xs ${color}`}>
@@ -143,7 +143,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
         
         {/* 负责人 */}
         {task.assignee && (
-          <div className="mt-2 flex items-center">
+          <div className="mt-1.5 flex items-center">
             <span className="inline-block w-5 h-5 rounded-full bg-accent text-white text-xs flex items-center justify-center">
               {task.assignee.substring(0, 1).toUpperCase()}
             </span>

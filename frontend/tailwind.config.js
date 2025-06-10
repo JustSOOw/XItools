@@ -8,53 +8,54 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // 浅色主题 (Light Theme)
+        // 主题颜色 - 使用CSS变量
         primary: {
-          DEFAULT: '#4F46E5',
+          DEFAULT: 'rgb(var(--color-primary))',
           50: '#EBEAFD',
           100: '#D7D5FB',
           200: '#AFAAF7',
           300: '#867FF3',
           400: '#5E54EF',
-          500: '#4F46E5',
+          500: 'rgb(var(--color-primary))',
           600: '#3F37BC',
           700: '#2F2893',
           800: '#201B6A',
           900: '#100D41',
         },
         secondary: {
-          DEFAULT: '#10B981',
+          DEFAULT: 'rgb(var(--color-secondary))',
           50: '#E7F9F4',
           100: '#CFF3E9',
           200: '#9FE7D3',
           300: '#6FDCBE',
           400: '#3FD0A8',
-          500: '#10B981',
+          500: 'rgb(var(--color-secondary))',
           600: '#0E9C6D',
           700: '#0B7F59',
           800: '#086245',
           900: '#054531',
         },
         accent: {
-          DEFAULT: '#F59E0B',
+          DEFAULT: 'rgb(var(--color-accent))',
           50: '#FEF5E7',
           100: '#FEEBD0',
           200: '#FCD7A1',
           300: '#FAC272',
           400: '#F7AE43',
-          500: '#F59E0B',
+          500: 'rgb(var(--color-accent))',
           600: '#C57D09',
           700: '#955D07',
           800: '#643E04',
           900: '#321F02',
         },
-        success: '#10B981',
-        warning: '#FBBF24',
-        error: '#EF4444',
-        background: '#FFFFFF',
-        surface: '#F3F4F6',
-        'text-primary': '#111827',
-        'text-secondary': '#6B7280',
+        // 使用CSS变量的主题颜色
+        success: 'rgb(var(--color-success))',
+        warning: 'rgb(var(--color-warning))',
+        error: 'rgb(var(--color-error))',
+        background: 'rgb(var(--color-background))',
+        surface: 'rgb(var(--color-surface))',
+        'text-primary': 'rgb(var(--color-text-primary))',
+        'text-secondary': 'rgb(var(--color-text-secondary))',
 
         // 深色主题 (Dark Theme)
         dark: {
@@ -114,6 +115,31 @@ module.exports = {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
         },
+
+        // 卡片背景色 - 使用CSS变量
+        'card-bg': {
+          default: 'rgb(var(--card-bg-default))',
+          gray: 'rgb(var(--card-bg-gray))',
+          blue: 'rgb(var(--card-bg-blue))',
+          green: 'rgb(var(--card-bg-green))',
+          purple: 'rgb(var(--card-bg-purple))',
+          yellow: 'rgb(var(--card-bg-yellow))',
+          red: 'rgb(var(--card-bg-red))',
+          orange: 'rgb(var(--card-bg-orange))',
+          cyan: 'rgb(var(--card-bg-cyan))',
+          pink: 'rgb(var(--card-bg-pink))',
+          sky: 'rgb(var(--card-bg-sky))',
+          grass: 'rgb(var(--card-bg-grass))',
+          lavender: 'rgb(var(--card-bg-lavender))',
+          lemon: 'rgb(var(--card-bg-lemon))',
+          coral: 'rgb(var(--card-bg-coral))',
+          apricot: 'rgb(var(--card-bg-apricot))',
+          aqua: 'rgb(var(--card-bg-aqua))',
+          rose: 'rgb(var(--card-bg-rose))',
+        },
+
+        // 看板背景色
+        'board-bg': 'var(--board-background-color)',
       },
       borderRadius: {
         lg: "var(--radius)",

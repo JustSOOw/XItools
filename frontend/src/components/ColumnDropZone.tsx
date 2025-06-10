@@ -30,7 +30,7 @@ const ColumnDropZone: React.FC<ColumnDropZoneProps> = ({
       ref={setNodeRef}
       className={`
         relative transition-all duration-300 ease-in-out
-        ${isActive ? 'w-20' : 'w-8'}
+        ${isActive ? 'w-6' : 'w-2'}
         ${isOver ? 'bg-primary/8' : 'bg-transparent'}
         hover:bg-primary/3
       `}

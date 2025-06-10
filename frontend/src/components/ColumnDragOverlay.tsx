@@ -23,9 +23,9 @@ const ColumnDragOverlay: React.FC<ColumnDragOverlayProps> = ({
 }) => {
   return (
     <div className="transform rotate-2 scale-105 shadow-2xl opacity-95">
-      <div className="flex flex-col w-72 rounded-lg shadow bg-surface border border-border max-h-96 overflow-hidden">
+      <div className="flex flex-col w-56 rounded-lg shadow bg-surface border border-border max-h-96 overflow-hidden">
         {/* 列标题 */}
-        <div className="p-3 border-b border-border bg-surface">
+        <div className="p-2.5 border-b border-border bg-surface">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               {/* 拖拽手柄图标 */}
@@ -54,13 +54,13 @@ const ColumnDragOverlay: React.FC<ColumnDragOverlayProps> = ({
         </div>
 
         {/* 列内容 - 显示实际的任务卡片 */}
-        <div className="flex-1 p-2 overflow-y-auto">
+        <div className="flex-1 p-1.5 overflow-y-auto">
           {tasks.length > 0 ? (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {tasks.map((task) => (
                 <div
                   key={task.id}
-                  className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-border shadow-sm opacity-90"
+                  className="p-2.5 bg-white dark:bg-gray-800 rounded-lg border border-border shadow-sm opacity-90"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">

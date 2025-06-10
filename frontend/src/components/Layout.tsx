@@ -1,5 +1,6 @@
 import React, { ReactNode, useState } from 'react';
 import classNames from 'classnames';
+import ThemeToggle from './ThemeToggle';
 
 export interface LayoutProps {
   children: ReactNode;
@@ -10,25 +11,25 @@ const Layout: React.FC<LayoutProps> = ({ children, className }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen overflow-hidden bg-background p-4 gap-4">
       {/* 侧边栏 */}
       <aside
         className={classNames(
-          'bg-surface shadow-md transition-all duration-300 ease-in-out flex flex-col',
+          'sidebar-container transition-all duration-300 ease-in-out flex flex-col',
           isSidebarCollapsed ? 'w-16' : 'w-64'
         )}
       >
         {/* Logo区域 */}
         <div className={classNames(
-          'h-16 border-b border-border flex items-center px-4',
+          'h-16 border-b border-border/30 flex items-center px-4 mb-2',
           isSidebarCollapsed ? 'justify-center' : 'justify-between'
         )}>
           {!isSidebarCollapsed && <h1 className="text-xl font-bold text-primary">XItools</h1>}
           {isSidebarCollapsed && <span className="text-xl font-bold text-primary">XI</span>}
-          
+
           <button
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className="p-1 rounded hover:bg-black/5 text-text-secondary hover:text-primary"
+            className="p-1.5 rounded-element hover:bg-primary/10 text-text-secondary hover:text-primary transition-all duration-200"
             aria-label={isSidebarCollapsed ? '展开侧边栏' : '收起侧边栏'}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -42,8 +43,8 @@ const Layout: React.FC<LayoutProps> = ({ children, className }) => {
         </div>
         
         {/* 导航菜单 */}
-        <nav className="flex-1 overflow-y-auto py-4">
-          <ul className="space-y-1">
+        <nav className="flex-1 overflow-y-auto py-2">
+          <ul className="space-y-2 px-3">
             <SidebarItem 
               icon={
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -85,15 +86,15 @@ const Layout: React.FC<LayoutProps> = ({ children, className }) => {
         </nav>
         
         {/* 主题切换按钮 */}
-        <div className="p-4 border-t border-border">
-          <button
-            className="w-full flex items-center justify-center p-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-md transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-            </svg>
-            {!isSidebarCollapsed && <span className="ml-2">切换主题</span>}
-          </button>
+        <div className="p-3 border-t border-border/30 mt-2">
+          <div className="w-full">
+            <ThemeToggle
+              showLabel={!isSidebarCollapsed}
+              size="md"
+              variant="button"
+              className="w-full"
+            />
+          </div>
         </div>
       </aside>
       
@@ -126,10 +127,10 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
       <button
         onClick={onClick}
         className={classNames(
-          'w-full flex items-center px-4 py-2 rounded-md transition-colors',
-          isActive 
-            ? 'bg-primary/10 text-primary hover:bg-primary/20' 
-            : 'text-text-secondary hover:bg-black/5 hover:text-text-primary'
+          'w-full flex items-center px-3 py-2.5 menu-item transition-all duration-200',
+          isActive
+            ? 'menu-item-active text-primary'
+            : 'text-text-secondary hover:text-text-primary'
         )}
       >
         <span className="flex-shrink-0">{icon}</span>

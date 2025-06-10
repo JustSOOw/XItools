@@ -26,7 +26,7 @@ const Button: React.FC<ButtonProps> = ({
   disabled,
   ...props
 }) => {
-  const baseClasses = 'inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2';
+  const baseClasses = 'inline-flex items-center justify-center rounded-element font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2';
   
   const variantClasses = {
     primary: 'bg-primary text-white hover:bg-primary-600 active:bg-primary-700',

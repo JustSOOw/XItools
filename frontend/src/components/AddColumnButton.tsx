@@ -142,7 +142,7 @@ const AddColumnButton: React.FC<AddColumnButtonProps> = ({
     <button
       onClick={handleStartAdding}
       className={classNames(
-        'flex items-center justify-center w-72 h-32 rounded-lg border-2 border-dashed',
+        'flex items-center justify-center w-56 h-28 rounded-lg border-2 border-dashed',
         'border-gray-300 dark:border-gray-600 hover:border-primary hover:bg-primary/5',
         'transition-all duration-200 group',
         className

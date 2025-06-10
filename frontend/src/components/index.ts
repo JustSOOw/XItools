@@ -16,3 +16,7 @@ export { default as ColumnPlaceholder } from './ColumnPlaceholder';
 export { default as MoreButton } from './MoreButton';
 export { default as ColorPicker } from './ColorPicker';
 export { default as ColorPickerModal } from './ColorPickerModal';
+export { default as ThemeSettings } from './ThemeSettings';
+export { default as ThemeSettingsModal } from './ThemeSettingsModal';
+export { default as ThemeToggle } from './ThemeToggle';
+export { default as BoardColorPicker } from './BoardColorPicker';

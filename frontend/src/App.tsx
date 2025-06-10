@@ -33,7 +33,9 @@ import ColumnDropZone from './components/ColumnDropZone';
 import AddColumnButton from './components/AddColumnButton';
 import DraggableColumn from './components/DraggableColumn';
 import ColumnDragOverlay from './components/ColumnDragOverlay';
-import useTheme from './hooks/useTheme';
+import { useThemeStore } from './store/themeStore';
+import { BoardColorPicker } from './components';
+import ThemeTestPage from './pages/ThemeTestPage';
 
 import useMcpConnection from './hooks/useMcpConnection';
 import useTaskStore from './store/taskStore';
@@ -43,10 +45,11 @@ import { Task as TaskType, PartialTask } from './types/Task';
 import { testAxios } from './utils/testAxios';
 
 function App() {
-  const { theme, toggleTheme } = useTheme();
+  const { currentTheme } = useThemeStore();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [isTaskDetailModalOpen, setIsTaskDetailModalOpen] = useState(false);
+  const [showThemeTest, setShowThemeTest] = useState(false);
   const [newTask, setNewTask] = useState<PartialTask>({
     title: '',
     description: '',
@@ -630,7 +633,7 @@ function App() {
       <Layout>
         <div className="flex flex-col h-full">
           {/* 顶部操作栏 */}
-          <header className="bg-surface border-b border-border px-6 py-4 flex items-center justify-between">
+          <header className="modern-container mx-4 mt-4 px-6 py-4 flex items-center justify-between">
             <h1 className="text-2xl font-bold text-text-primary">智能任务看板</h1>
 
             <div className="flex items-center space-x-4">
@@ -662,25 +665,18 @@ function App() {
               <Button
                 variant="ghost"
                 size="sm"
-                icon={
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    {theme === 'dark' ? (
-                      <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fillRule="evenodd" clipRule="evenodd" />
-                    ) : (
-                      <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-                    )}
-                  </svg>
-                }
-                onClick={toggleTheme}
+                onClick={() => setShowThemeTest(!showThemeTest)}
               >
-                {theme === 'light' ? '深色模式' : theme === 'dark' ? '柔和模式' : theme === 'soft' ? '艺术模式' : '浅色模式'}
+                {showThemeTest ? '返回看板' : '主题测试'}
               </Button>
+
+              <BoardColorPicker />
             </div>
           </header>
         
         {/* 错误提示 */}
         {error && (
-          <div className="bg-danger/10 border border-danger text-danger px-4 py-2 m-4 rounded-md flex justify-between items-center">
+          <div className="modern-card mx-4 mt-4 bg-danger/10 border border-danger text-danger px-4 py-2 flex justify-between items-center">
             <p>{error}</p>
           <button
               className="text-sm underline"
@@ -690,25 +686,32 @@ function App() {
           </button>
           </div>
         )}
-        
+
         {/* 连接状态提示 */}
         {!isConnected && !error && (
-          <div className="bg-warning/10 border border-warning text-warning px-4 py-2 m-4 rounded-md">
+          <div className="modern-card mx-4 mt-4 bg-warning/10 border border-warning text-warning px-4 py-2">
             <p>未连接到MCP服务，部分功能可能不可用</p>
           </div>
         )}
         
-        {/* 加载状态 */}
-        {isLoading ? (
+        {/* 主要内容区 */}
+        {showThemeTest ? (
+          /* 主题测试页面 */
+          <div className="flex-1 overflow-auto">
+            <ThemeTestPage />
+          </div>
+        ) : isLoading ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
             <p className="ml-2 text-text-secondary">加载中...</p>
           </div>
         ) : (
           /* 看板内容区 */
-          <div className="flex-1 overflow-auto p-6">
+          <div className="flex-1 p-4">
+            <div className="modern-container h-full board-content">
+              <div className="h-full overflow-auto p-6">
             {columns.length > 0 ? (
-              <div className="flex">
+              <div className="flex min-w-max gap-1">
                 <SortableContext
                   items={columns.map(col => col.id)}
                   strategy={horizontalListSortingStrategy}
@@ -759,7 +762,7 @@ function App() {
                               strategy={verticalListSortingStrategy}
                             >
                               {columnTasks.map(task => (
-                                <div key={task.id} className="mb-2">
+                                <div key={task.id} className="mb-1.5">
                                   <DraggableTaskCard
                                     task={task}
                                     onClick={handleTaskClick}
@@ -790,7 +793,7 @@ function App() {
                 </SortableContext>
 
                 {/* 添加新列按钮 */}
-                <div className="ml-4">
+                <div className="ml-1">
                   <AddColumnButton onAdd={handleAddColumn} />
                 </div>
               </div>
@@ -802,9 +805,11 @@ function App() {
                 </div>
               </div>
             )}
+              </div>
+            </div>
           </div>
         )}
-      </div>
+        </div>
       
       {/* 新建任务模态框 */}
       <Modal
