@@ -21,7 +21,6 @@ frontend/
 │   ├── assets/         # 图片、字体等资源
 │   ├── components/     # 可复用组件
 │   ├── hooks/          # 自定义钩子
-│   ├── pages/          # 页面组件
 │   ├── services/       # API服务
 │   ├── store/          # 状态管理
 │   ├── types/          # 类型定义

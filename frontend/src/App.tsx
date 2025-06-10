@@ -30,9 +30,7 @@ import TaskDragOverlay from './components/TaskDragOverlay';
 import AddColumnButton from './components/AddColumnButton';
 import DraggableColumn from './components/DraggableColumn';
 import ColumnDragOverlay from './components/ColumnDragOverlay';
-import { useThemeStore } from './store/themeStore';
 import { BoardColorPicker } from './components';
-import ThemeTestPage from './pages/ThemeTestPage';
 
 import useMcpConnection from './hooks/useMcpConnection';
 import useTaskStore from './store/taskStore';
@@ -42,11 +40,9 @@ import { Task as TaskType, PartialTask } from './types/Task';
 import { testAxios } from './utils/testAxios';
 
 function App() {
-  const { currentTheme } = useThemeStore();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [isTaskDetailModalOpen, setIsTaskDetailModalOpen] = useState(false);
-  const [showThemeTest, setShowThemeTest] = useState(false);
   const [newTask, setNewTask] = useState<PartialTask>({
     title: '',
     description: '',
@@ -582,14 +578,6 @@ function App() {
                 新建任务
               </Button>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowThemeTest(!showThemeTest)}
-              >
-                {showThemeTest ? '返回看板' : '主题测试'}
-              </Button>
-
               <BoardColorPicker />
             </div>
           </header>
@@ -615,12 +603,7 @@ function App() {
         )}
         
         {/* 主要内容区 */}
-        {showThemeTest ? (
-          /* 主题测试页面 */
-          <div className="flex-1 overflow-auto">
-            <ThemeTestPage />
-          </div>
-        ) : isLoading ? (
+        {isLoading ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
             <p className="ml-2 text-text-secondary">加载中...</p>
