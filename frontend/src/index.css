@@ -224,22 +224,39 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgba(var(--color-text-secondary), 0.3);
+    background: #a0a0a0; /* 浅色主题使用中等灰色，更好搭配 */
     border-radius: 4px;
     transition: background 0.2s ease;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(var(--color-text-secondary), 0.5);
+    background: #808080; /* 悬停时稍深一点 */
   }
 
   /* 深色主题下的滚动条 */
+  .dark ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
   .dark ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
+    background: #bbbbbb; /* 深色主题使用浅灰色 */
   }
 
   .dark ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: #dddddd; /* 悬停时更浅 */
+  }
+
+  /* 深色主题下的自定义滚动条 */
+  .dark .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent; /* 删除背景 */
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #bbbbbb; /* 深色主题使用浅灰色 */
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #dddddd; /* 悬停时更浅 */
   }
 
   /* 樱花主题下的滚动条 */
@@ -251,6 +268,16 @@
     background: rgba(233, 30, 99, 0.5);
   }
 
+  /* 樱花主题下的自定义滚动条 */
+  .theme-cherry .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(233, 30, 99, 0.4);
+    border: 1px solid rgba(233, 30, 99, 0.2);
+  }
+
+  .theme-cherry .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(233, 30, 99, 0.6);
+  }
+
   /* 海洋主题下的滚动条 */
   .theme-ocean ::-webkit-scrollbar-thumb {
     background: rgba(0, 188, 212, 0.3);
@@ -260,58 +287,138 @@
     background: rgba(0, 188, 212, 0.5);
   }
 
+  /* 海洋主题下的自定义滚动条 */
+  .theme-ocean .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(0, 188, 212, 0.4);
+    border: 1px solid rgba(0, 188, 212, 0.2);
+  }
+
+  .theme-ocean .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 188, 212, 0.6);
+  }
+
   /* Firefox滚动条样式 */
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(var(--color-text-secondary), 0.3) transparent;
+    scrollbar-color: #a0a0a0 transparent; /* 浅色主题使用中等灰色 */
   }
 
   .dark * {
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    scrollbar-color: #bbbbbb transparent; /* 深色主题使用浅灰色 */
   }
 
   .theme-cherry * {
-    scrollbar-color: rgba(233, 30, 99, 0.3) transparent;
+    scrollbar-color: rgba(233, 30, 99, 0.6) transparent;
   }
 
   .theme-ocean * {
-    scrollbar-color: rgba(0, 188, 212, 0.3) transparent;
+    scrollbar-color: rgba(0, 188, 212, 0.6) transparent;
+  }
+
+  /* 自定义滚动条类 - 确保滚动条可见 */
+  .custom-scrollbar {
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: #a0a0a0 transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 4px;
+    margin: 2px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #a0a0a0; /* 浅色主题使用中等灰色 */
+    border-radius: 4px;
+    transition: all 0.2s ease;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #808080; /* 悬停时稍深 */
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* 深色主题下的自定义滚动条 */
+  .dark .custom-scrollbar {
+    scrollbar-color: #bbbbbb transparent;
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #bbbbbb;
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #dddddd;
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-corner {
+    background: transparent;
   }
 
   /* 看板内容区域的滚动条样式 */
   .board-content ::-webkit-scrollbar {
     width: 6px;
-    height: 6px;
+    height: 8px; /* 水平滚动条稍微明显一点 */
   }
 
   .board-content ::-webkit-scrollbar-track {
-    background: rgba(var(--color-surface), 0.5);
-    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.03); /* 浅色主题轻微背景 */
+    border-radius: 4px;
     margin: 4px;
   }
 
   .board-content ::-webkit-scrollbar-thumb {
-    background: rgba(var(--color-primary), 0.4);
-    border-radius: 3px;
+    background: #a0a0a0; /* 浅色主题使用中等灰色 */
+    border-radius: 4px;
     transition: all 0.2s ease;
   }
 
   .board-content ::-webkit-scrollbar-thumb:hover {
-    background: rgba(var(--color-primary), 0.6);
+    background: #808080; /* 悬停时稍深 */
   }
 
-  /* 列内部滚动条样式 */
+  /* 深色主题下的看板滚动条 */
+  .dark .board-content ::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .dark .board-content ::-webkit-scrollbar-thumb {
+    background: #bbbbbb;
+  }
+
+  .dark .board-content ::-webkit-scrollbar-thumb:hover {
+    background: #dddddd;
+  }
+
+  /* 列内部滚动条样式 - 隐藏滚动条但保持滚动功能 */
   .board-content .overflow-y-auto::-webkit-scrollbar {
-    width: 4px;
+    width: 0px; /* 隐藏滚动条 */
+    background: transparent;
+  }
+
+  .board-content .overflow-y-auto::-webkit-scrollbar-track {
+    background: transparent;
   }
 
   .board-content .overflow-y-auto::-webkit-scrollbar-thumb {
-    background: rgba(var(--color-text-secondary), 0.3);
-    border-radius: 2px;
+    background: transparent;
   }
 
-  .board-content .overflow-y-auto::-webkit-scrollbar-thumb:hover {
-    background: rgba(var(--color-text-secondary), 0.5);
+  /* Firefox下隐藏列内滚动条 */
+  .board-content .overflow-y-auto {
+    scrollbar-width: none; /* Firefox */
   }
 
   .modern-card {

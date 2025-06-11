@@ -114,7 +114,8 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
         className
       )}
       style={{
-        minHeight: '120px',
+        minHeight: '120px', // 最小高度
+        maxHeight: 'calc(100vh - 200px)', // 最大高度不超过背景
         background: color || 'var(--color-surface)',
       }}
       data-column-id={id}
@@ -198,27 +199,32 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
       </div>
       
       {/* 列内容区 */}
-      <div className="flex-1 p-1.5 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
-        {/* 移除内部SortableContext，现在由App.tsx中的多容器架构管理 */}
-        {/* 如果列为空，显示提示 - 确保有足够的拖拽区域 */}
-        {React.Children.count(children) === 0 ? (
-          <div
-            className={classNames(
-              'h-20 border-2 border-dashed rounded-element flex items-center justify-center text-text-secondary text-sm transition-all duration-200',
-              {
-                'border-primary bg-primary/5': isOver && isDraggingTask,
-                'border-gray-200 dark:border-gray-700': !isOver || !isDraggingTask,
-              }
-            )}
-          >
-            {isOver && isDraggingTask ? '放置任务到这里' : '暂无任务'}
-          </div>
-        ) : (
-          /* 卡片容器 */
-          <div className="space-y-1.5 min-h-full" data-column-cards-container={id}>
-            {children}
-          </div>
-        )}
+      <div className="flex-1 min-h-0 flex flex-col">
+        <div className="flex-1 overflow-y-auto p-1.5" style={{
+          scrollbarWidth: 'none', /* Firefox隐藏滚动条 */
+          msOverflowStyle: 'none' /* IE隐藏滚动条 */
+        }}>
+          {/* 移除内部SortableContext，现在由App.tsx中的多容器架构管理 */}
+          {/* 如果列为空，显示提示 - 确保有足够的拖拽区域 */}
+          {React.Children.count(children) === 0 ? (
+            <div
+              className={classNames(
+                'h-20 border-2 border-dashed rounded-element flex items-center justify-center text-text-secondary text-sm transition-all duration-200',
+                {
+                  'border-primary bg-primary/5': isOver && isDraggingTask,
+                  'border-gray-200 dark:border-gray-700': !isOver || !isDraggingTask,
+                }
+              )}
+            >
+              {isOver && isDraggingTask ? '放置任务到这里' : '暂无任务'}
+            </div>
+          ) : (
+            /* 卡片容器 */
+            <div className="space-y-1.5 min-h-full" data-column-cards-container={id}>
+              {children}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 颜色选择器模态框 */}
