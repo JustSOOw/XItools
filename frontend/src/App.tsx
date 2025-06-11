@@ -31,6 +31,8 @@ import AddColumnButton from './components/AddColumnButton';
 import DraggableColumn from './components/DraggableColumn';
 import ColumnDragOverlay from './components/ColumnDragOverlay';
 import { BoardColorPicker } from './components';
+import SearchBox from './components/SearchBox';
+import TaskFilter from './components/TaskFilter';
 
 import useMcpConnection from './hooks/useMcpConnection';
 import useTaskStore from './store/taskStore';
@@ -115,6 +117,13 @@ function App() {
   const clearColumnSort = useTaskStore(state => state.clearColumnSort);
   const moveTask = useTaskStore(state => state.moveTask);
   const reorderTasksInColumn = useTaskStore(state => state.reorderTasksInColumn);
+
+  // 筛选和搜索状态
+  const filterOptions = useTaskStore(state => state.filterOptions);
+  const filteredTasks = useTaskStore(state => state.filteredTasks);
+  const setFilterOptions = useTaskStore(state => state.setFilterOptions);
+  const clearFilters = useTaskStore(state => state.clearFilters);
+  const applyFilters = useTaskStore(state => state.applyFilters);
 
   // 配置拖拽传感器
   const sensors = useSensors(
@@ -534,12 +543,25 @@ function App() {
       setError('列排序失败，请重试');
     }
   };
-  
+
+  // 决定使用哪个任务列表：如果有筛选条件，使用筛选后的任务，否则使用全部任务
+  const displayTasks = useMemo(() => {
+    const hasFilters = Object.keys(filterOptions).some(key => {
+      const value = filterOptions[key as keyof typeof filterOptions];
+      if (Array.isArray(value)) {
+        return value.length > 0;
+      }
+      return value !== undefined && value !== null && value !== '';
+    });
+
+    return hasFilters ? filteredTasks : tasks;
+  }, [filterOptions, filteredTasks, tasks]);
+
   // 按列组织任务 - 支持多容器拖拽
   const tasksByColumn = useMemo(() => {
     const result = columns.reduce((acc, column) => {
       // 仅筛选当前列的任务，按sortOrder排序
-      const columnTasks = tasks
+      const columnTasks = displayTasks
         .filter(task => task.status === column.id)
         .sort((a, b) => {
           // 优先按sortOrder排序，然后按创建时间倒序
@@ -555,7 +577,7 @@ function App() {
     }, {} as Record<string, TaskType[]>);
 
     return result;
-  }, [columns, tasks]);
+  }, [columns, displayTasks]);
 
 
 
@@ -650,8 +672,35 @@ function App() {
         <div className="flex flex-col h-full">
           {/* 顶部操作栏 */}
           <header className="modern-container mx-4 mt-4 px-6 py-4 flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-text-primary">智能任务看板</h1>
+            {/* 左侧：标题、搜索和筛选 */}
+            <div className="flex items-center space-x-6">
+              <h1 className="text-2xl font-bold text-text-primary">智能任务看板</h1>
 
+              {/* 搜索和筛选区域 */}
+              <div className="flex items-center space-x-3">
+                {/* 搜索框 */}
+                <div className="w-80">
+                  <SearchBox
+                    value={filterOptions.searchText || ''}
+                    placeholder="搜索任务标题或描述..."
+                    onSearch={(searchText: string) => setFilterOptions({ searchText: searchText || undefined })}
+                    onClear={() => setFilterOptions({ searchText: undefined })}
+                  />
+                </div>
+
+                {/* 筛选器 */}
+                <TaskFilter
+                  filterOptions={filterOptions}
+                  onFilterChange={setFilterOptions}
+                  onClearFilters={clearFilters}
+                  columns={columns}
+                  tasks={tasks}
+                  displayTasks={displayTasks}
+                />
+              </div>
+            </div>
+
+            {/* 右侧：操作按钮 */}
             <div className="flex items-center space-x-4">
               <div className="flex items-center">
                 <span className={`w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>

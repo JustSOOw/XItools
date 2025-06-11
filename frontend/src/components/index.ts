@@ -20,3 +20,5 @@ export { default as ThemeSettings } from './ThemeSettings';
 export { default as ThemeSettingsModal } from './ThemeSettingsModal';
 export { default as ThemeToggle } from './ThemeToggle';
 export { default as BoardColorPicker } from './BoardColorPicker';
+export { default as SearchBox } from './SearchBox';
+export { default as TaskFilter } from './TaskFilter';

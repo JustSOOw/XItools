@@ -2,7 +2,7 @@
  * @Author: Furdow wang22338014@gmail.com
  * @Date: 2025-05-30 18:27:46
  * @LastEditors: Furdow wang22338014@gmail.com
- * @LastEditTime: 2025-06-08 12:00:11
+ * @LastEditTime: 2025-06-11 17:48:55
  * @FilePath: \XItools\frontend\src\store\taskStore.ts
  * @Description: 
  * 
@@ -13,6 +13,15 @@ import { Task } from '../types/Task';
 
 // 定义排序选项类型
 export type SortOption = 'manual' | 'priority' | 'created_asc' | 'created_desc' | 'title_asc' | 'title_desc' | 'due_date';
+
+// 定义筛选选项类型
+export interface FilterOptions {
+  status?: string;
+  priority?: string;
+  assignee?: string;
+  tags?: string[];
+  searchText?: string; // 搜索文本
+}
 
 // 定义看板列类型
 export interface BoardColumn {
@@ -40,6 +49,10 @@ interface TaskState {
   activeTaskId: string | null;
   activeColumnId: string | null;
 
+  // 筛选和搜索状态
+  filterOptions: FilterOptions;
+  filteredTasks: Task[]; // 筛选后的任务列表
+
   // 操作方法
   setTasks: (tasks: Task[]) => void;
   addTasks: (tasks: Task[]) => void;
@@ -61,10 +74,61 @@ interface TaskState {
   // 列排序方法
   setColumnSort: (columnId: string, sortOption: SortOption) => void;
   clearColumnSort: (columnId: string) => void;
+
+  // 筛选和搜索方法
+  setFilterOptions: (options: Partial<FilterOptions>) => void;
+  clearFilters: () => void;
+  applyFilters: () => void;
 }
 
+// 筛选任务的辅助函数
+const filterTasks = (tasks: Task[], filterOptions: FilterOptions): Task[] => {
+  return tasks.filter(task => {
+    // 按状态筛选
+    if (filterOptions.status && task.status !== filterOptions.status) {
+      return false;
+    }
+
+    // 按优先级筛选
+    if (filterOptions.priority && task.priority !== filterOptions.priority) {
+      return false;
+    }
+
+    // 按负责人筛选
+    if (filterOptions.assignee && task.assignee !== filterOptions.assignee) {
+      return false;
+    }
+
+    // 按标签筛选
+    if (filterOptions.tags && filterOptions.tags.length > 0) {
+      const taskTags = task.tags || [];
+      const taskTagNames = taskTags.map(tag =>
+        typeof tag === 'string' ? tag : tag.name
+      );
+      const hasMatchingTag = filterOptions.tags.some(filterTag =>
+        taskTagNames.includes(filterTag)
+      );
+      if (!hasMatchingTag) {
+        return false;
+      }
+    }
+
+    // 按搜索文本筛选
+    if (filterOptions.searchText && filterOptions.searchText.trim()) {
+      const searchText = filterOptions.searchText.toLowerCase().trim();
+      const titleMatch = task.title.toLowerCase().includes(searchText);
+      const descriptionMatch = task.description?.toLowerCase().includes(searchText) || false;
+      if (!titleMatch && !descriptionMatch) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+};
+
 // 创建状态存储
-const useTaskStore = create<TaskState>((set) => ({
+const useTaskStore = create<TaskState>((set, get) => ({
   // 初始状态
   tasks: [],
   columns: [], // 改为空数组，从后端动态加载
@@ -73,23 +137,36 @@ const useTaskStore = create<TaskState>((set) => ({
   activeTaskId: null,
   activeColumnId: null,
 
+  // 筛选和搜索初始状态
+  filterOptions: {},
+  filteredTasks: [],
+
   // 操作方法实现
-  setTasks: (tasks) => set({ tasks }),
-  
+  setTasks: (tasks) => set((state) => {
+    const filteredTasks = filterTasks(tasks, state.filterOptions);
+    return { tasks, filteredTasks };
+  }),
+
   addTasks: (newTasks) => set((state) => {
     // 过滤掉已存在的任务（基于ID）
     const uniqueNewTasks = newTasks.filter(
       (newTask) => !state.tasks.some((task) => task.id === newTask.id)
     );
-    
-    return { tasks: [...state.tasks, ...uniqueNewTasks] };
+
+    const updatedTasks = [...state.tasks, ...uniqueNewTasks];
+    const filteredTasks = filterTasks(updatedTasks, state.filterOptions);
+
+    return { tasks: updatedTasks, filteredTasks };
   }),
-  
-  updateTask: (updatedTask) => set((state) => ({
-    tasks: state.tasks.map((task) => 
+
+  updateTask: (updatedTask) => set((state) => {
+    const updatedTasks = state.tasks.map((task) =>
       task.id === updatedTask.id ? updatedTask : task
-    ),
-  })),
+    );
+    const filteredTasks = filterTasks(updatedTasks, state.filterOptions);
+
+    return { tasks: updatedTasks, filteredTasks };
+  }),
   
   deleteTask: (taskId) => set((state) => ({
     tasks: state.tasks.filter((task) => task.id !== taskId),
@@ -175,6 +252,25 @@ const useTaskStore = create<TaskState>((set) => ({
     columns: state.columns.map(column =>
       column.id === columnId ? { ...column, sortOption: 'manual' } : column
     )
+  })),
+
+  // 筛选和搜索方法实现
+  setFilterOptions: (options) => set((state) => {
+    const newFilterOptions = { ...state.filterOptions, ...options };
+    const newFilteredTasks = filterTasks(state.tasks, newFilterOptions);
+    return {
+      filterOptions: newFilterOptions,
+      filteredTasks: newFilteredTasks
+    };
+  }),
+
+  clearFilters: () => set((state) => ({
+    filterOptions: {},
+    filteredTasks: state.tasks
+  })),
+
+  applyFilters: () => set((state) => ({
+    filteredTasks: filterTasks(state.tasks, state.filterOptions)
   })),
 }));
 
