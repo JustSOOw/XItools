@@ -137,3 +137,13 @@ dist
 
 
 .cursor/*
+
+# Prisma
+# 忽略 Prisma 生成的查询引擎二进制文件
+**/generated/
+**/query_engine-*
+**/*.dll.node
+**/*.tmp*
+# 保留 schema.prisma 和迁移文件
+!**/schema.prisma
+!**/migrations/
