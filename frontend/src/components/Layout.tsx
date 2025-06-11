@@ -1,6 +1,7 @@
 import React, { ReactNode, useState } from 'react';
 import classNames from 'classnames';
 import ThemeToggle from './ThemeToggle';
+import useTaskStore, { ViewType } from '../store/taskStore';
 
 export interface LayoutProps {
   children: ReactNode;
@@ -9,6 +10,10 @@ export interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, className }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  // 获取当前视图状态
+  const currentView = useTaskStore(state => state.currentView);
+  const setCurrentView = useTaskStore(state => state.setCurrentView);
   
   return (
     <div className="flex h-screen overflow-hidden bg-background p-4 gap-4">
@@ -45,33 +50,38 @@ const Layout: React.FC<LayoutProps> = ({ children, className }) => {
         {/* 导航菜单 */}
         <nav className="flex-1 overflow-y-auto py-2">
           <ul className="space-y-2 px-3">
-            <SidebarItem 
+            <SidebarItem
               icon={
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path d="M2 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1H3a1 1 0 01-1-1V4zM8 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1H9a1 1 0 01-1-1V4zM15 3a1 1 0 00-1 1v12a1 1 0 001 1h2a1 1 0 001-1V4a1 1 0 00-1-1h-2z" />
                 </svg>
-              } 
-              label="看板" 
-              isActive={true} 
-              isCollapsed={isSidebarCollapsed} 
+              }
+              label="看板"
+              isActive={currentView === 'board'}
+              isCollapsed={isSidebarCollapsed}
+              onClick={() => setCurrentView('board')}
             />
-            <SidebarItem 
+            <SidebarItem
               icon={
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
                 </svg>
-              } 
-              label="列表" 
-              isCollapsed={isSidebarCollapsed} 
+              }
+              label="列表"
+              isActive={currentView === 'list'}
+              isCollapsed={isSidebarCollapsed}
+              onClick={() => setCurrentView('list')}
             />
-            <SidebarItem 
+            <SidebarItem
               icon={
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
                 </svg>
-              } 
-              label="日历" 
-              isCollapsed={isSidebarCollapsed} 
+              }
+              label="日历"
+              isActive={currentView === 'calendar'}
+              isCollapsed={isSidebarCollapsed}
+              onClick={() => setCurrentView('calendar')}
             />
             <SidebarItem 
               icon={

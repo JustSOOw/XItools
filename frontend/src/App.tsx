@@ -33,6 +33,8 @@ import ColumnDragOverlay from './components/ColumnDragOverlay';
 import { BoardColorPicker } from './components';
 import SearchBox from './components/SearchBox';
 import TaskFilter from './components/TaskFilter';
+import ListView from './components/ListView';
+import CalendarView from './components/CalendarView';
 
 import useMcpConnection from './hooks/useMcpConnection';
 import useTaskStore from './store/taskStore';
@@ -118,12 +120,14 @@ function App() {
   const moveTask = useTaskStore(state => state.moveTask);
   const reorderTasksInColumn = useTaskStore(state => state.reorderTasksInColumn);
 
+  // 视图状态
+  const currentView = useTaskStore(state => state.currentView);
+
   // 筛选和搜索状态
   const filterOptions = useTaskStore(state => state.filterOptions);
   const filteredTasks = useTaskStore(state => state.filteredTasks);
   const setFilterOptions = useTaskStore(state => state.setFilterOptions);
   const clearFilters = useTaskStore(state => state.clearFilters);
-  const applyFilters = useTaskStore(state => state.applyFilters);
 
   // 配置拖拽传感器
   const sensors = useSensors(
@@ -587,6 +591,113 @@ function App() {
   const activeTask = activeTaskId ? tasks.find(task => task.id === activeTaskId) : null;
   const activeColumn = activeColumnId ? columns.find(col => col.id === activeColumnId) : null;
 
+  // 渲染视图内容
+  const renderViewContent = () => {
+    switch (currentView) {
+      case 'list':
+        return (
+          <ListView
+            tasks={displayTasks}
+            columns={columns}
+            onTaskClick={handleTaskClick}
+            onTaskUpdate={(taskId, updates) => {
+              // 通过MCP服务更新任务
+              mcpService.updateTask(taskId, updates).catch(error => {
+                console.error('更新任务失败:', error);
+                setError('更新任务失败，请重试');
+              });
+            }}
+            onTaskDelete={handleTaskDelete}
+            onTaskColorChange={handleTaskColorChange}
+          />
+        );
+
+      case 'calendar':
+        return (
+          <CalendarView
+            tasks={displayTasks}
+            columns={columns}
+            onTaskClick={handleTaskClick}
+            onTaskUpdate={(taskId, updates) => {
+              // 通过MCP服务更新任务
+              mcpService.updateTask(taskId, updates).catch(error => {
+                console.error('更新任务失败:', error);
+                setError('更新任务失败，请重试');
+              });
+            }}
+          />
+        );
+
+      case 'board':
+      default:
+        // 看板视图（原有的看板内容）
+        return columns.length > 0 ? (
+          <div className="flex min-w-max gap-1">
+            <SortableContext
+              items={columns.map(col => col.id)}
+              strategy={horizontalListSortingStrategy}
+            >
+              {columns.map((column) => {
+                const columnTasks = tasksByColumn[column.id] || [];
+                const taskIds = columnTasks.map(task => task.id);
+                const sortableItems = taskIds;
+
+                return (
+                  <DraggableColumn
+                    key={column.id}
+                    column={column}
+                    taskIds={taskIds}
+                    onAddCard={() => {
+                      setNewTask({...newTask, status: column.id});
+                      setIsCreateModalOpen(true);
+                    }}
+                    onTitleEdit={(newTitle) => handleUpdateColumnTitle(column.id, newTitle)}
+                    onDelete={() => handleDeleteColumn(column.id)}
+                    onColorChange={(color) => handleColumnColorChange(column.id, color)}
+                    onSort={(sortOption) => handleColumnSort(column.id, sortOption)}
+                    isDeletable={true}
+                    isEditable={true}
+                    isDragging={activeColumnId === column.id}
+                    isDraggingTask={!!activeTaskId}
+                    isColumnDragging={!!activeColumnId}
+                  >
+                    <SortableContext
+                      items={sortableItems}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {columnTasks.map(task => (
+                        <div key={task.id} className="mb-1.5">
+                          <DraggableTaskCard
+                            task={task}
+                            onClick={handleTaskClick}
+                            isDragging={activeTaskId === task.id}
+                            onColorChange={(color) => handleTaskColorChange(task.id, color)}
+                            onDelete={() => handleTaskDelete(task.id)}
+                          />
+                        </div>
+                      ))}
+                    </SortableContext>
+                  </DraggableColumn>
+                );
+              })}
+            </SortableContext>
+
+            {/* 添加新列按钮 */}
+            <div className="ml-1">
+              <AddColumnButton onAdd={handleAddColumn} />
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-text-secondary mb-4">暂无看板列</p>
+              <AddColumnButton onAdd={handleAddColumn} />
+            </div>
+          </div>
+        );
+    }
+  };
+
 
 
 
@@ -758,79 +869,18 @@ function App() {
             <p className="ml-2 text-text-secondary">加载中...</p>
           </div>
         ) : (
-          /* 看板内容区 */
-          <div className="flex-1 p-4">
-            <div className="modern-container h-full board-content">
-              <div className="h-full overflow-auto p-6">
-            {columns.length > 0 ? (
-              <div className="flex min-w-max gap-1">
-                <SortableContext
-                  items={columns.map(col => col.id)}
-                  strategy={horizontalListSortingStrategy}
-                >
-                  {columns.map((column) => {
-                    const columnTasks = tasksByColumn[column.id] || [];
-                    const taskIds = columnTasks.map(task => task.id);
-
-                    // 直接使用taskIds，空列时为空数组
-                    const sortableItems = taskIds;
-
-                    return (
-                      <DraggableColumn
-                        key={column.id}
-                        column={column}
-                        taskIds={taskIds}
-                        onAddCard={() => {
-                          setNewTask({...newTask, status: column.id});
-                          setIsCreateModalOpen(true);
-                        }}
-                        onTitleEdit={(newTitle) => handleUpdateColumnTitle(column.id, newTitle)}
-                        onDelete={() => handleDeleteColumn(column.id)}
-                        onColorChange={(color) => handleColumnColorChange(column.id, color)}
-                        onSort={(sortOption) => handleColumnSort(column.id, sortOption)}
-                        isDeletable={true}
-                        isEditable={true}
-                        isDragging={activeColumnId === column.id}
-                        isDraggingTask={!!activeTaskId}
-                        isColumnDragging={!!activeColumnId}
-                      >
-                        {/* 为每个列创建独立的SortableContext - 即使是空列也需要 */}
-                        <SortableContext
-                          items={sortableItems}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          {columnTasks.map(task => (
-                            <div key={task.id} className="mb-1.5">
-                              <DraggableTaskCard
-                                task={task}
-                                onClick={handleTaskClick}
-                                isDragging={activeTaskId === task.id}
-                                onColorChange={(color) => handleTaskColorChange(task.id, color)}
-                                onDelete={() => handleTaskDelete(task.id)}
-                              />
-                            </div>
-                          ))}
-                        </SortableContext>
-                      </DraggableColumn>
-                    );
-                  })}
-                </SortableContext>
-
-                {/* 添加新列按钮 */}
-                <div className="ml-1">
-                  <AddColumnButton onAdd={handleAddColumn} />
+          <div className="flex-1 p-4 flex flex-col min-h-0">
+            {currentView === 'board' ? (
+              <div className="modern-container h-full board-content">
+                <div className="h-full overflow-x-auto overflow-y-hidden p-6 custom-scrollbar">
+                  {renderViewContent()}
                 </div>
               </div>
             ) : (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center">
-                  <p className="text-text-secondary mb-4">暂无看板列</p>
-                  <AddColumnButton onAdd={handleAddColumn} />
-                </div>
+              <div className="flex-1 min-h-0">
+                {renderViewContent()}
               </div>
             )}
-              </div>
-            </div>
           </div>
         )}
         </div>

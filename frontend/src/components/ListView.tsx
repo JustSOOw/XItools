@@ -1,278 +1,410 @@
 /*
- * 列表视图组件 - 以表格形式展示任务列表
- * 支持排序、筛选和快速操作
+ * 列表视图组件 - 以表格形式展示任务
+ * 参考Asana、ClickUp等应用的列表视图设计
+ * 提供紧凑的表格布局，支持排序和批量操作
  */
 
 import React, { useState, useMemo } from 'react';
 import classNames from 'classnames';
 import { Task } from '../types/Task';
 import { BoardColumn } from '../store/taskStore';
+import Button from './Button';
 
 interface ListViewProps {
   tasks: Task[];
   columns: BoardColumn[];
   onTaskClick: (taskId: string) => void;
+  onTaskUpdate: (taskId: string, updates: Partial<Task>) => void;
   onTaskDelete: (taskId: string) => void;
   onTaskColorChange: (taskId: string, color: string) => void;
   className?: string;
 }
 
-type SortField = 'title' | 'status' | 'priority' | 'assignee' | 'createdAt' | 'updatedAt';
+// 排序选项
+type SortField = 'title' | 'status' | 'priority' | 'assignee' | 'dueDate' | 'createdAt';
 type SortDirection = 'asc' | 'desc';
+
+interface SortConfig {
+  field: SortField;
+  direction: SortDirection;
+}
+
+// 优先级映射
+const priorityOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
+const priorityLabels = { 'High': '高', 'Medium': '中', 'Low': '低' };
+const priorityColors = { 
+  'High': 'text-red-600 bg-red-50', 
+  'Medium': 'text-yellow-600 bg-yellow-50', 
+  'Low': 'text-green-600 bg-green-50' 
+};
+
+// 格式化日期
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('zh-CN', {
+    month: 'short',
+    day: 'numeric',
+  });
+};
 
 const ListView: React.FC<ListViewProps> = ({
   tasks,
   columns,
   onTaskClick,
+  onTaskUpdate,
   onTaskDelete,
   onTaskColorChange,
   className,
 }) => {
-  const [sortField, setSortField] = useState<SortField>('createdAt');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ field: 'createdAt', direction: 'desc' });
+  const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
 
-  // 获取状态名称映射
-  const statusMap = useMemo(() => {
-    return columns.reduce((map, column) => {
-      map[column.id] = column.name;
-      return map;
+
+
+  // 获取列名映射
+  const columnMap = useMemo(() => {
+    return columns.reduce((acc, col) => {
+      acc[col.id] = col.name;
+      return acc;
     }, {} as Record<string, string>);
   }, [columns]);
 
-  // 排序后的任务列表
+  // 排序任务
   const sortedTasks = useMemo(() => {
-    return [...tasks].sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+    const sorted = [...tasks].sort((a, b) => {
+      const { field, direction } = sortConfig;
+      let aValue: any = a[field];
+      let bValue: any = b[field];
 
-      switch (sortField) {
-        case 'title':
-          aValue = a.title.toLowerCase();
-          bValue = b.title.toLowerCase();
-          break;
-        case 'status':
-          aValue = statusMap[a.status] || a.status;
-          bValue = statusMap[b.status] || b.status;
-          break;
+      // 特殊处理不同字段的排序
+      switch (field) {
         case 'priority':
-          const priorityOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
           aValue = priorityOrder[a.priority as keyof typeof priorityOrder] || 0;
           bValue = priorityOrder[b.priority as keyof typeof priorityOrder] || 0;
           break;
-        case 'assignee':
-          aValue = a.assignee || '';
-          bValue = b.assignee || '';
+        case 'status':
+          aValue = columnMap[a.status] || a.status;
+          bValue = columnMap[b.status] || b.status;
           break;
+        case 'dueDate':
         case 'createdAt':
-          aValue = new Date(a.createdAt || '').getTime();
-          bValue = new Date(b.createdAt || '').getTime();
-          break;
-        case 'updatedAt':
-          aValue = new Date(a.updatedAt || '').getTime();
-          bValue = new Date(b.updatedAt || '').getTime();
+          aValue = aValue ? new Date(aValue).getTime() : 0;
+          bValue = bValue ? new Date(bValue).getTime() : 0;
           break;
         default:
-          return 0;
+          aValue = aValue || '';
+          bValue = bValue || '';
       }
 
-      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      if (aValue < bValue) return direction === 'asc' ? -1 : 1;
+      if (aValue > bValue) return direction === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [tasks, sortField, sortDirection, statusMap]);
+
+    return sorted;
+  }, [tasks, sortConfig, columnMap]);
 
   // 处理排序
   const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    setSortConfig(prev => ({
+      field,
+      direction: prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  // 处理全选
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedTasks(new Set(tasks.map(task => task.id)));
     } else {
-      setSortField(field);
-      setSortDirection('asc');
+      setSelectedTasks(new Set());
     }
   };
 
-  // 获取优先级显示
-  const getPriorityDisplay = (priority?: string) => {
-    switch (priority) {
-      case 'High':
-        return { text: '高', color: 'text-red-600 bg-red-50' };
-      case 'Medium':
-        return { text: '中', color: 'text-yellow-600 bg-yellow-50' };
-      case 'Low':
-        return { text: '低', color: 'text-green-600 bg-green-50' };
-      default:
-        return { text: '-', color: 'text-text-secondary bg-background' };
+  // 处理单个任务选择
+  const handleTaskSelect = (taskId: string, checked: boolean) => {
+    const newSelected = new Set(selectedTasks);
+    if (checked) {
+      newSelected.add(taskId);
+    } else {
+      newSelected.delete(taskId);
     }
+    setSelectedTasks(newSelected);
   };
 
-  // 格式化日期
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  // 处理状态更改
+  const handleStatusChange = (taskId: string, newStatus: string) => {
+    onTaskUpdate(taskId, { status: newStatus });
+  };
+
+  // 处理优先级更改
+  const handlePriorityChange = (taskId: string, newPriority: string) => {
+    onTaskUpdate(taskId, { priority: newPriority as any });
   };
 
   // 渲染排序图标
   const renderSortIcon = (field: SortField) => {
-    if (sortField !== field) {
+    if (sortConfig.field !== field) {
       return (
-        <svg className="h-4 w-4 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
         </svg>
       );
     }
 
-    return sortDirection === 'asc' ? (
-      <svg className="h-4 w-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    return sortConfig.direction === 'asc' ? (
+      <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
       </svg>
     ) : (
-      <svg className="h-4 w-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
       </svg>
     );
   };
 
+  const isAllSelected = tasks.length > 0 && selectedTasks.size === tasks.length;
+  const isIndeterminate = selectedTasks.size > 0 && selectedTasks.size < tasks.length;
+
   return (
-    <div className={classNames('bg-surface border border-border rounded-lg overflow-hidden', className)}>
-      {/* 表格头部 */}
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-background border-b border-border">
+    <div className={classNames('flex flex-col h-full modern-container', className)}>
+      <div className="flex flex-col h-full p-6 min-h-0">
+        {/* 批量操作工具栏 */}
+        {selectedTasks.size > 0 && (
+          <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 mb-4 flex items-center justify-between flex-shrink-0">
+            <span className="text-sm text-primary font-medium">
+              已选择 {selectedTasks.size} 个任务
+            </span>
+            <div className="flex items-center space-x-2">
+              <Button variant="ghost" size="sm" onClick={() => setSelectedTasks(new Set())}>
+                取消选择
+              </Button>
+              <Button variant="danger" size="sm">
+                批量删除
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* 表格容器 */}
+        <div className="flex-1 min-h-0 overflow-hidden rounded-lg border border-border bg-surface">
+          <div className="h-full overflow-auto">
+            <table className="w-full border-collapse">
+            {/* 表头 */}
+            <thead className="sticky top-0 bg-surface border-b border-border z-10">
             <tr>
-              <th
-                className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                onClick={() => handleSort('title')}
-              >
-                <div className="flex items-center space-x-1">
-                  <span>标题</span>
-                  {renderSortIcon('title')}
-                </div>
+              {/* 选择列 */}
+              <th className="w-12 p-3 text-left">
+                <input
+                  type="checkbox"
+                  checked={isAllSelected}
+                  ref={input => {
+                    if (input) input.indeterminate = isIndeterminate;
+                  }}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                  className="rounded border-border focus:ring-primary"
+                />
               </th>
-              <th
-                className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                onClick={() => handleSort('status')}
-              >
-                <div className="flex items-center space-x-1">
+
+              {/* 任务标题 */}
+              <th className="p-3 text-left min-w-[300px]">
+                <button
+                  onClick={() => handleSort('title')}
+                  className="flex items-center space-x-1 text-sm font-medium text-text-primary hover:text-primary"
+                >
+                  <span>任务标题</span>
+                  {renderSortIcon('title')}
+                </button>
+              </th>
+
+              {/* 状态 */}
+              <th className="p-3 text-left w-32">
+                <button
+                  onClick={() => handleSort('status')}
+                  className="flex items-center space-x-1 text-sm font-medium text-text-primary hover:text-primary"
+                >
                   <span>状态</span>
                   {renderSortIcon('status')}
-                </div>
+                </button>
               </th>
-              <th
-                className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                onClick={() => handleSort('priority')}
-              >
-                <div className="flex items-center space-x-1">
+
+              {/* 优先级 */}
+              <th className="p-3 text-left w-24">
+                <button
+                  onClick={() => handleSort('priority')}
+                  className="flex items-center space-x-1 text-sm font-medium text-text-primary hover:text-primary"
+                >
                   <span>优先级</span>
                   {renderSortIcon('priority')}
-                </div>
+                </button>
               </th>
-              <th
-                className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                onClick={() => handleSort('assignee')}
-              >
-                <div className="flex items-center space-x-1">
+
+              {/* 负责人 */}
+              <th className="p-3 text-left w-32">
+                <button
+                  onClick={() => handleSort('assignee')}
+                  className="flex items-center space-x-1 text-sm font-medium text-text-primary hover:text-primary"
+                >
                   <span>负责人</span>
                   {renderSortIcon('assignee')}
-                </div>
+                </button>
               </th>
-              <th
-                className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                onClick={() => handleSort('createdAt')}
-              >
-                <div className="flex items-center space-x-1">
-                  <span>创建时间</span>
-                  {renderSortIcon('createdAt')}
-                </div>
+
+              {/* 截止日期 */}
+              <th className="p-3 text-left w-32">
+                <button
+                  onClick={() => handleSort('dueDate')}
+                  className="flex items-center space-x-1 text-sm font-medium text-text-primary hover:text-primary"
+                >
+                  <span>截止日期</span>
+                  {renderSortIcon('dueDate')}
+                </button>
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                操作
+
+              {/* 操作 */}
+              <th className="p-3 text-left w-24">
+                <span className="text-sm font-medium text-text-primary">操作</span>
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
-            {sortedTasks.map((task) => {
-              const priorityDisplay = getPriorityDisplay(task.priority);
-              
-              return (
-                <tr
-                  key={task.id}
-                  className="hover:bg-background transition-colors cursor-pointer"
-                  onClick={() => onTaskClick(task.id)}
-                >
-                  <td className="px-4 py-3">
-                    <div className="flex items-center">
-                      {task.color && (
-                        <div
-                          className="w-3 h-3 rounded-full mr-3 flex-shrink-0"
-                          style={{ backgroundColor: task.color }}
-                        />
-                      )}
-                      <div>
-                        <div className="text-sm font-medium text-text-primary">{task.title}</div>
-                        {task.description && (
-                          <div className="text-xs text-text-secondary mt-1 line-clamp-2">
-                            {task.description}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                      {statusMap[task.status] || task.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={classNames('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', priorityDisplay.color)}>
-                      {priorityDisplay.text}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-text-primary">
-                    {task.assignee || '-'}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">
-                    {formatDate(task.createdAt)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onTaskDelete(task.id);
-                        }}
-                        className="text-text-secondary hover:text-red-600 transition-colors"
-                        title="删除任务"
-                      >
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
 
-      {/* 空状态 */}
-      {sortedTasks.length === 0 && (
-        <div className="text-center py-12">
-          <svg className="mx-auto h-12 w-12 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-          <h3 className="mt-2 text-sm font-medium text-text-primary">暂无任务</h3>
-          <p className="mt-1 text-sm text-text-secondary">开始创建您的第一个任务吧</p>
+          {/* 表体 */}
+          <tbody>
+            {sortedTasks.map((task) => (
+              <tr
+                key={task.id}
+                className={classNames(
+                  'border-b border-border hover:bg-surface/50 transition-colors',
+                  {
+                    'bg-primary/5': selectedTasks.has(task.id),
+                  }
+                )}
+              >
+                {/* 选择框 */}
+                <td className="p-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedTasks.has(task.id)}
+                    onChange={(e) => handleTaskSelect(task.id, e.target.checked)}
+                    className="rounded border-border focus:ring-primary"
+                  />
+                </td>
+
+                {/* 任务标题 */}
+                <td className="p-3">
+                  <div
+                    className="cursor-pointer"
+                    onClick={() => onTaskClick(task.id)}
+                  >
+                    <div className="font-medium text-text-primary hover:text-primary transition-colors">
+                      {task.title}
+                    </div>
+                    {task.description && (
+                      <div className="text-sm text-text-secondary mt-1 line-clamp-1">
+                        {task.description}
+                      </div>
+                    )}
+                  </div>
+                </td>
+
+                {/* 状态 */}
+                <td className="p-3">
+                  <select
+                    value={task.status}
+                    onChange={(e) => handleStatusChange(task.id, e.target.value)}
+                    className="text-sm border border-border rounded px-2 py-1 bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  >
+                    {columns.map(column => (
+                      <option key={column.id} value={column.id}>
+                        {column.name}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+
+                {/* 优先级 */}
+                <td className="p-3">
+                  {task.priority ? (
+                    <select
+                      value={task.priority}
+                      onChange={(e) => handlePriorityChange(task.id, e.target.value)}
+                      className={classNames(
+                        'text-xs px-2 py-1 rounded-full border-0 font-medium',
+                        priorityColors[task.priority as keyof typeof priorityColors]
+                      )}
+                    >
+                      <option value="High">高</option>
+                      <option value="Medium">中</option>
+                      <option value="Low">低</option>
+                    </select>
+                  ) : (
+                    <select
+                      value=""
+                      onChange={(e) => handlePriorityChange(task.id, e.target.value)}
+                      className="text-xs px-2 py-1 rounded border border-border bg-background"
+                    >
+                      <option value="">未设置</option>
+                      <option value="High">高</option>
+                      <option value="Medium">中</option>
+                      <option value="Low">低</option>
+                    </select>
+                  )}
+                </td>
+
+                {/* 负责人 */}
+                <td className="p-3">
+                  <span className="text-sm text-text-secondary">
+                    {task.assignee || '-'}
+                  </span>
+                </td>
+
+                {/* 截止日期 */}
+                <td className="p-3">
+                  <span className="text-sm text-text-secondary">
+                    {task.dueDate ? formatDate(task.dueDate) : '-'}
+                  </span>
+                </td>
+
+                {/* 操作 */}
+                <td className="p-3">
+                  <div className="flex items-center space-x-1">
+                    <button
+                      onClick={() => onTaskClick(task.id)}
+                      className="p-1 text-text-secondary hover:text-primary transition-colors"
+                      title="编辑"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => onTaskDelete(task.id)}
+                      className="p-1 text-text-secondary hover:text-red-500 transition-colors"
+                      title="删除"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            </tbody>
+            </table>
+
+            {/* 空状态 */}
+            {tasks.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12">
+                <svg className="w-12 h-12 text-text-secondary mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                <p className="text-text-secondary">暂无任务</p>
+              </div>
+            )}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

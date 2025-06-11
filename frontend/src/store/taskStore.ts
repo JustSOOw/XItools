@@ -2,7 +2,7 @@
  * @Author: Furdow wang22338014@gmail.com
  * @Date: 2025-05-30 18:27:46
  * @LastEditors: Furdow wang22338014@gmail.com
- * @LastEditTime: 2025-06-11 17:48:55
+ * @LastEditTime: 2025-06-11 18:00:54
  * @FilePath: \XItools\frontend\src\store\taskStore.ts
  * @Description: 
  * 
@@ -13,6 +13,9 @@ import { Task } from '../types/Task';
 
 // 定义排序选项类型
 export type SortOption = 'manual' | 'priority' | 'created_asc' | 'created_desc' | 'title_asc' | 'title_desc' | 'due_date';
+
+// 定义视图类型
+export type ViewType = 'board' | 'list' | 'calendar';
 
 // 定义筛选选项类型
 export interface FilterOptions {
@@ -49,6 +52,9 @@ interface TaskState {
   activeTaskId: string | null;
   activeColumnId: string | null;
 
+  // 视图状态
+  currentView: ViewType;
+
   // 筛选和搜索状态
   filterOptions: FilterOptions;
   filteredTasks: Task[]; // 筛选后的任务列表
@@ -74,6 +80,9 @@ interface TaskState {
   // 列排序方法
   setColumnSort: (columnId: string, sortOption: SortOption) => void;
   clearColumnSort: (columnId: string) => void;
+
+  // 视图切换方法
+  setCurrentView: (view: ViewType) => void;
 
   // 筛选和搜索方法
   setFilterOptions: (options: Partial<FilterOptions>) => void;
@@ -136,6 +145,9 @@ const useTaskStore = create<TaskState>((set, get) => ({
   error: null,
   activeTaskId: null,
   activeColumnId: null,
+
+  // 视图初始状态
+  currentView: 'board',
 
   // 筛选和搜索初始状态
   filterOptions: {},
@@ -272,6 +284,9 @@ const useTaskStore = create<TaskState>((set, get) => ({
   applyFilters: () => set((state) => ({
     filteredTasks: filterTasks(state.tasks, state.filterOptions)
   })),
+
+  // 视图切换方法实现
+  setCurrentView: (view) => set({ currentView: view }),
 }));
 
 export default useTaskStore; 
