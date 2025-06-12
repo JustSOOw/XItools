@@ -35,6 +35,7 @@ import SearchBox from './components/SearchBox';
 import TaskFilter from './components/TaskFilter';
 import ListView from './components/ListView';
 import CalendarView from './components/CalendarView';
+import { SkeletonCard, SkeletonList, SkeletonCalendar } from './components/ui/Loading';
 
 import useMcpConnection from './hooks/useMcpConnection';
 import useTaskStore from './store/taskStore';
@@ -864,9 +865,36 @@ function App() {
         
         {/* 主要内容区 */}
         {isLoading ? (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            <p className="ml-2 text-text-secondary">加载中...</p>
+          <div className="flex-1 p-4 flex flex-col min-h-0">
+            {currentView === 'board' ? (
+              <div className="modern-container h-full board-content">
+                <div className="h-full overflow-x-auto overflow-y-hidden p-6">
+                  <div className="flex space-x-4 h-full">
+                    {/* 渲染3个列的骨架屏 */}
+                    {[1, 2, 3].map((index) => (
+                      <div key={index} className="flex-shrink-0 w-80">
+                        <div className="bg-surface rounded-card p-4 h-full">
+                          <div className="h-6 bg-text-secondary/20 rounded-md w-24 mb-4 animate-pulse"></div>
+                          <div className="space-y-3">
+                            <SkeletonCard />
+                            <SkeletonCard />
+                            <SkeletonCard />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : currentView === 'list' ? (
+              <div className="flex-1 min-h-0">
+                <SkeletonList rows={8} />
+              </div>
+            ) : (
+              <div className="flex-1 min-h-0">
+                <SkeletonCalendar />
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex-1 p-4 flex flex-col min-h-0">
