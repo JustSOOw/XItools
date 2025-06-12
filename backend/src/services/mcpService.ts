@@ -79,7 +79,7 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
           },
           "status": {
             "type": "string",
-            "description": "Current status of the task (e.g., 'To Do', 'In Progress', 'Done') - 通常对应看板的列名"
+            "description": "任务状态，必须使用列UUID。可用列: 待办(41c632df-4c6e-470b-b1a5-bef81432a6b0), 进行中(db34f38c-5cc1-470d-9778-0b8edaaad762), 已完成(ae7d362b-a6b1-46c7-bca7-2b57fd4f9de7)"
           },
           "priority": {
             "type": "string",
@@ -155,7 +155,7 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
    * 此工具接收LLM解析PRD后生成的任务列表，验证数据格式，将任务存入数据库，
    * 并通过Socket.IO广播tasks_added事件，通知前端有新任务添加。
    */
-  mcpServer.tool("submit_task_dataset", "提交从PRD解析出的结构化任务数据集，服务器将处理并存储这些任务。状态字段支持中文名称（待办、进行中、已完成）或列ID，工具会自动映射为正确的列ID。",
+  mcpServer.tool("submit_task_dataset", "提交从PRD解析出的结构化任务数据集，服务器将处理并存储这些任务。状态字段必须使用列UUID: 待办(41c632df-4c6e-470b-b1a5-bef81432a6b0), 进行中(db34f38c-5cc1-470d-9778-0b8edaaad762), 已完成(ae7d362b-a6b1-46c7-bca7-2b57fd4f9de7)。",
     {
       tasks: z.array(z.object({
         title: z.string(),
@@ -177,46 +177,12 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
       const createdTasks: any[] = [];
 
       try {
-        // 获取所有列用于状态映射
-        const columns = await columnService.getAllColumns();
-        console.log('获取到列:', columns.map(col => `${col.name} (${col.id})`));
-
-        // 创建状态映射表
-        const statusMapping: Record<string, string> = {};
-        for (const column of columns) {
-          // 将列ID映射到自己
-          statusMapping[column.id] = column.id;
-
-          // 根据列名创建中文映射
-          switch (column.name) {
-            case '待办':
-              statusMapping['待办'] = column.id;
-              statusMapping['todo'] = column.id;
-              statusMapping['To Do'] = column.id;
-              break;
-            case '进行中':
-              statusMapping['进行中'] = column.id;
-              statusMapping['in-progress'] = column.id;
-              statusMapping['In Progress'] = column.id;
-              break;
-            case '已完成':
-              statusMapping['已完成'] = column.id;
-              statusMapping['done'] = column.id;
-              statusMapping['Done'] = column.id;
-              break;
-          }
-        }
-
-        console.log('状态映射表:', statusMapping);
+        console.log('开始创建任务，任务数量:', tasks.length);
 
         // 使用事务确保数据一致性
         await prisma.$transaction(async (tx) => {
           for (const taskData of tasks) {
-            // 映射状态到正确的列ID
-            const mappedStatus = statusMapping[taskData.status] || taskData.status;
-            if (!statusMapping[taskData.status]) {
-              console.warn(`警告: 状态 "${taskData.status}" 没有找到对应的列，使用原值`);
-            }
+            console.log(`创建任务: "${taskData.title}" 状态: ${taskData.status}`);
 
             // 处理标签 - 将标签名称数组转换为Tag关系
             const tags = taskData.tags ? {
@@ -231,7 +197,7 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
               data: {
                 title: taskData.title,
                 description: taskData.description || '',
-                status: mappedStatus, // 使用映射后的状态
+                status: taskData.status, // 直接使用传入的状态UUID
                 priority: taskData.priority || null,
                 dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
                 assignee: taskData.assignee || null,
@@ -246,7 +212,7 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
               }
             });
 
-            console.log(`创建任务: "${task.title}" 状态: ${taskData.status} -> ${mappedStatus}`);
+            console.log(`任务创建成功: "${task.title}" 状态UUID: ${task.status}`);
             createdTasks.push(task);
           }
         });
