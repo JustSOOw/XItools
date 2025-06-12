@@ -176,6 +176,19 @@ exports.Prisma.MCPMessageScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.TaskHistoryScalarFieldEnum = {
+  id: 'id',
+  taskId: 'taskId',
+  action: 'action',
+  field: 'field',
+  oldValue: 'oldValue',
+  newValue: 'newValue',
+  description: 'description',
+  userId: 'userId',
+  userName: 'userName',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -197,7 +210,8 @@ exports.Prisma.ModelName = {
   Task: 'Task',
   Tag: 'Tag',
   MCPSession: 'MCPSession',
-  MCPMessage: 'MCPMessage'
+  MCPMessage: 'MCPMessage',
+  TaskHistory: 'TaskHistory'
 };
 
 /**

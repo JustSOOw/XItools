@@ -45,7 +45,7 @@ import useTaskStore from './store/taskStore';
 import mcpService from './services/mcpService';
 import columnService from './services/columnService';
 import { Task as TaskType, PartialTask } from './types/Task';
-import { testAxios } from './utils/testAxios';
+
 
 function App() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -69,12 +69,7 @@ function App() {
 
 
   
-  // 测试axios是否工作正常
-  useEffect(() => {
-    testAxios().then(result => {
-      console.log('Axios测试结果:', result);
-    });
-  }, []);
+
 
   // 加载列数据
   const loadColumns = async () => {

@@ -178,9 +178,11 @@ const useTaskStore = create<TaskState>((set, get) => ({
     return { tasks: updatedTasks, filteredTasks };
   }),
   
-  deleteTask: (taskId) => set((state) => ({
-    tasks: state.tasks.filter((task) => task.id !== taskId),
-  })),
+  deleteTask: (taskId) => set((state) => {
+    const updatedTasks = state.tasks.filter((task) => task.id !== taskId);
+    const filteredTasks = filterTasks(updatedTasks, state.filterOptions);
+    return { tasks: updatedTasks, filteredTasks };
+  }),
   
   setColumns: (columns) => set({ columns }),
   
@@ -203,8 +205,9 @@ const useTaskStore = create<TaskState>((set, get) => ({
       }
       return task;
     });
+    const filteredTasks = filterTasks(updatedTasks, state.filterOptions);
 
-    return { tasks: updatedTasks };
+    return { tasks: updatedTasks, filteredTasks };
   }),
 
   // 重新排序列内的任务
@@ -222,7 +225,8 @@ const useTaskStore = create<TaskState>((set, get) => ({
       }
       return task;
     });
-    return { tasks: updatedTasks };
+    const filteredTasks = filterTasks(updatedTasks, state.filterOptions);
+    return { tasks: updatedTasks, filteredTasks };
   }),
 
   // 列管理方法实现
