@@ -106,7 +106,7 @@ async function handleToolsList(request) {
     },
     {
       name: 'submit_task_dataset',
-      description: '提交从PRD解析出的结构化任务数据集，服务器将处理并存储这些任务',
+      description: '提交从PRD解析出的结构化任务数据集，服务器将处理并存储这些任务。状态字段支持中文名称（待办、进行中、已完成）或列ID，工具会自动映射为正确的列ID。',
       inputSchema: {
         type: 'object',
         properties: {
@@ -116,7 +116,10 @@ async function handleToolsList(request) {
               type: 'object',
               properties: {
                 title: { type: 'string' },
-                status: { type: 'string' },
+                status: {
+                  type: 'string',
+                  description: '任务状态，支持中文名称（待办、进行中、已完成）或列ID，会自动映射为正确的列ID'
+                },
                 description: { type: 'string' },
                 priority: { type: 'string', enum: ['High', 'Medium', 'Low'] },
                 tags: { type: 'array', items: { type: 'string' } }
