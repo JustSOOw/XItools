@@ -46,8 +46,7 @@ interface TaskState {
   columns: BoardColumn[];
   // 加载状态
   isLoading: boolean;
-  // 错误信息
-  error: string | null;
+
   // 拖拽状态
   activeTaskId: string | null;
   activeColumnId: string | null;
@@ -66,7 +65,6 @@ interface TaskState {
   deleteTask: (taskId: string) => void;
   setColumns: (columns: BoardColumn[]) => void;
   setLoading: (isLoading: boolean) => void;
-  setError: (error: string | null) => void;
   // 拖拽相关方法
   setActiveTaskId: (taskId: string | null) => void;
   setActiveColumnId: (columnId: string | null) => void;
@@ -142,7 +140,7 @@ const useTaskStore = create<TaskState>((set, get) => ({
   tasks: [],
   columns: [], // 改为空数组，从后端动态加载
   isLoading: false,
-  error: null,
+
   activeTaskId: null,
   activeColumnId: null,
 
@@ -187,8 +185,6 @@ const useTaskStore = create<TaskState>((set, get) => ({
   setColumns: (columns) => set({ columns }),
   
   setLoading: (isLoading) => set({ isLoading }),
-  
-  setError: (error) => set({ error }),
 
   // 拖拽相关方法实现
   setActiveTaskId: (taskId) => set({ activeTaskId: taskId }),

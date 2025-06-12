@@ -3,6 +3,7 @@ import { Task, TaskUpdate } from '../types/Task';
 import Modal, { ModalFooter } from './Modal';
 import mcpService from '../services/mcpService';
 import useTaskStore from '../store/taskStore';
+import { toast } from './ui/Toast';
 
 interface TaskDetailModalProps {
   isOpen: boolean;
@@ -46,6 +47,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
         }
       } catch (error) {
         console.error('获取任务详情失败:', error);
+        toast.error('获取任务详情失败，请重试');
       } finally {
         setIsLoading(false);
       }
@@ -70,9 +72,11 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
         setTask(updatedTask);
         // 更新完成后退出编辑模式
         setIsEditing(false);
+        toast.success('任务更新成功');
       }
     } catch (error) {
       console.error('更新任务失败:', error);
+      toast.error('更新任务失败，请重试');
     } finally {
       setIsSaving(false);
     }

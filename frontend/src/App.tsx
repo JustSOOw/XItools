@@ -36,6 +36,8 @@ import TaskFilter from './components/TaskFilter';
 import ListView from './components/ListView';
 import CalendarView from './components/CalendarView';
 import { SkeletonCard, SkeletonList, SkeletonCalendar } from './components/ui/Loading';
+import { toast } from './components/ui/Toast';
+import { ErrorBoundary, SimpleErrorFallback } from './components/ui/ErrorBoundary';
 
 import useMcpConnection from './hooks/useMcpConnection';
 import useTaskStore from './store/taskStore';
@@ -86,7 +88,12 @@ function App() {
         setColumns(defaultColumns);
       } catch (initError) {
         console.error('初始化默认列失败:', initError);
-        setError('加载看板列失败，请刷新页面重试');
+        toast.error('加载看板列失败，请刷新页面重试', {
+          action: {
+            label: '刷新',
+            onClick: () => window.location.reload(),
+          },
+        });
       }
     }
   };
@@ -106,7 +113,7 @@ function App() {
   const error = useTaskStore(state => state.error);
   const activeTaskId = useTaskStore(state => state.activeTaskId);
   const activeColumnId = useTaskStore(state => state.activeColumnId);
-  const setError = useTaskStore(state => state.setError);
+
   const setActiveTaskId = useTaskStore(state => state.setActiveTaskId);
   const setActiveColumnId = useTaskStore(state => state.setActiveColumnId);
   // const reorderTasksInColumn = useTaskStore(state => state.reorderTasksInColumn); // 暂时不使用乐观更新
@@ -213,7 +220,7 @@ function App() {
   // 创建任务
   const handleCreateTask = async () => {
     if (!newTask.title) {
-      setError('任务标题不能为空');
+      toast.error('任务标题不能为空');
       return;
     }
 
@@ -225,9 +232,15 @@ function App() {
         description: '',
         status: 'todo',
       });
+      toast.success('任务创建成功！');
     } catch (error) {
       console.error('创建任务失败:', error);
-      setError('创建任务失败，请稍后重试');
+      toast.error('创建任务失败，请稍后重试', {
+        action: {
+          label: '重试',
+          onClick: handleCreateTask,
+        },
+      });
     }
   };
 
@@ -307,7 +320,7 @@ function App() {
             await columnService.reorderColumns(columnIds);
           } catch (error) {
             console.error('重新排序列失败:', error);
-            setError('重新排序列失败');
+            toast.error('重新排序列失败');
             // 回滚本地状态
             setColumns(columns);
           }
@@ -374,7 +387,7 @@ function App() {
           mcpService.updateTask(activeId, { status: finalColumn })
             .catch((error) => {
               console.error('空列移动持久化失败:', error);
-              setError('任务保存失败，但界面已更新');
+              toast.warning('任务保存失败，但界面已更新');
             });
           return;
         }
@@ -438,12 +451,12 @@ function App() {
         .catch((error) => {
           console.error('任务拖拽持久化失败:', error);
           // 持久化失败时，可以选择显示警告但不回滚UI
-          setError('任务保存失败，但界面已更新');
+          toast.warning('任务保存失败，但界面已更新');
         });
 
     } catch (error) {
       console.error('任务拖拽失败:', error);
-      setError('任务移动失败');
+      toast.error('任务移动失败');
       // 失败时恢复到拖拽开始时的状态
       if (dragStartState) {
         setTasks(dragStartState.tasks);
@@ -463,9 +476,15 @@ function App() {
         order: newOrder,
       });
       addColumn(newColumn);
+      toast.success('列添加成功');
     } catch (error) {
       console.error('添加列失败:', error);
-      setError('添加列失败，请重试');
+      toast.error('添加列失败，请重试', {
+        action: {
+          label: '重试',
+          onClick: () => handleAddColumn(name),
+        },
+      });
     }
   };
 
@@ -475,9 +494,15 @@ function App() {
         name: newTitle,
       });
       updateColumn(columnId, updatedColumn);
+      toast.success('列标题更新成功');
     } catch (error) {
       console.error('更新列标题失败:', error);
-      setError('更新列标题失败，请重试');
+      toast.error('更新列标题失败，请重试', {
+        action: {
+          label: '重试',
+          onClick: () => handleUpdateColumnTitle(columnId, newTitle),
+        },
+      });
     }
   };
 
@@ -485,9 +510,15 @@ function App() {
     try {
       await columnService.deleteColumn(columnId);
       deleteColumn(columnId);
+      toast.success('列删除成功');
     } catch (error) {
       console.error('删除列失败:', error);
-      setError(error instanceof Error ? error.message : '删除列失败，请重试');
+      toast.error(error instanceof Error ? error.message : '删除列失败，请重试', {
+        action: {
+          label: '重试',
+          onClick: () => handleDeleteColumn(columnId),
+        },
+      });
     }
   };
 
@@ -495,9 +526,10 @@ function App() {
     try {
       const updatedColumn = await columnService.updateColumn(columnId, { color });
       updateColumn(columnId, updatedColumn);
+      toast.success('列颜色更新成功');
     } catch (error) {
       console.error('更新列颜色失败:', error);
-      setError('更新列颜色失败，请重试');
+      toast.error('更新列颜色失败，请重试');
     }
   };
 
@@ -511,7 +543,7 @@ function App() {
       // WebSocket监听器会自动处理task_updated事件并更新本地状态
     } catch (error) {
       console.error('更新任务颜色失败:', error);
-      setError('更新任务颜色失败，请重试');
+      toast.error('更新任务颜色失败，请重试');
     }
   };
 
@@ -521,9 +553,15 @@ function App() {
       // 重新加载任务列表
       const updatedTasks = await mcpService.listTasks();
       setTasks(updatedTasks);
+      toast.success('任务删除成功');
     } catch (error) {
       console.error('删除任务失败:', error);
-      setError('删除任务失败，请重试');
+      toast.error('删除任务失败，请重试', {
+        action: {
+          label: '重试',
+          onClick: () => handleTaskDelete(taskId),
+        },
+      });
     }
   };
 
@@ -545,7 +583,7 @@ function App() {
 
     } catch (error) {
       console.error('列排序失败:', error);
-      setError('列排序失败，请重试');
+      toast.error('列排序失败，请重试');
     }
   };
 
@@ -605,7 +643,7 @@ function App() {
               // 通过MCP服务更新任务
               mcpService.updateTask(taskId, updates).catch(error => {
                 console.error('更新任务失败:', error);
-                setError('更新任务失败，请重试');
+                toast.error('更新任务失败，请重试');
               });
             }}
             onTaskDelete={handleTaskDelete}
@@ -623,7 +661,7 @@ function App() {
               // 通过MCP服务更新任务
               mcpService.updateTask(taskId, updates).catch(error => {
                 console.error('更新任务失败:', error);
-                setError('更新任务失败，请重试');
+                toast.error('更新任务失败，请重试');
               });
             }}
           />
@@ -843,18 +881,7 @@ function App() {
             </div>
           </header>
         
-        {/* 错误提示 */}
-        {error && (
-          <div className="modern-card mx-4 mt-4 bg-red-50 border border-red-500 text-red-700 px-4 py-2 flex justify-between items-center">
-            <p>{error}</p>
-          <button
-              className="text-sm underline hover:text-red-900"
-              onClick={() => setError(null)}
-          >
-              关闭
-          </button>
-          </div>
-        )}
+
 
         {/* 连接状态提示 */}
         {!isConnected && !error && (
@@ -862,7 +889,7 @@ function App() {
             <p>未连接到MCP服务，部分功能可能不可用</p>
           </div>
         )}
-        
+
         {/* 主要内容区 */}
         {isLoading ? (
           <div className="flex-1 p-4 flex flex-col min-h-0">
@@ -901,12 +928,16 @@ function App() {
             {currentView === 'board' ? (
               <div className="modern-container h-full board-content">
                 <div className="h-full overflow-x-auto overflow-y-hidden p-6 custom-scrollbar">
-                  {renderViewContent()}
+                  <ErrorBoundary fallback={SimpleErrorFallback}>
+                    {renderViewContent()}
+                  </ErrorBoundary>
                 </div>
               </div>
             ) : (
               <div className="flex-1 min-h-0">
-                {renderViewContent()}
+                <ErrorBoundary fallback={SimpleErrorFallback}>
+                  {renderViewContent()}
+                </ErrorBoundary>
               </div>
             )}
           </div>
