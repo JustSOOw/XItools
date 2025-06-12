@@ -115,7 +115,7 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
       )}
       style={{
         minHeight: '120px', // 最小高度
-        maxHeight: 'calc(100vh - 240px)', // 精确调整最大高度以匹配看板背景
+        maxHeight: 'calc(100vh - 210px)', // 精确调整最大高度以匹配看板背景
         background: color || 'var(--color-surface)',
       }}
       data-column-id={id}

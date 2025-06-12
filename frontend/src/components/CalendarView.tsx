@@ -358,9 +358,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({
             </div>
           )}
 
-            {/* 完全无任务的空状态 */}
+            {/* 完全无任务的空状态 - 添加蒙版遮盖背景日期 */}
             {tasks.length === 0 && (
-              <div className="absolute inset-0 flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm">
                 <SmartEmptyState
                   totalTasks={totalTasks}
                   displayTasks={tasks.length}
