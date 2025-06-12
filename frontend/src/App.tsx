@@ -38,6 +38,7 @@ import CalendarView from './components/CalendarView';
 import { SkeletonCard, SkeletonList, SkeletonCalendar } from './components/ui/Loading';
 import { toast } from './components/ui/Toast';
 import { ErrorBoundary, SimpleErrorFallback } from './components/ui/ErrorBoundary';
+import { EmptyTasks, EmptySearchResults, EmptyFilterResults } from './components/ui/EmptyState';
 
 import useMcpConnection from './hooks/useMcpConnection';
 import useTaskStore from './store/taskStore';
@@ -110,7 +111,7 @@ function App() {
   const tasks = useTaskStore(state => state.tasks);
   const columns = useTaskStore(state => state.columns);
   const isLoading = useTaskStore(state => state.isLoading);
-  const error = useTaskStore(state => state.error);
+
   const activeTaskId = useTaskStore(state => state.activeTaskId);
   const activeColumnId = useTaskStore(state => state.activeColumnId);
 
@@ -588,7 +589,7 @@ function App() {
   };
 
   // 决定使用哪个任务列表：如果有筛选条件，使用筛选后的任务，否则使用全部任务
-  const displayTasks = useMemo(() => {
+  const { displayTasks, hasFilters } = useMemo(() => {
     const hasFilters = Object.keys(filterOptions).some(key => {
       const value = filterOptions[key as keyof typeof filterOptions];
       if (Array.isArray(value)) {
@@ -597,7 +598,10 @@ function App() {
       return value !== undefined && value !== null && value !== '';
     });
 
-    return hasFilters ? filteredTasks : tasks;
+    return {
+      displayTasks: hasFilters ? filteredTasks : tasks,
+      hasFilters,
+    };
   }, [filterOptions, filteredTasks, tasks]);
 
   // 按列组织任务 - 支持多容器拖拽
@@ -648,6 +652,12 @@ function App() {
             }}
             onTaskDelete={handleTaskDelete}
             onTaskColorChange={handleTaskColorChange}
+            onCreateTask={() => setIsCreateModalOpen(true)}
+            totalTasks={tasks.length}
+            hasFilters={hasFilters}
+            searchTerm={filterOptions.searchText}
+            onClearFilters={clearFilters}
+            onClearSearch={() => setFilterOptions({ searchText: undefined })}
           />
         );
 
@@ -664,6 +674,12 @@ function App() {
                 toast.error('更新任务失败，请重试');
               });
             }}
+            onCreateTask={() => setIsCreateModalOpen(true)}
+            totalTasks={tasks.length}
+            hasFilters={hasFilters}
+            searchTerm={filterOptions.searchText}
+            onClearFilters={clearFilters}
+            onClearSearch={() => setFilterOptions({ searchText: undefined })}
           />
         );
 
@@ -728,10 +744,17 @@ function App() {
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <p className="text-text-secondary mb-4">暂无看板列</p>
-              <AddColumnButton onAdd={handleAddColumn} />
-            </div>
+            <EmptyTasks
+              onAction={() => setIsCreateModalOpen(true)}
+              secondaryAction={{
+                label: '添加列',
+                onClick: () => {
+                  // 可以添加一个添加列的逻辑
+                },
+                variant: 'secondary',
+              }}
+              size="lg"
+            />
           </div>
         );
     }
@@ -884,7 +907,7 @@ function App() {
 
 
         {/* 连接状态提示 */}
-        {!isConnected && !error && (
+        {!isConnected && (
           <div className="modern-card mx-4 mt-4 bg-warning/10 border border-warning text-warning px-4 py-2">
             <p>未连接到MCP服务，部分功能可能不可用</p>
           </div>

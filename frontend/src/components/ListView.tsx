@@ -9,6 +9,7 @@ import classNames from 'classnames';
 import { Task } from '../types/Task';
 import { BoardColumn } from '../store/taskStore';
 import Button from './Button';
+import SmartEmptyState from './SmartEmptyState';
 
 interface ListViewProps {
   tasks: Task[];
@@ -17,6 +18,13 @@ interface ListViewProps {
   onTaskUpdate: (taskId: string, updates: Partial<Task>) => void;
   onTaskDelete: (taskId: string) => void;
   onTaskColorChange: (taskId: string, color: string) => void;
+  onCreateTask?: () => void;
+  // 用于智能空状态
+  totalTasks?: number;
+  hasFilters?: boolean;
+  searchTerm?: string;
+  onClearFilters?: () => void;
+  onClearSearch?: () => void;
   className?: string;
 }
 
@@ -54,6 +62,12 @@ const ListView: React.FC<ListViewProps> = ({
   onTaskUpdate,
   onTaskDelete,
   onTaskColorChange,
+  onCreateTask,
+  totalTasks = tasks.length,
+  hasFilters = false,
+  searchTerm,
+  onClearFilters,
+  onClearSearch,
   className,
 }) => {
   const [sortConfig, setSortConfig] = useState<SortConfig>({ field: 'createdAt', direction: 'desc' });
@@ -395,11 +409,17 @@ const ListView: React.FC<ListViewProps> = ({
 
             {/* 空状态 */}
             {tasks.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-12">
-                <svg className="w-12 h-12 text-text-secondary mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-                <p className="text-text-secondary">暂无任务</p>
+              <div className="py-8">
+                <SmartEmptyState
+                  totalTasks={totalTasks}
+                  displayTasks={tasks.length}
+                  hasFilters={hasFilters}
+                  searchTerm={searchTerm}
+                  onCreateTask={onCreateTask}
+                  onClearFilters={onClearFilters}
+                  onClearSearch={onClearSearch}
+                  size="md"
+                />
               </div>
             )}
           </div>

@@ -8,12 +8,20 @@ import React, { useState, useMemo } from 'react';
 import classNames from 'classnames';
 import { Task } from '../types/Task';
 import { BoardColumn } from '../store/taskStore';
+import SmartEmptyState from './SmartEmptyState';
 
 interface CalendarViewProps {
   tasks: Task[];
   columns: BoardColumn[];
   onTaskClick: (taskId: string) => void;
   onTaskUpdate: (taskId: string, updates: Partial<Task>) => void;
+  onCreateTask?: () => void;
+  // 用于智能空状态
+  totalTasks?: number;
+  hasFilters?: boolean;
+  searchTerm?: string;
+  onClearFilters?: () => void;
+  onClearSearch?: () => void;
   className?: string;
 }
 
@@ -77,6 +85,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   columns,
   onTaskClick,
   onTaskUpdate,
+  onCreateTask,
+  totalTasks = tasks.length,
+  hasFilters = false,
+  searchTerm,
+  onClearFilters,
+  onClearSearch,
   className,
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -346,11 +360,17 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
             {/* 完全无任务的空状态 */}
             {tasks.length === 0 && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <svg className="w-12 h-12 text-text-secondary mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <p className="text-text-secondary">暂无任务</p>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <SmartEmptyState
+                  totalTasks={totalTasks}
+                  displayTasks={tasks.length}
+                  hasFilters={hasFilters}
+                  searchTerm={searchTerm}
+                  onCreateTask={onCreateTask}
+                  onClearFilters={onClearFilters}
+                  onClearSearch={onClearSearch}
+                  size="lg"
+                />
               </div>
             )}
           </div>
