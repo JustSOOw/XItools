@@ -685,8 +685,124 @@ function App() {
 
       case 'board':
       default:
-        // 看板视图（原有的看板内容）
-        return columns.length > 0 ? (
+        // 看板视图 - 检查是否有列和任务
+        if (columns.length === 0) {
+          // 没有列的情况
+          return (
+            <div className="flex-1 flex items-center justify-center">
+              <EmptyTasks
+                onAction={() => setIsCreateModalOpen(true)}
+                secondaryAction={{
+                  label: '添加列',
+                  onClick: () => {
+                    // 可以添加一个添加列的逻辑
+                  },
+                  variant: 'secondary',
+                }}
+                size="lg"
+              />
+            </div>
+          );
+        }
+
+        // 有列但没有任务的情况
+        if (displayTasks.length === 0) {
+          return (
+            <div className="relative h-full w-full">
+              {/* 显示空的列结构 */}
+              <div className="flex min-w-max gap-1">
+                <SortableContext
+                  items={columns.map(col => col.id)}
+                  strategy={horizontalListSortingStrategy}
+                >
+                  {columns.map((column) => {
+                    const columnTasks = tasksByColumn[column.id] || [];
+                    const taskIds = columnTasks.map(task => task.id);
+                    const sortableItems = taskIds;
+
+                    return (
+                      <DraggableColumn
+                        key={column.id}
+                        column={column}
+                        taskIds={taskIds}
+                        onAddCard={() => {
+                          setNewTask({...newTask, status: column.id});
+                          setIsCreateModalOpen(true);
+                        }}
+                        onTitleEdit={(newTitle) => handleUpdateColumnTitle(column.id, newTitle)}
+                        onDelete={() => handleDeleteColumn(column.id)}
+                        onColorChange={(color) => handleColumnColorChange(column.id, color)}
+                        onSort={(sortOption) => handleColumnSort(column.id, sortOption)}
+                        isDeletable={true}
+                        isEditable={true}
+                        isDragging={activeColumnId === column.id}
+                        isDraggingTask={!!activeTaskId}
+                        isColumnDragging={!!activeColumnId}
+                      >
+                        <SortableContext
+                          items={sortableItems}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          {columnTasks.map(task => (
+                            <div key={task.id} className="mb-1.5">
+                              <DraggableTaskCard
+                                task={task}
+                                onClick={handleTaskClick}
+                                isDragging={activeTaskId === task.id}
+                                onColorChange={(color) => handleTaskColorChange(task.id, color)}
+                                onDelete={() => handleTaskDelete(task.id)}
+                              />
+                            </div>
+                          ))}
+                        </SortableContext>
+                      </DraggableColumn>
+                    );
+                  })}
+                </SortableContext>
+
+                {/* 添加新列按钮 */}
+                <div className="ml-1">
+                  <AddColumnButton onAdd={handleAddColumn} />
+                </div>
+              </div>
+
+              {/* 空状态蒙版 - 扩大范围，覆盖整个看板区域 */}
+              <div className="absolute inset-0 -inset-x-6 -inset-y-6 flex items-center justify-center bg-background/85 backdrop-blur-md rounded-lg">
+                <div className="text-center max-w-md mx-auto p-8">
+                  {hasFilters ? (
+                    <EmptyFilterResults
+                      onAction={() => setIsCreateModalOpen(true)}
+                      secondaryAction={{
+                        label: '清除筛选',
+                        onClick: clearFilters,
+                        variant: 'secondary',
+                      }}
+                      size="lg"
+                    />
+                  ) : filterOptions.searchText ? (
+                    <EmptySearchResults
+                      onAction={() => setIsCreateModalOpen(true)}
+                      secondaryAction={{
+                        label: '清除搜索',
+                        onClick: () => setFilterOptions({ searchText: undefined }),
+                        variant: 'secondary',
+                      }}
+                      size="lg"
+                    />
+                  ) : (
+                    <EmptyTasks
+                      onAction={() => setIsCreateModalOpen(true)}
+                      size="lg"
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // 有列也有任务的正常情况
+        return (
           <div className="flex min-w-max gap-1">
             <SortableContext
               items={columns.map(col => col.id)}
@@ -741,20 +857,6 @@ function App() {
             <div className="ml-1">
               <AddColumnButton onAdd={handleAddColumn} />
             </div>
-          </div>
-        ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <EmptyTasks
-              onAction={() => setIsCreateModalOpen(true)}
-              secondaryAction={{
-                label: '添加列',
-                onClick: () => {
-                  // 可以添加一个添加列的逻辑
-                },
-                variant: 'secondary',
-              }}
-              size="lg"
-            />
           </div>
         );
     }
@@ -845,32 +947,27 @@ function App() {
         <div className="flex flex-col h-full">
           {/* 顶部操作栏 */}
           <header className="modern-container mx-4 mt-4 px-6 py-4 flex items-center justify-between">
-            {/* 左侧：标题、搜索和筛选 */}
-            <div className="flex items-center space-x-6">
-              <h1 className="text-2xl font-bold text-text-primary">智能任务看板</h1>
-
-              {/* 搜索和筛选区域 */}
-              <div className="flex items-center space-x-3">
-                {/* 搜索框 */}
-                <div className="w-80">
-                  <SearchBox
-                    value={filterOptions.searchText || ''}
-                    placeholder="搜索任务标题或描述..."
-                    onSearch={(searchText: string) => setFilterOptions({ searchText: searchText || undefined })}
-                    onClear={() => setFilterOptions({ searchText: undefined })}
-                  />
-                </div>
-
-                {/* 筛选器 */}
-                <TaskFilter
-                  filterOptions={filterOptions}
-                  onFilterChange={setFilterOptions}
-                  onClearFilters={clearFilters}
-                  columns={columns}
-                  tasks={tasks}
-                  displayTasks={displayTasks}
+            {/* 左侧：搜索和筛选 */}
+            <div className="flex items-center space-x-4">
+              {/* 搜索框 */}
+              <div className="w-80">
+                <SearchBox
+                  value={filterOptions.searchText || ''}
+                  placeholder="搜索任务标题或描述..."
+                  onSearch={(searchText: string) => setFilterOptions({ searchText: searchText || undefined })}
+                  onClear={() => setFilterOptions({ searchText: undefined })}
                 />
               </div>
+
+              {/* 筛选器 */}
+              <TaskFilter
+                filterOptions={filterOptions}
+                onFilterChange={setFilterOptions}
+                onClearFilters={clearFilters}
+                columns={columns}
+                tasks={tasks}
+                displayTasks={displayTasks}
+              />
             </div>
 
             {/* 右侧：操作按钮 */}
@@ -889,6 +986,35 @@ function App() {
                   onClick={reconnect}
                 >
                   重新连接MCP服务
+                </Button>
+              )}
+
+              {/* 开发模式测试按钮 */}
+              {process.env.NODE_ENV === 'development' && tasks.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={async () => {
+                    if (confirm('确定要删除所有任务来测试空状态吗？')) {
+                      try {
+                        // 删除所有任务
+                        for (const task of tasks) {
+                          await mcpService.deleteTask(task.id);
+                        }
+                        // 重新加载任务列表
+                        const updatedTasks = await mcpService.listTasks();
+                        setTasks(updatedTasks);
+                        toast.success('所有任务已删除，现在可以测试空状态了');
+                      } catch (error) {
+                        console.error('删除任务失败:', error);
+                        toast.error('删除任务失败');
+                      }
+                    }
+                  }}
+                  className="text-xs"
+                  title="删除所有任务以测试空状态"
+                >
+                  🧪 清空测试
                 </Button>
               )}
 
