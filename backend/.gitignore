@@ -39,6 +39,8 @@ coverage/
 # Prisma
 /prisma/migrations/
 /prisma/.env
+# Prisma生成的客户端代码（应该在每个环境中重新生成）
+/src/generated/
 
 # 生成的文件
 build/
