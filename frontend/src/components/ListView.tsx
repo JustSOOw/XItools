@@ -10,6 +10,7 @@ import { Task } from '../types/Task';
 import { BoardColumn } from '../store/taskStore';
 import Button from './Button';
 import SmartEmptyState from './SmartEmptyState';
+import { useI18n } from '../hooks/useI18n';
 
 interface ListViewProps {
   tasks: Task[];
@@ -46,14 +47,7 @@ const priorityColors = {
   'Low': 'text-green-600 bg-green-50' 
 };
 
-// 格式化日期
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('zh-CN', {
-    month: 'short',
-    day: 'numeric',
-  });
-};
+// 格式化日期函数将移到组件内部
 
 const ListView: React.FC<ListViewProps> = ({
   tasks,
@@ -70,8 +64,18 @@ const ListView: React.FC<ListViewProps> = ({
   onClearSearch,
   className,
 }) => {
+  const { t } = useI18n();
   const [sortConfig, setSortConfig] = useState<SortConfig>({ field: 'createdAt', direction: 'desc' });
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
+
+  // 格式化日期
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat(t('common:locale'), {
+      month: 'short',
+      day: 'numeric',
+    }).format(date);
+  };
 
 
 
@@ -187,14 +191,14 @@ const ListView: React.FC<ListViewProps> = ({
         {selectedTasks.size > 0 && (
           <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 mb-4 flex items-center justify-between flex-shrink-0">
             <span className="text-sm text-primary font-medium">
-              已选择 {selectedTasks.size} 个任务
+              {t('task:messages.selectedTasks', { count: selectedTasks.size })}
             </span>
             <div className="flex items-center space-x-2">
               <Button variant="ghost" size="sm" onClick={() => setSelectedTasks(new Set())}>
-                取消选择
+                {t('task:actions.cancelSelection')}
               </Button>
               <Button variant="danger" size="sm">
-                批量删除
+                {t('task:actions.batchDelete')}
               </Button>
             </div>
           </div>
@@ -226,7 +230,7 @@ const ListView: React.FC<ListViewProps> = ({
                   onClick={() => handleSort('title')}
                   className="flex items-center space-x-1 text-sm font-medium text-text-primary hover:text-primary"
                 >
-                  <span>任务标题</span>
+                  <span>{t('task:fields.title')}</span>
                   {renderSortIcon('title')}
                 </button>
               </th>
@@ -237,7 +241,7 @@ const ListView: React.FC<ListViewProps> = ({
                   onClick={() => handleSort('status')}
                   className="flex items-center space-x-1 text-sm font-medium text-text-primary hover:text-primary"
                 >
-                  <span>状态</span>
+                  <span>{t('task:fields.status')}</span>
                   {renderSortIcon('status')}
                 </button>
               </th>
@@ -248,7 +252,7 @@ const ListView: React.FC<ListViewProps> = ({
                   onClick={() => handleSort('priority')}
                   className="flex items-center space-x-1 text-sm font-medium text-text-primary hover:text-primary"
                 >
-                  <span>优先级</span>
+                  <span>{t('task:fields.priority')}</span>
                   {renderSortIcon('priority')}
                 </button>
               </th>
@@ -259,7 +263,7 @@ const ListView: React.FC<ListViewProps> = ({
                   onClick={() => handleSort('assignee')}
                   className="flex items-center space-x-1 text-sm font-medium text-text-primary hover:text-primary"
                 >
-                  <span>负责人</span>
+                  <span>{t('task:fields.assignee')}</span>
                   {renderSortIcon('assignee')}
                 </button>
               </th>
@@ -270,14 +274,14 @@ const ListView: React.FC<ListViewProps> = ({
                   onClick={() => handleSort('dueDate')}
                   className="flex items-center space-x-1 text-sm font-medium text-text-primary hover:text-primary"
                 >
-                  <span>截止日期</span>
+                  <span>{t('task:fields.dueDate')}</span>
                   {renderSortIcon('dueDate')}
                 </button>
               </th>
 
               {/* 操作 */}
               <th className="p-3 text-left w-24">
-                <span className="text-sm font-medium text-text-primary">操作</span>
+                <span className="text-sm font-medium text-text-primary">{t('common:actions.actions')}</span>
               </th>
             </tr>
           </thead>
@@ -347,9 +351,9 @@ const ListView: React.FC<ListViewProps> = ({
                         priorityColors[task.priority as keyof typeof priorityColors]
                       )}
                     >
-                      <option value="High">高</option>
-                      <option value="Medium">中</option>
-                      <option value="Low">低</option>
+                      <option value="High">{t('task:priority.high')}</option>
+                      <option value="Medium">{t('task:priority.medium')}</option>
+                      <option value="Low">{t('task:priority.low')}</option>
                     </select>
                   ) : (
                     <select
@@ -357,10 +361,10 @@ const ListView: React.FC<ListViewProps> = ({
                       onChange={(e) => handlePriorityChange(task.id, e.target.value)}
                       className="text-xs px-2 py-1 rounded border border-border bg-background"
                     >
-                      <option value="">未设置</option>
-                      <option value="High">高</option>
-                      <option value="Medium">中</option>
-                      <option value="Low">低</option>
+                      <option value="">{t('task:priority.none')}</option>
+                      <option value="High">{t('task:priority.high')}</option>
+                      <option value="Medium">{t('task:priority.medium')}</option>
+                      <option value="Low">{t('task:priority.low')}</option>
                     </select>
                   )}
                 </td>
@@ -385,7 +389,7 @@ const ListView: React.FC<ListViewProps> = ({
                     <button
                       onClick={() => onTaskClick(task.id)}
                       className="p-1 text-text-secondary hover:text-primary transition-colors"
-                      title="编辑"
+                      title={t('common:actions.edit')}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -394,7 +398,7 @@ const ListView: React.FC<ListViewProps> = ({
                     <button
                       onClick={() => onTaskDelete(task.id)}
                       className="p-1 text-text-secondary hover:text-red-500 transition-colors"
-                      title="删除"
+                      title={t('common:actions.delete')}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

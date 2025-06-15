@@ -4,6 +4,7 @@ import Card from './Card';
 import MoreButton, { MoreMenuItem } from './MoreButton';
 import ColorPickerModal from './ColorPickerModal';
 import { CardAnimation } from './animations';
+import { useI18n } from '../hooks/useI18n';
 
 interface TaskCardProps {
   task: Task;
@@ -18,13 +19,14 @@ const TaskCard: React.FC<TaskCardProps> = ({
   onColorChange,
   onDelete,
 }) => {
+  const { t } = useI18n();
   const [showColorPicker, setShowColorPicker] = useState(false);
 
   // 更多按钮菜单项
   const moreMenuItems: MoreMenuItem[] = [
     {
       id: 'set-color',
-      label: '设置颜色',
+      label: t('task:actions.setColor'),
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z" />
@@ -36,7 +38,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
     },
     {
       id: 'delete',
-      label: '删除任务',
+      label: t('task:actions.delete'),
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -50,10 +52,10 @@ const TaskCard: React.FC<TaskCardProps> = ({
   // 日期格式化函数
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return null;
-    
+
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString();
+      return new Intl.DateTimeFormat(t('common:locale')).format(date);
     } catch (e) {
       return null;
     }
@@ -63,13 +65,13 @@ const TaskCard: React.FC<TaskCardProps> = ({
   const getPriorityInfo = () => {
     switch (task.priority) {
       case 'High':
-        return { color: 'text-red-500 bg-red-50 dark:bg-red-900/20', text: '高' };
+        return { color: 'text-red-500 bg-red-50 dark:bg-red-900/20', text: t('task:priority.high') };
       case 'Medium':
-        return { color: 'text-yellow-500 bg-yellow-50 dark:bg-yellow-900/20', text: '中' };
+        return { color: 'text-yellow-500 bg-yellow-50 dark:bg-yellow-900/20', text: t('task:priority.medium') };
       case 'Low':
-        return { color: 'text-green-500 bg-green-50 dark:bg-green-900/20', text: '低' };
+        return { color: 'text-green-500 bg-green-50 dark:bg-green-900/20', text: t('task:priority.low') };
       default:
-        return { color: 'text-gray-500 bg-gray-50 dark:bg-gray-800/20', text: '普通' };
+        return { color: 'text-gray-500 bg-gray-50 dark:bg-gray-800/20', text: t('task:priority.none') };
     }
   };
   
@@ -131,7 +133,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
             {/* 任务标签 (显示第一个) */}
             {task.tags && task.tags.length > 0 && (
               <span className="px-2 py-0.5 bg-accent/10 text-accent rounded-full text-xs">
-                {typeof task.tags[0] === 'string' ? task.tags[0] : (task.tags[0] as any)?.name || '标签'}
+                {typeof task.tags[0] === 'string' ? task.tags[0] : (task.tags[0] as any)?.name || t('task:fields.tag')}
                 {task.tags.length > 1 ? ` +${task.tags.length - 1}` : ''}
               </span>
             )}
@@ -169,7 +171,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
       }}
       onClose={() => setShowColorPicker(false)}
       isOpen={showColorPicker}
-      title="设置任务颜色"
+      title={t('task:actions.setTaskColor')}
     />
   </>
   );

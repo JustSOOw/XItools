@@ -5,6 +5,7 @@ import mcpService from '../services/mcpService';
 import useTaskStore from '../store/taskStore';
 import { toast } from './ui/Toast';
 import { InlineEdit, MarkdownEditor, Timeline, QuickActions, generateTimelineEvents } from './enhanced';
+import { useI18n } from '../hooks/useI18n';
 
 interface TaskDetailModalProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface TaskDetailModalProps {
 }
 
 const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClose }) => {
+  const { t } = useI18n();
   const [task, setTask] = useState<Task | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -51,11 +53,11 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
         // 同时更新本地状态和全局状态
         setTask(updatedTask);
         updateTaskInStore(updatedTask);
-        toast.success('任务更新成功');
+        toast.success(t('feedback:messages.taskUpdated'));
       }
     } catch (error) {
       console.error('更新任务失败:', error);
-      toast.error('更新任务失败，请重试');
+      toast.error(t('feedback:messages.taskUpdateFailed'));
       throw error; // 重新抛出错误，让InlineEdit组件处理
     } finally {
       setIsSaving(false);
@@ -72,26 +74,26 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title={task ? `任务详情 - ${task.title}` : "任务详情"}
+      title={task ? `${t('task:detail.title')} - ${task.title}` : t('task:detail.title')}
       size="xl"
     >
       {isLoading ? (
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <span className="ml-2 text-text-secondary">加载中...</span>
+          <span className="ml-2 text-text-secondary">{t('common:loading')}</span>
         </div>
       ) : !task ? (
         <div className="py-8 text-center text-text-secondary">
-          未找到任务或加载失败
+          {t('task:detail.notFound')}
         </div>
       ) : (
         <div className="flex flex-col h-full">
           {/* 标签页导航 */}
           <div className="flex border-b border-border mb-4">
             {[
-              { key: 'details', label: '详细信息', icon: '📋' },
-              { key: 'timeline', label: '操作历史', icon: '📅' },
-              { key: 'actions', label: '快捷操作', icon: '⚡' },
+              { key: 'details', label: t('task:detail.tabs.details'), icon: '📋' },
+              { key: 'timeline', label: t('task:detail.tabs.timeline'), icon: '📅' },
+              { key: 'actions', label: t('task:detail.tabs.actions'), icon: '⚡' },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -144,6 +146,7 @@ const TaskDetailsTab: React.FC<{
   onUpdate: (field: keyof TaskUpdate, value: any) => Promise<void>;
   isSaving: boolean;
 }> = ({ task, columns, onUpdate, isSaving }) => {
+  const { t } = useI18n();
   const [localDescription, setLocalDescription] = useState(task.description || '');
 
   // 当task.description变化时，更新本地状态
@@ -155,17 +158,17 @@ const TaskDetailsTab: React.FC<{
     <div className="space-y-6 overflow-y-auto pr-2" style={{ maxHeight: '60vh' }}>
       {/* 基本信息区域 */}
       <div className="bg-accent/5 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-text-primary mb-4">基本信息</h3>
+        <h3 className="text-lg font-semibold text-text-primary mb-4">{t('task:detail.sections.basicInfo')}</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* 标题 */}
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-text-primary mb-2">
-              标题
+              {t('task:fields.title')}
             </label>
             <InlineEdit
               value={task.title}
               onSave={(value) => onUpdate('title', value)}
-              placeholder="输入任务标题"
+              placeholder={t('task:placeholders.title')}
               required
               className="text-lg font-medium"
             />
@@ -174,7 +177,7 @@ const TaskDetailsTab: React.FC<{
           {/* 状态 */}
           <div>
             <label className="block text-sm font-medium text-text-primary mb-2">
-              状态
+              {t('task:fields.status')}
             </label>
             <InlineEdit
               value={columns.find(col => col.id === task.status)?.name || task.status}
@@ -190,25 +193,25 @@ const TaskDetailsTab: React.FC<{
           {/* 优先级 */}
           <div>
             <label className="block text-sm font-medium text-text-primary mb-2">
-              优先级
+              {t('task:fields.priority')}
             </label>
             <InlineEdit
-              value={task.priority === 'High' ? '高' : task.priority === 'Medium' ? '中' : task.priority === 'Low' ? '低' : '未设置'}
+              value={task.priority === 'High' ? t('task:priority.high') : task.priority === 'Medium' ? t('task:priority.medium') : task.priority === 'Low' ? t('task:priority.low') : t('task:priority.none')}
               onSave={(value) => {
                 const priorityMap: Record<string, string | null> = {
-                  '高': 'High',
-                  '中': 'Medium',
-                  '低': 'Low',
-                  '未设置': null
+                  [t('task:priority.high')]: 'High',
+                  [t('task:priority.medium')]: 'Medium',
+                  [t('task:priority.low')]: 'Low',
+                  [t('task:priority.none')]: null
                 };
                 return onUpdate('priority', priorityMap[value]);
               }}
               type="select"
               options={[
-                { value: '高', label: '高' },
-                { value: '中', label: '中' },
-                { value: '低', label: '低' },
-                { value: '未设置', label: '未设置' }
+                { value: t('task:priority.high'), label: t('task:priority.high') },
+                { value: t('task:priority.medium'), label: t('task:priority.medium') },
+                { value: t('task:priority.low'), label: t('task:priority.low') },
+                { value: t('task:priority.none'), label: t('task:priority.none') }
               ]}
             />
           </div>
@@ -216,32 +219,32 @@ const TaskDetailsTab: React.FC<{
           {/* 负责人 */}
           <div>
             <label className="block text-sm font-medium text-text-primary mb-2">
-              负责人
+              {t('task:fields.assignee')}
             </label>
             <InlineEdit
               value={task.assignee || ''}
               onSave={(value) => onUpdate('assignee', value || null)}
-              placeholder="输入负责人"
+              placeholder={t('task:placeholders.assignee')}
             />
           </div>
 
           {/* 截止日期 */}
           <div>
             <label className="block text-sm font-medium text-text-primary mb-2">
-              截止日期
+              {t('task:fields.dueDate')}
             </label>
             <InlineEdit
               value={task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : ''}
               onSave={(value) => onUpdate('dueDate', value ? new Date(value).toISOString() : null)}
               type="date"
-              placeholder="设置截止日期"
+              placeholder={t('task:placeholders.dueDate')}
             />
           </div>
         </div>
       </div>
       {/* 描述区域 */}
       <div className="bg-accent/5 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-text-primary mb-4">任务描述</h3>
+        <h3 className="text-lg font-semibold text-text-primary mb-4">{t('task:detail.sections.description')}</h3>
         <MarkdownEditor
           value={localDescription}
           onChange={(value) => {
@@ -252,7 +255,7 @@ const TaskDetailsTab: React.FC<{
             // 保存到后端并更新全局状态
             return onUpdate('description', value);
           }}
-          placeholder="输入任务描述..."
+          placeholder={t('task:placeholders.description')}
           autoSave
           autoSaveDelay={1500}
           minHeight="200px"
@@ -261,13 +264,13 @@ const TaskDetailsTab: React.FC<{
 
       {/* 验收标准 */}
       <div className="bg-accent/5 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-text-primary mb-4">验收标准</h3>
+        <h3 className="text-lg font-semibold text-text-primary mb-4">{t('task:detail.sections.acceptanceCriteria')}</h3>
         <InlineEdit
           value={task.acceptanceCriteria || ''}
           onSave={(value) => onUpdate('acceptanceCriteria', value)}
           type="textarea"
           multiline
-          placeholder="输入验收标准..."
+          placeholder={t('task:placeholders.acceptanceCriteria')}
           className="min-h-[100px]"
         />
       </div>
@@ -276,11 +279,11 @@ const TaskDetailsTab: React.FC<{
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* 工时信息 */}
         <div className="bg-accent/5 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-text-primary mb-4">工时信息</h3>
+          <h3 className="text-lg font-semibold text-text-primary mb-4">{t('task:detail.sections.timeTracking')}</h3>
           <div className="space-y-3">
             <div>
               <label className="block text-sm font-medium text-text-primary mb-2">
-                估算工时 (小时)
+                {t('task:fields.estimatedEffort')}
               </label>
               <InlineEdit
                 value={task.estimatedEffort?.toString() || ''}
@@ -291,7 +294,7 @@ const TaskDetailsTab: React.FC<{
             </div>
             <div>
               <label className="block text-sm font-medium text-text-primary mb-2">
-                实际工时 (小时)
+                {t('task:fields.loggedTime')}
               </label>
               <InlineEdit
                 value={task.loggedTime?.toString() || ''}
@@ -305,7 +308,7 @@ const TaskDetailsTab: React.FC<{
 
         {/* 标签管理 */}
         <div className="bg-accent/5 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-text-primary mb-4">标签</h3>
+          <h3 className="text-lg font-semibold text-text-primary mb-4">{t('task:fields.tags')}</h3>
           <div className="space-y-3">
             <InlineEdit
               value={(task.tags || []).map(tag => typeof tag === 'string' ? tag : tag.name).join(', ')}
@@ -313,7 +316,7 @@ const TaskDetailsTab: React.FC<{
                 const tags = value ? value.split(',').map(tag => tag.trim()).filter(Boolean) : [];
                 return onUpdate('tags', tags);
               }}
-              placeholder="用逗号分隔多个标签"
+              placeholder={t('task:placeholders.tags')}
             />
             {task.tags && task.tags.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2">
@@ -333,23 +336,23 @@ const TaskDetailsTab: React.FC<{
 
       {/* 元数据信息 */}
       <div className="bg-accent/5 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-text-primary mb-4">元数据</h3>
+        <h3 className="text-lg font-semibold text-text-primary mb-4">{t('task:detail.sections.metadata')}</h3>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <span className="text-text-secondary">任务ID:</span>
+            <span className="text-text-secondary">{t('task:fields.id')}:</span>
             <span className="ml-2 font-mono text-text-primary">{task.id}</span>
           </div>
           <div>
-            <span className="text-text-secondary">创建时间:</span>
+            <span className="text-text-secondary">{t('task:fields.createdAt')}:</span>
             <span className="ml-2 text-text-primary">{new Date(task.createdAt).toLocaleString()}</span>
           </div>
           <div>
-            <span className="text-text-secondary">最后更新:</span>
+            <span className="text-text-secondary">{t('task:fields.updatedAt')}:</span>
             <span className="ml-2 text-text-primary">{new Date(task.updatedAt).toLocaleString()}</span>
           </div>
           <div>
-            <span className="text-text-secondary">排序顺序:</span>
-            <span className="ml-2 text-text-primary">{task.sortOrder || '未设置'}</span>
+            <span className="text-text-secondary">{t('task:fields.sortOrder')}:</span>
+            <span className="ml-2 text-text-primary">{task.sortOrder || t('task:fields.notSet')}</span>
           </div>
         </div>
       </div>
@@ -359,13 +362,14 @@ const TaskDetailsTab: React.FC<{
 
 // 时间线标签页组件
 const TimelineTab: React.FC<{ task: Task }> = ({ task }) => {
-  const timelineEvents = generateTimelineEvents(task);
+  const { t } = useI18n();
+  const timelineEvents = generateTimelineEvents(task, t);
 
   return (
     <div className="h-full overflow-hidden">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-text-primary">操作历史</h3>
-        <p className="text-sm text-text-secondary">查看任务的所有变更记录</p>
+        <h3 className="text-lg font-semibold text-text-primary">{t('task:detail.tabs.timeline')}</h3>
+        <p className="text-sm text-text-secondary">{t('task:detail.timelineDescription')}</p>
       </div>
       <Timeline
         events={timelineEvents}
@@ -384,6 +388,7 @@ const ActionsTab: React.FC<{
   isSaving: boolean;
   onClose: () => void;
 }> = ({ task, columns, onUpdate, isSaving, onClose }) => {
+  const { t } = useI18n();
   const { deleteTask: deleteTaskFromStore } = useTaskStore();
 
   const handleStatusChange = async (statusId: string) => {
@@ -400,7 +405,7 @@ const ActionsTab: React.FC<{
 
   const handleDuplicate = async () => {
     // 这里可以实现复制任务的逻辑
-    toast.success('复制功能待实现');
+    toast.success(t('task:actions.duplicateNotImplemented'));
   };
 
   const handleDelete = async () => {
@@ -408,19 +413,19 @@ const ActionsTab: React.FC<{
       await mcpService.deleteTask(task.id);
       // 同时更新全局状态
       deleteTaskFromStore(task.id);
-      toast.success('任务已删除');
+      toast.success(t('feedback:messages.taskDeleted'));
       // 关闭模态框
       onClose();
     } catch (error) {
-      toast.error('删除任务失败');
+      toast.error(t('feedback:messages.taskDeleteFailed'));
     }
   };
 
   return (
     <div className="h-full overflow-y-auto">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-text-primary">快捷操作</h3>
-        <p className="text-sm text-text-secondary">快速修改任务状态和属性</p>
+        <h3 className="text-lg font-semibold text-text-primary">{t('task:detail.tabs.actions')}</h3>
+        <p className="text-sm text-text-secondary">{t('task:detail.actionsDescription')}</p>
       </div>
       <QuickActions
         task={task}

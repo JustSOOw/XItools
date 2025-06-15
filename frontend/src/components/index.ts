@@ -24,6 +24,8 @@ export { default as SearchBox } from './SearchBox';
 export { default as TaskFilter } from './TaskFilter';
 export { default as ListView } from './ListView';
 export { default as CalendarView } from './CalendarView';
+export { default as LanguageSelector } from './LanguageSelector';
+export { default as SettingsModal } from './SettingsModal';
 
 // 增强功能组件
 export * from './enhanced';

@@ -13,6 +13,7 @@ import React from 'react';
 import Modal from './Modal';
 import ThemeSettings from './ThemeSettings';
 import Button from './Button';
+import { useI18n } from '../hooks/useI18n';
 
 interface ThemeSettingsModalProps {
   isOpen: boolean;
@@ -23,14 +24,16 @@ export const ThemeSettingsModal: React.FC<ThemeSettingsModalProps> = ({
   isOpen,
   onClose,
 }) => {
+  const { t } = useI18n();
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="主题设置"
+      title={t('settings:theme.title')}
       size="md"
     >
-      <div className="space-y-4">
+      <div className="space-y-4 max-h-[60vh] overflow-y-auto overflow-x-hidden">
         {/* 主题设置内容 */}
         <ThemeSettings />
 
@@ -40,7 +43,7 @@ export const ThemeSettingsModal: React.FC<ThemeSettingsModalProps> = ({
             variant="ghost"
             onClick={onClose}
           >
-            关闭
+            {t('common:actions.close')}
           </Button>
         </div>
       </div>

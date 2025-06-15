@@ -9,6 +9,7 @@ import classNames from 'classnames';
 import { Task } from '../types/Task';
 import { BoardColumn } from '../store/taskStore';
 import SmartEmptyState from './SmartEmptyState';
+import { useI18n } from '../hooks/useI18n';
 
 interface CalendarViewProps {
   tasks: Task[];
@@ -93,6 +94,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   onClearSearch,
   className,
 }) => {
+  const { t } = useI18n();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewType, setViewType] = useState<CalendarViewType>('month');
 
@@ -163,11 +165,23 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   // 获取当前时间段的标题
   const getTitle = () => {
     if (viewType === 'month') {
-      return `${currentYear}年${currentMonth + 1}月`;
+      const date = new Date(currentYear, currentMonth, 1);
+      return new Intl.DateTimeFormat(t('common:locale'), {
+        year: 'numeric',
+        month: 'long'
+      }).format(date);
     } else {
       const startOfWeek = displayDates[0];
       const endOfWeek = displayDates[6];
-      return `${startOfWeek.getMonth() + 1}月${startOfWeek.getDate()}日 - ${endOfWeek.getMonth() + 1}月${endOfWeek.getDate()}日`;
+      const startFormat = new Intl.DateTimeFormat(t('common:locale'), {
+        month: 'short',
+        day: 'numeric'
+      }).format(startOfWeek);
+      const endFormat = new Intl.DateTimeFormat(t('common:locale'), {
+        month: 'short',
+        day: 'numeric'
+      }).format(endOfWeek);
+      return `${startFormat} - ${endFormat}`;
     }
   };
 
@@ -233,7 +247,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
             onClick={navigateToday}
             className="px-3 py-1 text-sm border border-border rounded-lg hover:bg-surface transition-colors"
           >
-            今天
+            {t('calendar:navigation.today')}
           </button>
         </div>
 
@@ -249,7 +263,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                   : 'bg-background text-text-secondary hover:text-text-primary'
               )}
             >
-              月视图
+              {t('calendar:views.month')}
             </button>
             <button
               onClick={() => setViewType('week')}
@@ -260,7 +274,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                   : 'bg-background text-text-secondary hover:text-text-primary'
               )}
             >
-              周视图
+              {t('calendar:views.week')}
             </button>
           </div>
         </div>
@@ -271,7 +285,15 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           <div className="h-full overflow-auto">
             {/* 星期标题 */}
             <div className="grid grid-cols-7 border-b border-border sticky top-0 bg-surface z-10">
-            {['日', '一', '二', '三', '四', '五', '六'].map((day, index) => (
+            {[
+              t('calendar:weekdaysShort.sunday'),
+              t('calendar:weekdaysShort.monday'),
+              t('calendar:weekdaysShort.tuesday'),
+              t('calendar:weekdaysShort.wednesday'),
+              t('calendar:weekdaysShort.thursday'),
+              t('calendar:weekdaysShort.friday'),
+              t('calendar:weekdaysShort.saturday')
+            ].map((day, index) => (
               <div
                 key={index}
                 className="p-3 text-center text-sm font-medium text-text-secondary"
@@ -330,7 +352,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                     {dayTasks.slice(0, viewType === 'month' ? 3 : 10).map(task => renderTaskCard(task))}
                     {dayTasks.length > (viewType === 'month' ? 3 : 10) && (
                       <div className="text-xs text-text-secondary text-center py-1">
-                        +{dayTasks.length - (viewType === 'month' ? 3 : 10)} 更多
+                        +{dayTasks.length - (viewType === 'month' ? 3 : 10)} {t('calendar:messages.more')}
                       </div>
                     )}
                   </div>
@@ -347,11 +369,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
                 <div>
-                  <p className="text-sm font-medium text-text-primary">提示</p>
+                  <p className="text-sm font-medium text-text-primary">{t('calendar:messages.tip')}</p>
                   <p className="text-xs text-text-secondary mt-1">
-                    当前任务都没有设置截止日期，无法在日历中显示。
+                    {t('calendar:messages.noTasksWithDueDate')}
                     <br />
-                    您可以在任务详情中设置截止日期。
+                    {t('calendar:messages.setDueDateHint')}
                   </p>
                 </div>
               </div>

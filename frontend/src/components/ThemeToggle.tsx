@@ -12,6 +12,7 @@
 import React, { useState } from 'react';
 import { useThemeStore } from '../store/themeStore';
 import ThemeSettingsModal from './ThemeSettingsModal';
+import { useI18n } from '../hooks/useI18n';
 
 interface ThemeToggleProps {
   showLabel?: boolean;
@@ -64,6 +65,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
   variant = 'button',
   className = '',
 }) => {
+  const { t } = useI18n();
   const { currentTheme, toggleTheme, configs } = useThemeStore();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -89,7 +91,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
             ${size === 'sm' ? 'p-1' : size === 'lg' ? 'p-3' : 'p-2'}
             ${className}
           `}
-          title={`当前: ${currentConfig.name} (双击打开设置)`}
+          title={`${t('settings:theme.currentTheme')}: ${t(`settings:theme.themes.${currentTheme}`)} (${t('settings:theme.doubleClickToOpenSettings')})`}
         >
           <ThemeIcon theme={currentTheme} size={size} />
         </button>
@@ -113,10 +115,10 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
             bg-primary/10 hover:bg-primary/20 text-primary
             ${size === 'sm' ? 'text-sm' : size === 'lg' ? 'text-lg' : 'text-base'}
           `}
-          title="快速切换主题"
+          title={t('settings:theme.quickToggle')}
         >
           <ThemeIcon theme={currentTheme} size={size} />
-          {showLabel && <span>{currentConfig.name}</span>}
+          {showLabel && <span>{t(`settings:theme.themes.${currentTheme}`)}</span>}
         </button>
         
         {/* 设置按钮 */}
@@ -127,7 +129,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
             hover:bg-surface text-text-secondary hover:text-text-primary
             ${size === 'sm' ? 'p-1' : size === 'lg' ? 'p-3' : 'p-2'}
           `}
-          title="主题设置"
+          title={t('settings:theme.title')}
         >
           <svg className={size === 'sm' ? 'h-4 w-4' : size === 'lg' ? 'h-6 w-6' : 'h-5 w-5'} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />

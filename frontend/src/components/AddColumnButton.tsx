@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import classNames from 'classnames';
+import { useI18n } from '../hooks/useI18n';
 
 interface AddColumnButtonProps {
   onAdd: (name: string) => void;
@@ -12,6 +13,7 @@ const AddColumnButton: React.FC<AddColumnButtonProps> = ({
   className,
   maxLength = 50,
 }) => {
+  const { t } = useI18n();
   const [isAdding, setIsAdding] = useState(false);
   const [columnName, setColumnName] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -35,12 +37,12 @@ const AddColumnButton: React.FC<AddColumnButtonProps> = ({
     
     // 验证输入
     if (!trimmedName) {
-      setError('列名不能为空');
+      setError(t('board:messages.columnTitleRequired'));
       return;
     }
-    
+
     if (trimmedName.length > maxLength) {
-      setError(`列名不能超过${maxLength}个字符`);
+      setError(t('board:messages.columnTitleTooLong', { maxLength }));
       return;
     }
     
@@ -50,7 +52,7 @@ const AddColumnButton: React.FC<AddColumnButtonProps> = ({
       setColumnName('');
       setError(null);
     } catch (error) {
-      setError('添加失败，请重试');
+      setError(t('board:messages.columnCreateFailed'));
     }
   };
 
@@ -99,7 +101,7 @@ const AddColumnButton: React.FC<AddColumnButtonProps> = ({
               }
             )}
             maxLength={maxLength}
-            placeholder="输入新列名..."
+            placeholder={t('board:placeholders.columnTitle')}
           />
         </div>
         
@@ -114,18 +116,18 @@ const AddColumnButton: React.FC<AddColumnButtonProps> = ({
                 'disabled:opacity-50 disabled:cursor-not-allowed'
               )}
             >
-              添加列
+              {t('board:actions.addColumn')}
             </button>
             <button
               onClick={handleCancel}
               className="px-3 py-1 text-sm rounded transition-colors bg-gray-200 text-gray-700 hover:bg-gray-300"
             >
-              取消
+              {t('common:actions.cancel')}
             </button>
           </div>
           
           <div className="text-xs text-text-secondary">
-            Enter保存 • Esc取消
+            {t('board:shortcuts.enterToSave')} • {t('board:shortcuts.escToCancel')}
           </div>
         </div>
         
@@ -162,7 +164,7 @@ const AddColumnButton: React.FC<AddColumnButtonProps> = ({
             d="M12 6v6m0 0v6m0-6h6m-6 0H6" 
           />
         </svg>
-        <span className="text-sm font-medium">添加新列</span>
+        <span className="text-sm font-medium">{t('board:actions.addColumn')}</span>
       </div>
     </button>
   );

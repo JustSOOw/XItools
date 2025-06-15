@@ -11,6 +11,7 @@
 
 import React from 'react';
 import EmptyState, { EmptyStateAction } from './EmptyState';
+import { useI18n } from '../../../hooks/useI18n';
 
 // 空状态图标组件
 const TasksIcon = () => (
@@ -60,17 +61,18 @@ export const EmptyTasks: React.FC<PresetEmptyStateProps> = ({
   size = 'md',
   className,
 }) => {
+  const { t } = useI18n();
   const actions: EmptyStateAction[] = [];
-  
+
   if (onAction) {
     actions.push({
-      label: '创建第一个任务',
+      label: t('task:actions.createFirst'),
       onClick: onAction,
       variant: 'primary',
       icon: <span className="text-lg">+</span>,
     });
   }
-  
+
   if (secondaryAction) {
     actions.push(secondaryAction);
   }
@@ -78,8 +80,8 @@ export const EmptyTasks: React.FC<PresetEmptyStateProps> = ({
   return (
     <EmptyState
       icon={<TasksIcon />}
-      title="还没有任务"
-      description="开始创建您的第一个任务，让工作更有条理。您可以设置优先级、截止日期和负责人。"
+      title={t('task:messages.noTasks')}
+      description={t('task:messages.noTasksDescription')}
       actions={actions}
       size={size}
       className={className}
@@ -96,11 +98,12 @@ export const EmptySearchResults: React.FC<PresetEmptyStateProps & { searchTerm?:
   size = 'md',
   className,
 }) => {
+  const { t } = useI18n();
   const actions: EmptyStateAction[] = [];
-  
+
   if (onAction) {
     actions.push({
-      label: '清除搜索',
+      label: t('common:actions.clearSearch'),
       onClick: onAction,
       variant: 'secondary',
     });
@@ -109,11 +112,11 @@ export const EmptySearchResults: React.FC<PresetEmptyStateProps & { searchTerm?:
   return (
     <EmptyState
       icon={<SearchIcon />}
-      title="未找到匹配的任务"
+      title={t('common:messages.noResults')}
       description={
-        searchTerm 
-          ? `没有找到包含"${searchTerm}"的任务。尝试使用不同的关键词或清除搜索条件。`
-          : "没有找到匹配当前筛选条件的任务。尝试调整筛选条件或清除筛选。"
+        searchTerm
+          ? t('task:messages.noSearchResults', { searchTerm })
+          : t('task:messages.noFilterResults')
       }
       actions={actions}
       size={size}
@@ -130,11 +133,12 @@ export const EmptyNetworkError: React.FC<PresetEmptyStateProps> = ({
   size = 'md',
   className,
 }) => {
+  const { t } = useI18n();
   const actions: EmptyStateAction[] = [];
-  
+
   if (onAction) {
     actions.push({
-      label: '重新连接',
+      label: t('common:actions.reconnect'),
       onClick: onAction,
       variant: 'primary',
     });
@@ -143,8 +147,8 @@ export const EmptyNetworkError: React.FC<PresetEmptyStateProps> = ({
   return (
     <EmptyState
       icon={<NetworkIcon />}
-      title="连接失败"
-      description="无法连接到服务器。请检查您的网络连接，然后重试。"
+      title={t('error:networkError')}
+      description={t('common:messages.noConnection')}
       actions={actions}
       size={size}
       className={className}
@@ -160,11 +164,12 @@ export const EmptyCalendar: React.FC<PresetEmptyStateProps> = ({
   size = 'md',
   className,
 }) => {
+  const { t } = useI18n();
   const actions: EmptyStateAction[] = [];
-  
+
   if (onAction) {
     actions.push({
-      label: '创建任务',
+      label: t('task:actions.create'),
       onClick: onAction,
       variant: 'primary',
     });
@@ -173,8 +178,8 @@ export const EmptyCalendar: React.FC<PresetEmptyStateProps> = ({
   return (
     <EmptyState
       icon={<CalendarIcon />}
-      title="这段时间没有任务"
-      description="当前时间段内没有安排任务。创建新任务或切换到其他时间段查看。"
+      title={t('calendar:messages.noTasksInPeriod')}
+      description={t('calendar:messages.noTasksInPeriodDescription')}
       actions={actions}
       size={size}
       className={className}
@@ -190,11 +195,12 @@ export const EmptyFilterResults: React.FC<PresetEmptyStateProps> = ({
   size = 'md',
   className,
 }) => {
+  const { t } = useI18n();
   const actions: EmptyStateAction[] = [];
-  
+
   if (onAction) {
     actions.push({
-      label: '清除筛选',
+      label: t('common:actions.clearFilters'),
       onClick: onAction,
       variant: 'secondary',
     });
@@ -203,8 +209,8 @@ export const EmptyFilterResults: React.FC<PresetEmptyStateProps> = ({
   return (
     <EmptyState
       icon={<FilterIcon />}
-      title="没有符合条件的任务"
-      description="当前筛选条件下没有找到任务。尝试调整筛选条件或清除所有筛选。"
+      title={t('task:messages.noFilterResults')}
+      description={t('task:messages.noFilterResultsDescription')}
       actions={actions}
       size={size}
       className={className}
@@ -220,11 +226,12 @@ export const EmptyColumn: React.FC<PresetEmptyStateProps> = ({
   size = 'sm',
   className,
 }) => {
+  const { t } = useI18n();
   return (
     <EmptyState
       icon={<TasksIcon />}
-      title="暂无任务"
-      description="将任务拖拽到这里，或创建新任务。"
+      title={t('task:messages.noTasksInColumn')}
+      description={t('task:messages.noTasksInColumnDescription')}
       size={size}
       className={className}
     />

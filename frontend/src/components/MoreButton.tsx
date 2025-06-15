@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import classNames from 'classnames';
 import Portal from './Portal';
+import { useI18n } from '../hooks/useI18n';
 
 export interface MoreMenuItem {
   id: string;
@@ -24,6 +25,7 @@ const MoreButton: React.FC<MoreButtonProps> = ({
   size = 'sm',
   placement = 'bottom-right',
 }) => {
+  const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -171,7 +173,7 @@ const MoreButton: React.FC<MoreButtonProps> = ({
           buttonSizeClasses[size],
           className
         )}
-        title="更多操作"
+        title={t('common:actions.more')}
       >
         <svg
           className={classNames('text-current', iconSizeClasses[size])}

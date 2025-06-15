@@ -96,6 +96,7 @@ const Modal: React.FC<ModalProps> = ({
               sizeClasses[size],
               className
             )}
+
           >
             {/* 模态框头部 */}
             {(title || showCloseButton) && (
@@ -144,6 +145,7 @@ const Modal: React.FC<ModalProps> = ({
           sizeClasses[size],
           className
         )}
+
       >
         <div ref={modalRef}>
           {/* 模态框头部 */}

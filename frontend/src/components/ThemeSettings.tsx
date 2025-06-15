@@ -11,6 +11,7 @@
 
 import React from 'react';
 import { useThemeStore, ThemeType, ThemeConfig } from '../store/themeStore';
+import { useI18n } from '../hooks/useI18n';
 
 interface ThemeSettingsProps {
   className?: string;
@@ -22,6 +23,7 @@ const ThemePreviewCard: React.FC<{
   isActive: boolean;
   onClick: () => void;
 }> = ({ config, isActive, onClick }) => {
+  const { t } = useI18n();
   return (
     <div
       className={`
@@ -69,10 +71,10 @@ const ThemePreviewCard: React.FC<{
         {/* 主题信息 */}
         <div>
           <h3 className="font-medium text-text-primary mb-1">
-            {config.name}
+            {t(`settings:theme.themes.${config.id}`)}
           </h3>
           <p className="text-sm text-text-secondary">
-            {config.description}
+            {t(`settings:theme.descriptions.${config.id}`)}
           </p>
         </div>
       </div>
@@ -103,6 +105,7 @@ const ThemePreviewCard: React.FC<{
 
 // 主题设置组件
 export const ThemeSettings: React.FC<ThemeSettingsProps> = ({ className = '' }) => {
+  const { t } = useI18n();
   const {
     currentTheme,
     followSystemTheme,
@@ -124,10 +127,10 @@ export const ThemeSettings: React.FC<ThemeSettingsProps> = ({ className = '' }) 
       {/* 标题 */}
       <div>
         <h2 className="text-lg font-semibold text-text-primary mb-2">
-          主题设置
+          {t('settings:theme.title')}
         </h2>
         <p className="text-sm text-text-secondary">
-          选择您喜欢的界面主题，让XItools更符合您的使用习惯
+          {t('settings:theme.description')}
         </p>
       </div>
 
@@ -136,10 +139,10 @@ export const ThemeSettings: React.FC<ThemeSettingsProps> = ({ className = '' }) 
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-medium text-text-primary mb-1">
-              跟随系统主题
+              {t('settings:theme.followSystemTheme')}
             </h3>
             <p className="text-sm text-text-secondary">
-              自动根据系统的深色/浅色模式切换主题
+              {t('settings:theme.followSystemThemeDescription')}
             </p>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
@@ -157,9 +160,9 @@ export const ThemeSettings: React.FC<ThemeSettingsProps> = ({ className = '' }) 
       {/* 主题选择 */}
       <div>
         <h3 className="font-medium text-text-primary mb-3">
-          选择主题
+          {t('settings:theme.selectTheme')}
         </h3>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 p-2">
           {Object.values(configs).map((config) => (
             <ThemePreviewCard
               key={config.id}
@@ -174,7 +177,7 @@ export const ThemeSettings: React.FC<ThemeSettingsProps> = ({ className = '' }) 
       {/* 当前主题信息 */}
       <div className="bg-surface rounded-lg p-4">
         <h3 className="font-medium text-text-primary mb-2">
-          当前主题
+          {t('settings:theme.currentTheme')}
         </h3>
         <div className="flex items-center space-x-3">
           <div className="flex h-6 rounded overflow-hidden">
@@ -193,11 +196,11 @@ export const ThemeSettings: React.FC<ThemeSettingsProps> = ({ className = '' }) 
           </div>
           <div>
             <span className="font-medium text-text-primary">
-              {configs[currentTheme].name}
+              {t(`settings:theme.themes.${currentTheme}`)}
             </span>
             {followSystemTheme && (
               <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-1 rounded">
-                系统跟随
+                {t('settings:theme.systemFollowing')}
               </span>
             )}
           </div>

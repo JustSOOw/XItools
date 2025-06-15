@@ -4,6 +4,7 @@
  */
 import React from 'react';
 import classNames from 'classnames';
+import { useI18n } from '../../hooks/useI18n';
 
 export interface TimelineEvent {
   id: string;
@@ -28,6 +29,7 @@ const Timeline: React.FC<TimelineProps> = ({
   showUserAvatars = false,
   maxHeight = '300px',
 }) => {
+  const { t } = useI18n();
   const getEventIcon = (type: TimelineEvent['type']) => {
     switch (type) {
       case 'created':
@@ -91,13 +93,13 @@ const Timeline: React.FC<TimelineProps> = ({
 
   const getEventTypeText = (type: TimelineEvent['type']) => {
     switch (type) {
-      case 'created': return '创建任务';
-      case 'updated': return '更新任务';
-      case 'status_changed': return '状态变更';
-      case 'assigned': return '分配任务';
-      case 'commented': return '添加评论';
-      case 'completed': return '完成任务';
-      default: return '未知操作';
+      case 'created': return t('task:timeline.events.created');
+      case 'updated': return t('task:timeline.events.updated');
+      case 'status_changed': return t('task:timeline.events.statusChanged');
+      case 'assigned': return t('task:timeline.events.assigned');
+      case 'commented': return t('task:timeline.events.commented');
+      case 'completed': return t('task:timeline.events.completed');
+      default: return t('task:timeline.events.unknown');
     }
   };
 
@@ -109,18 +111,18 @@ const Timeline: React.FC<TimelineProps> = ({
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-    if (diffMins < 1) return '刚刚';
-    if (diffMins < 60) return `${diffMins}分钟前`;
-    if (diffHours < 24) return `${diffHours}小时前`;
-    if (diffDays < 7) return `${diffDays}天前`;
+    if (diffMins < 1) return t('task:timeline.time.justNow');
+    if (diffMins < 60) return t('task:timeline.time.minutesAgo', { count: diffMins });
+    if (diffHours < 24) return t('task:timeline.time.hoursAgo', { count: diffHours });
+    if (diffDays < 7) return t('task:timeline.time.daysAgo', { count: diffDays });
     
-    return date.toLocaleDateString('zh-CN', {
+    return new Intl.DateTimeFormat(t('common:locale'), {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
-    });
+    }).format(date);
   };
 
   if (events.length === 0) {
@@ -129,7 +131,7 @@ const Timeline: React.FC<TimelineProps> = ({
         <svg className="w-12 h-12 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <p>暂无操作历史</p>
+        <p>{t('task:timeline.noHistory')}</p>
       </div>
     );
   }
@@ -158,11 +160,11 @@ const Timeline: React.FC<TimelineProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <h4 className="text-sm font-medium text-text-primary">
-                      {event.title || getEventTypeText(event.type)}
+                      {event.title && event.title.trim() ? event.title : getEventTypeText(event.type)}
                     </h4>
                     {event.user && (
                       <span className="text-xs text-text-secondary">
-                        by {event.user}
+                        {t('task:timeline.by')} {event.user}
                       </span>
                     )}
                   </div>
@@ -200,17 +202,18 @@ const Timeline: React.FC<TimelineProps> = ({
 };
 
 // 生成示例时间线事件的工具函数
-export const generateTimelineEvents = (task: any): TimelineEvent[] => {
+// 注意：这个函数需要在组件内部调用以访问翻译函数
+export const generateTimelineEvents = (task: any, t?: (key: string, options?: any) => string): TimelineEvent[] => {
   const events: TimelineEvent[] = [];
 
   // 创建事件
   events.push({
     id: `created-${task.id}`,
     type: 'created',
-    title: '任务创建',
-    description: `创建了任务 "${task.title}"`,
+    title: '', // 移除硬编码title，让组件使用翻译函数
+    description: t ? t('task:timeline.descriptions.created', { title: task.title }) : `创建了任务 "${task.title}"`,
     timestamp: task.createdAt,
-    user: task.assignee || '系统',
+    user: task.assignee || (t ? t('task:timeline.system') : '系统'),
   });
 
   // 如果有更新时间且不同于创建时间，添加更新事件
@@ -218,10 +221,10 @@ export const generateTimelineEvents = (task: any): TimelineEvent[] => {
     events.push({
       id: `updated-${task.id}`,
       type: 'updated',
-      title: '任务更新',
-      description: '任务信息已更新',
+      title: '', // 移除硬编码title
+      description: t ? t('task:timeline.descriptions.updated') : '任务信息已更新',
       timestamp: task.updatedAt,
-      user: task.assignee || '系统',
+      user: task.assignee || (t ? t('task:timeline.system') : '系统'),
     });
   }
 
@@ -230,10 +233,10 @@ export const generateTimelineEvents = (task: any): TimelineEvent[] => {
     events.push({
       id: `completed-${task.id}`,
       type: 'completed',
-      title: '任务完成',
-      description: '任务已标记为完成',
+      title: '', // 移除硬编码title
+      description: t ? t('task:timeline.descriptions.completed') : '任务已标记为完成',
       timestamp: task.updatedAt || task.createdAt,
-      user: task.assignee || '系统',
+      user: task.assignee || (t ? t('task:timeline.system') : '系统'),
     });
   }
 

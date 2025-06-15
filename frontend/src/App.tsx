@@ -55,6 +55,7 @@ import useTaskStore from './store/taskStore';
 import mcpService from './services/mcpService';
 import columnService from './services/columnService';
 import { Task as TaskType, PartialTask } from './types/Task';
+import { useI18n } from './hooks/useI18n';
 
 
 function App() {
@@ -66,6 +67,9 @@ function App() {
     description: '',
     status: 'todo',
   });
+
+  // 翻译函数
+  const { t } = useI18n();
 
   // 反馈系统Hooks
   const { showConfirm, ConfirmDialog } = useConfirmDialog();
@@ -103,9 +107,9 @@ function App() {
         setColumns(defaultColumns);
       } catch (initError) {
         console.error('初始化默认列失败:', initError);
-        toast.error('加载看板列失败，请刷新页面重试', {
+        toast.error(t('common:messages.serverError'), {
           action: {
-            label: '刷新',
+            label: t('common:actions.refresh'),
             onClick: () => window.location.reload(),
           },
         });
@@ -126,60 +130,60 @@ function App() {
     // 新建任务快捷键
     addShortcut({
       key: 'n',
-      description: '新建任务',
+      description: t('feedback:shortcuts.newTask'),
       action: () => setIsCreateModalOpen(true),
-      category: '任务管理',
+      category: t('feedback:shortcuts.categories.task'),
       ctrlKey: true,
     });
 
     // 搜索快捷键
     addShortcut({
       key: 'f',
-      description: '搜索任务',
+      description: t('feedback:shortcuts.search'),
       action: () => {
         const searchInput = document.querySelector('input[placeholder*="搜索"]') as HTMLInputElement;
         if (searchInput) {
           searchInput.focus();
         }
       },
-      category: '导航',
+      category: t('feedback:shortcuts.categories.navigation'),
       ctrlKey: true,
     });
 
     // 视图切换快捷键
     addShortcut({
       key: '1',
-      description: '切换到看板视图',
+      description: t('feedback:shortcuts.boardView'),
       action: () => useTaskStore.getState().setCurrentView('board'),
-      category: '视图',
+      category: t('feedback:shortcuts.categories.view'),
       ctrlKey: true,
     });
 
     addShortcut({
       key: '2',
-      description: '切换到列表视图',
+      description: t('feedback:shortcuts.listView'),
       action: () => useTaskStore.getState().setCurrentView('list'),
-      category: '视图',
+      category: t('feedback:shortcuts.categories.view'),
       ctrlKey: true,
     });
 
     addShortcut({
       key: '3',
-      description: '切换到日历视图',
+      description: t('feedback:shortcuts.calendarView'),
       action: () => useTaskStore.getState().setCurrentView('calendar'),
-      category: '视图',
+      category: t('feedback:shortcuts.categories.view'),
       ctrlKey: true,
     });
 
     // 刷新快捷键
     addShortcut({
       key: 'r',
-      description: '刷新数据',
+      description: t('feedback:shortcuts.refresh'),
       action: () => {
         reconnect();
-        toast.success('正在刷新数据...');
+        toast.success(t('common:status.syncing'));
       },
-      category: '系统',
+      category: t('feedback:shortcuts.categories.general'),
       ctrlKey: true,
     });
   }, [addShortcut, reconnect]);
@@ -298,7 +302,7 @@ function App() {
   // 创建任务
   const handleCreateTask = async () => {
     if (!newTask.title) {
-      toast.error('任务标题不能为空');
+      toast.error(t('task:messages.taskTitleRequired'));
       return;
     }
 
@@ -313,17 +317,17 @@ function App() {
 
       // 显示成功动画
       showSuccess({
-        message: '任务创建成功！',
+        message: t('task:messages.taskCreated'),
         variant: 'celebration',
         duration: 2000,
       });
 
-      toast.success('任务创建成功！');
+      toast.success(t('task:messages.taskCreated'));
     } catch (error) {
       console.error('创建任务失败:', error);
-      toast.error('创建任务失败，请稍后重试', {
+      toast.error(t('task:messages.createFailed'), {
         action: {
-          label: '重试',
+          label: t('common:actions.retry'),
           onClick: handleCreateTask,
         },
       });
@@ -406,7 +410,7 @@ function App() {
             await columnService.reorderColumns(columnIds);
           } catch (error) {
             console.error('重新排序列失败:', error);
-            toast.error('重新排序列失败');
+            toast.error(t('board:messages.columnMoved'));
             // 回滚本地状态
             setColumns(columns);
           }
@@ -473,7 +477,7 @@ function App() {
           mcpService.updateTask(activeId, { status: finalColumn })
             .catch((error) => {
               console.error('空列移动持久化失败:', error);
-              toast.warning('任务保存失败，但界面已更新');
+              toast.warning(t('common:messages.saveFailed'));
             });
           return;
         }
@@ -580,12 +584,12 @@ function App() {
         name: newTitle,
       });
       updateColumn(columnId, updatedColumn);
-      toast.success('列标题更新成功');
+      toast.success(t('feedback:messages.columnTitleUpdated'));
     } catch (error) {
       console.error('更新列标题失败:', error);
-      toast.error('更新列标题失败，请重试', {
+      toast.error(t('feedback:messages.columnTitleUpdateFailed'), {
         action: {
-          label: '重试',
+          label: t('common:actions.retry'),
           onClick: () => handleUpdateColumnTitle(columnId, newTitle),
         },
       });
@@ -599,11 +603,16 @@ function App() {
 
     showConfirm(
       {
-        title: '确认删除列',
-        message: `确定要删除列"${columnName}"吗？${columnTasks.length > 0 ? `该列中有 ${columnTasks.length} 个任务，删除后这些任务也会被删除。` : ''}此操作无法撤销。`,
+        title: t('feedback:confirmation.deleteColumnTitle'),
+        message: columnTasks.length > 0
+          ? t('feedback:confirmation.deleteColumnWithTasksMessage', {
+              columnName,
+              taskCount: columnTasks.length
+            })
+          : t('feedback:confirmation.deleteColumnMessage', { columnName }),
         type: 'danger',
-        confirmText: '删除',
-        cancelText: '取消',
+        confirmText: t('feedback:dialog.delete'),
+        cancelText: t('feedback:dialog.cancel'),
       },
       async () => {
         try {
@@ -612,17 +621,17 @@ function App() {
 
           // 显示成功动画
           showSuccess({
-            message: '列删除成功',
+            message: t('feedback:messages.columnDeleted'),
             variant: 'simple',
             duration: 1500,
           });
 
-          toast.success('列删除成功');
+          toast.success(t('feedback:messages.columnDeleted'));
         } catch (error) {
           console.error('删除列失败:', error);
-          toast.error(error instanceof Error ? error.message : '删除列失败，请重试', {
+          toast.error(error instanceof Error ? error.message : t('feedback:messages.columnDeleteFailed'), {
             action: {
-              label: '重试',
+              label: t('common:actions.retry'),
               onClick: () => handleDeleteColumn(columnId),
             },
           });
@@ -635,10 +644,10 @@ function App() {
     try {
       const updatedColumn = await columnService.updateColumn(columnId, { color });
       updateColumn(columnId, updatedColumn);
-      toast.success('列颜色更新成功');
+      toast.success(t('feedback:messages.columnColorUpdated'));
     } catch (error) {
       console.error('更新列颜色失败:', error);
-      toast.error('更新列颜色失败，请重试');
+      toast.error(t('feedback:messages.columnColorUpdateFailed'));
     }
   };
 
@@ -652,7 +661,7 @@ function App() {
       // WebSocket监听器会自动处理task_updated事件并更新本地状态
     } catch (error) {
       console.error('更新任务颜色失败:', error);
-      toast.error('更新任务颜色失败，请重试');
+      toast.error(t('feedback:messages.taskColorUpdateFailed'));
     }
   };
 
@@ -662,11 +671,11 @@ function App() {
 
     showConfirm(
       {
-        title: '确认删除任务',
-        message: `确定要删除任务"${taskTitle}"吗？此操作无法撤销。`,
+        title: t('feedback:confirmation.deleteTaskTitle'),
+        message: t('feedback:confirmation.deleteTaskMessage', { taskTitle }),
         type: 'danger',
-        confirmText: '删除',
-        cancelText: '取消',
+        confirmText: t('feedback:dialog.delete'),
+        cancelText: t('feedback:dialog.cancel'),
       },
       async () => {
         try {
@@ -677,17 +686,17 @@ function App() {
 
           // 显示成功动画
           showSuccess({
-            message: '任务删除成功',
+            message: t('feedback:messages.taskDeleted'),
             variant: 'simple',
             duration: 1500,
           });
 
-          toast.success('任务删除成功');
+          toast.success(t('feedback:messages.taskDeleted'));
         } catch (error) {
           console.error('删除任务失败:', error);
-          toast.error('删除任务失败，请重试', {
+          toast.error(t('feedback:messages.taskDeleteFailed'), {
             action: {
-              label: '重试',
+              label: t('common:actions.retry'),
               onClick: () => handleTaskDelete(taskId),
             },
           });
@@ -714,7 +723,7 @@ function App() {
 
     } catch (error) {
       console.error('列排序失败:', error);
-      toast.error('列排序失败，请重试');
+      toast.error(t('feedback:messages.columnSortFailed'));
     }
   };
 
@@ -777,7 +786,7 @@ function App() {
               // 通过MCP服务更新任务
               mcpService.updateTask(taskId, updates).catch(error => {
                 console.error('更新任务失败:', error);
-                toast.error('更新任务失败，请重试');
+                toast.error(t('feedback:messages.taskUpdateFailed'));
               });
             }}
             onTaskDelete={handleTaskDelete}
@@ -1083,7 +1092,7 @@ function App() {
               <div className="w-80">
                 <SearchBox
                   value={filterOptions.searchText || ''}
-                  placeholder="搜索任务标题或描述..."
+                  placeholder={t('task:placeholders.searchTasks')}
                   onSearch={(searchText: string) => setFilterOptions({ searchText: searchText || undefined })}
                   onClear={() => setFilterOptions({ searchText: undefined })}
                 />
@@ -1106,7 +1115,7 @@ function App() {
               <div className="flex items-center">
                 <span className={`w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
                 <span className="text-xs text-text-secondary">
-                  {isConnected ? '已连接' : '未连接'}
+                  {isConnected ? t('common:status.connected') : t('common:status.disconnected')}
                 </span>
               </div>
 
@@ -1116,7 +1125,7 @@ function App() {
                   size="sm"
                   onClick={reconnect}
                 >
-                  重新连接MCP服务
+                  {t('common:actions.reconnect', { defaultValue: '重新连接' })}
                 </Button>
               )}
 
@@ -1128,11 +1137,14 @@ function App() {
                   onClick={async () => {
                     showConfirm(
                       {
-                        title: '确认删除所有任务',
-                        message: `确定要删除所有 ${tasks.length} 个任务吗？此操作无法撤销。`,
+                        title: t('task:actions.deleteAllTasks', { defaultValue: '确认删除所有任务' }),
+                        message: t('task:messages.confirmDeleteAll', {
+                          count: tasks.length,
+                          defaultValue: `确定要删除所有 ${tasks.length} 个任务吗？此操作无法撤销。`
+                        }),
                         type: 'danger',
-                        confirmText: '删除全部',
-                        cancelText: '取消',
+                        confirmText: t('task:actions.deleteAll', { defaultValue: '删除全部' }),
+                        cancelText: t('common:actions.cancel'),
                       },
                       async () => {
                         try {
@@ -1146,23 +1158,23 @@ function App() {
 
                           // 显示成功动画
                           showSuccess({
-                            message: '所有任务已删除',
+                            message: t('task:messages.allTasksDeleted', { defaultValue: '所有任务已删除' }),
                             variant: 'simple',
                             duration: 2000,
                           });
 
-                          toast.success('所有任务已删除');
+                          toast.success(t('task:messages.allTasksDeleted', { defaultValue: '所有任务已删除' }));
                         } catch (error) {
                           console.error('删除任务失败:', error);
-                          toast.error('删除任务失败');
+                          toast.error(t('task:messages.deleteFailed'));
                         }
                       }
                     );
                   }}
                   className="text-xs"
-                  title="删除所有任务"
+                  title={t('task:actions.deleteAllTasks', { defaultValue: '删除所有任务' })}
                 >
-                  🗑️ 清空全部
+                  🗑️ {t('common:actions.clearAll', { defaultValue: '清空全部' })}
                 </Button>
               )}
 
@@ -1171,7 +1183,7 @@ function App() {
                 size="sm"
                 onClick={() => setIsCreateModalOpen(true)}
               >
-                新建任务
+                {t('task:actions.createTask')}
               </Button>
 
               <BoardColorPicker />
@@ -1247,19 +1259,19 @@ function App() {
       <Modal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        title="新建任务"
+        title={t('task:actions.createTask')}
         size="md"
         footer={
           <>
             <Button variant="ghost" onClick={() => setIsCreateModalOpen(false)}>
-              取消
+              {t('common:actions.cancel')}
             </Button>
-            <Button 
-              variant="primary" 
+            <Button
+              variant="primary"
               onClick={handleCreateTask}
               disabled={!isConnected}
             >
-              创建
+              {t('common:actions.create')}
             </Button>
           </>
         }
@@ -1267,18 +1279,18 @@ function App() {
         <div className="space-y-4">
           {!isConnected && (
             <div className="bg-warning/10 border border-warning text-warning px-4 py-2 rounded-md text-sm">
-              未连接到MCP服务，无法创建任务
+              {t('common:messages.noConnection')}
             </div>
           )}
           
           <div>
             <label className="block text-sm font-medium text-text-primary mb-1">
-              标题
+              {t('task:fields.title')}
             </label>
             <input
               type="text"
               className="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
-              placeholder="输入任务标题"
+              placeholder={t('task:placeholders.taskTitle')}
               value={newTask.title}
               onChange={(e) => setNewTask({...newTask, title: e.target.value})}
               disabled={!isConnected}
@@ -1287,11 +1299,11 @@ function App() {
           
           <div>
             <label className="block text-sm font-medium text-text-primary mb-1">
-              描述
+              {t('task:fields.description')}
             </label>
             <textarea
               className="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 min-h-[100px]"
-              placeholder="输入任务描述"
+              placeholder={t('task:placeholders.taskDescription')}
               value={newTask.description || ''}
               onChange={(e) => setNewTask({...newTask, description: e.target.value})}
               disabled={!isConnected}
@@ -1300,7 +1312,7 @@ function App() {
           
           <div>
             <label className="block text-sm font-medium text-text-primary mb-1">
-              状态
+              {t('task:fields.status')}
             </label>
             <select
               className="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
@@ -1316,7 +1328,7 @@ function App() {
           
           <div>
             <label className="block text-sm font-medium text-text-primary mb-1">
-              优先级
+              {t('task:fields.priority')}
             </label>
             <select
               className="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
@@ -1324,10 +1336,10 @@ function App() {
               onChange={(e) => setNewTask({...newTask, priority: (e.target.value || null) as any})}
               disabled={!isConnected}
             >
-              <option value="">未设置</option>
-              <option value="High">高</option>
-              <option value="Medium">中</option>
-              <option value="Low">低</option>
+              <option value="">{t('task:placeholders.selectPriority')}</option>
+              <option value="High">{t('task:priority.high')}</option>
+              <option value="Medium">{t('task:priority.medium')}</option>
+              <option value="Low">{t('task:priority.low')}</option>
             </select>
           </div>
         </div>

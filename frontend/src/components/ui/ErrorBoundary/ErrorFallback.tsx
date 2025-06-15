@@ -13,6 +13,7 @@ import React, { useState } from 'react';
 import classNames from 'classnames';
 import Button from '../../Button';
 import { ErrorFallbackProps } from './ErrorBoundary';
+import { useI18n } from '../../../hooks/useI18n';
 
 /**
  * 默认错误回退组件
@@ -23,6 +24,7 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({
   errorInfo,
   resetError,
 }) => {
+  const { t } = useI18n();
   const [showDetails, setShowDetails] = useState(false);
 
   const handleReload = () => {
@@ -45,7 +47,7 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({
     // 可以发送到错误监控服务
     // errorReportingService.report(errorReport);
     
-    alert('错误报告已生成，请联系技术支持');
+    alert(t('error:reportGenerated'));
   };
 
   return (
@@ -71,12 +73,12 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({
 
           {/* 错误标题 */}
           <h1 className="text-xl font-semibold text-center text-text-primary mb-2">
-            出现了一些问题
+            {t('error:title')}
           </h1>
 
           {/* 错误描述 */}
           <p className="text-text-secondary text-center mb-6">
-            应用遇到了意外错误。您可以尝试刷新页面或重试操作。
+            {t('error:description')}
           </p>
 
           {/* 错误信息（可展开） */}
@@ -86,18 +88,18 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({
                 onClick={() => setShowDetails(!showDetails)}
                 className="text-sm text-primary hover:text-primary/80 focus:outline-none"
               >
-                {showDetails ? '隐藏' : '显示'}错误详情
+                {showDetails ? t('error:hideDetails') : t('error:showDetails')}
               </button>
               
               {showDetails && (
                 <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/10 rounded-md border border-red-200 dark:border-red-800">
                   <div className="text-xs font-mono text-red-800 dark:text-red-200">
-                    <div className="font-semibold mb-1">错误信息:</div>
+                    <div className="font-semibold mb-1">{t('error:errorMessage')}:</div>
                     <div className="mb-3 break-words">{error.message}</div>
                     
                     {process.env.NODE_ENV === 'development' && (
                       <>
-                        <div className="font-semibold mb-1">错误堆栈:</div>
+                        <div className="font-semibold mb-1">{t('error:errorStack')}:</div>
                         <pre className="whitespace-pre-wrap text-xs overflow-auto max-h-32">
                           {error.stack}
                         </pre>
@@ -117,9 +119,9 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({
               onClick={resetError}
               className="w-full"
             >
-              重试
+              {t('common:actions.retry')}
             </Button>
-            
+
             <div className="flex space-x-3">
               <Button
                 variant="secondary"
@@ -127,16 +129,16 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({
                 onClick={handleReload}
                 className="flex-1"
               >
-                刷新页面
+                {t('error:refreshPage')}
               </Button>
-              
+
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleReportError}
                 className="flex-1"
               >
-                报告错误
+                {t('error:reportError')}
               </Button>
             </div>
           </div>
@@ -144,7 +146,7 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({
           {/* 帮助信息 */}
           <div className="mt-6 pt-4 border-t border-border">
             <p className="text-xs text-text-secondary text-center">
-              如果问题持续存在，请联系技术支持
+              {t('error:contactSupport')}
             </p>
           </div>
         </div>
@@ -160,6 +162,7 @@ export const SimpleErrorFallback: React.FC<ErrorFallbackProps> = ({
   error,
   resetError,
 }) => {
+  const { t } = useI18n();
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center">
       <div className="w-12 h-12 mb-4 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
@@ -179,19 +182,19 @@ export const SimpleErrorFallback: React.FC<ErrorFallbackProps> = ({
       </div>
       
       <h3 className="text-lg font-medium text-text-primary mb-2">
-        加载失败
+        {t('error:loadFailed')}
       </h3>
-      
+
       <p className="text-text-secondary mb-4 text-sm">
-        {error?.message || '组件加载时出现错误'}
+        {error?.message || t('error:componentError')}
       </p>
-      
+
       <Button
         variant="primary"
         size="sm"
         onClick={resetError}
       >
-        重试
+        {t('common:actions.retry')}
       </Button>
     </div>
   );

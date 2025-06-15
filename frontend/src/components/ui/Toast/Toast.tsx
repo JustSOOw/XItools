@@ -12,6 +12,7 @@
 import React, { useEffect, useState } from 'react';
 import classNames from 'classnames';
 import Portal from '../../Portal';
+import { useI18n } from '../../../hooks/useI18n';
 
 export interface ToastAction {
   label: string;
@@ -42,6 +43,7 @@ const Toast: React.FC<ToastProps> = ({
   onClose,
   position = 'bottom-right',
 }) => {
+  const { t } = useI18n();
   const [isVisible, setIsVisible] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
 
@@ -161,7 +163,7 @@ const Toast: React.FC<ToastProps> = ({
                 style.text
               )}
             >
-              <span className="sr-only">关闭</span>
+              <span className="sr-only">{t('common:actions.close')}</span>
               <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>

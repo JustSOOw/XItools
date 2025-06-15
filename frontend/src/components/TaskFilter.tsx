@@ -8,6 +8,7 @@ import classNames from 'classnames';
 import { FilterOptions, BoardColumn } from '../store/taskStore';
 import { Task } from '../types/Task';
 import Button from './Button';
+import { useI18n } from '../hooks/useI18n';
 
 interface TaskFilterProps {
   filterOptions: FilterOptions;
@@ -30,6 +31,7 @@ const TaskFilter: React.FC<TaskFilterProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { t } = useI18n();
 
   // 点击外部关闭下拉面板
   useEffect(() => {
@@ -110,7 +112,7 @@ const TaskFilter: React.FC<TaskFilterProps> = ({
             d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.414A1 1 0 013 6.707V4z"
           />
         </svg>
-        <span>筛选</span>
+        <span>{t('common:actions.filter')}</span>
         {hasActiveFilters && (
           <span className="inline-flex items-center justify-center w-5 h-5 text-xs bg-white/20 rounded-full">
             {Object.keys(filterOptions).filter(key => {
@@ -149,7 +151,7 @@ const TaskFilter: React.FC<TaskFilterProps> = ({
             {/* 筛选器头部 */}
             <div className="pb-3 border-b border-border">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-text-primary">筛选条件</span>
+                <span className="text-sm font-medium text-text-primary">{t('task:filters.title', { defaultValue: '筛选条件' })}</span>
                 {hasActiveFilters && (
                   <Button
                     variant="ghost"
@@ -157,7 +159,7 @@ const TaskFilter: React.FC<TaskFilterProps> = ({
                     onClick={onClearFilters}
                     className="text-xs"
                   >
-                    清空全部
+                    {t('common:actions.clearAll')}
                   </Button>
                 )}
               </div>
@@ -165,9 +167,16 @@ const TaskFilter: React.FC<TaskFilterProps> = ({
               {/* 任务统计 */}
               <div className="text-xs text-text-secondary">
                 {displayTasks.length !== tasks.length ? (
-                  <>显示 {displayTasks.length} / {tasks.length} 个任务</>
+                  <>{t('task:statistics.showing', {
+                    displayed: displayTasks.length,
+                    total: tasks.length,
+                    defaultValue: `显示 ${displayTasks.length} / ${tasks.length} 个任务`
+                  })}</>
                 ) : (
-                  <>共 {tasks.length} 个任务</>
+                  <>{t('task:statistics.total', {
+                    count: tasks.length,
+                    defaultValue: `共 ${tasks.length} 个任务`
+                  })}</>
                 )}
               </div>
             </div>
@@ -175,7 +184,7 @@ const TaskFilter: React.FC<TaskFilterProps> = ({
             {/* 优先级筛选 */}
             <div>
               <label className="block text-xs font-medium text-text-primary mb-2">
-                优先级
+                {t('task:fields.priority')}
               </label>
               <div className="flex flex-wrap gap-2">
                 {priorityOptions.map(priority => (
@@ -190,7 +199,7 @@ const TaskFilter: React.FC<TaskFilterProps> = ({
                       }
                     )}
                   >
-                    {priority === 'High' ? '高' : priority === 'Medium' ? '中' : '低'}
+                    {t(`task:priority.${priority.toLowerCase()}`)}
                   </button>
                 ))}
               </div>
@@ -200,7 +209,7 @@ const TaskFilter: React.FC<TaskFilterProps> = ({
             {assigneeOptions.length > 0 && (
               <div>
                 <label className="block text-xs font-medium text-text-primary mb-2">
-                  负责人
+                  {t('task:fields.assignee')}
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {assigneeOptions.map(assignee => (

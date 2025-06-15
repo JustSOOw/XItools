@@ -4,6 +4,7 @@ import classNames from 'classnames';
 import EditableColumnTitle from './EditableColumnTitle';
 import MoreButton, { MoreMenuItem } from './MoreButton';
 import ColorPickerModal from './ColorPickerModal';
+import { useI18n } from '../hooks/useI18n';
 
 export interface DroppableColumnProps {
   id: string;
@@ -44,6 +45,7 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
   color,
   sortOption = 'manual',
 }) => {
+  const { t } = useI18n();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showSortMenu, setShowSortMenu] = useState(false);
@@ -57,17 +59,17 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
 
   // 排序选项定义 - 精简为最常用的几种
   const sortOptions = [
-    { value: 'manual', label: '手动排序', icon: '🔧', desc: '通过拖拽自定义顺序' },
-    { value: 'priority', label: '按优先级', icon: '⭐', desc: '高优先级在前' },
-    { value: 'created_desc', label: '按创建时间', icon: '🆕', desc: '最新创建在前' },
-    { value: 'title_asc', label: '按标题排序', icon: '🔤', desc: '按字母顺序排列' },
+    { value: 'manual', label: t('board:sorting.manual'), icon: '🔧', desc: t('board:sorting.manualDesc') },
+    { value: 'priority', label: t('board:sorting.priority'), icon: '⭐', desc: t('board:sorting.priorityDesc') },
+    { value: 'created_desc', label: t('board:sorting.createdAt'), icon: '🆕', desc: t('board:sorting.createdDesc') },
+    { value: 'title_asc', label: t('board:sorting.title'), icon: '🔤', desc: t('board:sorting.titleDesc') },
   ];
 
   // 更多按钮菜单项 - 简化菜单
   const moreMenuItems: MoreMenuItem[] = [
     {
       id: 'set-color',
-      label: '设置颜色',
+      label: t('board:column.color'),
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z" />
@@ -79,7 +81,7 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
     },
     {
       id: 'sort-tasks',
-      label: '任务排序',
+      label: t('board:column.sort'),
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
@@ -91,7 +93,7 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
     },
     ...(isDeletable ? [{
       id: 'delete',
-      label: '删除列',
+      label: t('board:actions.deleteColumn'),
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -129,7 +131,7 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
               <div
                 {...dragHandleProps}
                 className="mr-2 p-1 cursor-grab active:cursor-grabbing hover:bg-black/5 dark:hover:bg-white/5 rounded-small transition-colors"
-                title="拖拽重排序列"
+                title={t('board:actions.dragColumn')}
               >
                 <svg className="w-4 h-4 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
@@ -155,8 +157,8 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
               <button
                 onClick={onAddCard}
                 className="p-1 rounded-small hover:bg-black/5 text-text-secondary hover:text-primary transition-colors"
-                aria-label="添加任务"
-                title="添加任务"
+                aria-label={t('board:actions.createCard')}
+                title={t('board:actions.createCard')}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 3a1 1 0 00-1 1v5H4a1 1 0 100 2h5v5a1 1 0 102 0v-5h5a1 1 0 100-2h-5V4a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -176,7 +178,7 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
         {/* 删除确认对话框 */}
         {showDeleteConfirm && (
           <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm">
-            <p className="text-red-800 mb-2">确定要删除此列吗？此操作不可撤销。</p>
+            <p className="text-red-800 mb-2">{t('feedback:confirmation.deleteColumn')}</p>
             <div className="flex space-x-2">
               <button
                 onClick={() => {
@@ -185,13 +187,13 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
                 }}
                 className="px-2 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 transition-colors"
               >
-                确定删除
+                {t('feedback:dialog.delete')}
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 className="px-2 py-1 bg-gray-300 text-gray-700 rounded text-xs hover:bg-gray-400 transition-colors"
               >
-                取消
+                {t('feedback:dialog.cancel')}
               </button>
             </div>
           </div>
@@ -216,7 +218,7 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
                 }
               )}
             >
-              {isOver && isDraggingTask ? '放置任务到这里' : '暂无任务'}
+              {isOver && isDraggingTask ? t('board:placeholders.dragCard') : t('board:placeholders.emptyColumn')}
             </div>
           ) : (
             /* 卡片容器 */
@@ -236,7 +238,7 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
         }}
         onClose={() => setShowColorPicker(false)}
         isOpen={showColorPicker}
-        title="设置列颜色"
+        title={t('board:column.color')}
       />
 
       {/* 排序选择器弹窗 */}
@@ -245,7 +247,7 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-80 max-w-sm mx-4">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                任务排序
+                {t('board:column.sort')}
               </h3>
               <button
                 onClick={() => setShowSortMenu(false)}
