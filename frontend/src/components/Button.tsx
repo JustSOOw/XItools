@@ -1,5 +1,6 @@
 import React, { ButtonHTMLAttributes, ReactNode } from 'react';
 import classNames from 'classnames';
+import { motion } from 'framer-motion';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success' | 'warning';
 export type ButtonSize = 'sm' | 'md' | 'lg';
@@ -12,6 +13,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   isFullWidth?: boolean;
   icon?: ReactNode;
   iconPosition?: 'left' | 'right';
+  disableAnimation?: boolean;
+  animationVariant?: 'scale' | 'bounce' | 'none';
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -24,9 +27,11 @@ const Button: React.FC<ButtonProps> = ({
   iconPosition = 'left',
   className,
   disabled,
+  disableAnimation = false,
+  animationVariant = 'scale',
   ...props
 }) => {
-  const baseClasses = 'inline-flex items-center justify-center rounded-element font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2';
+  const baseClasses = 'inline-flex items-center justify-center rounded-element font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2';
   
   const variantClasses = {
     primary: 'bg-primary text-white hover:bg-primary-600 active:bg-primary-700',
@@ -51,11 +56,31 @@ const Button: React.FC<ButtonProps> = ({
     (disabled || isLoading) ? 'opacity-70 cursor-not-allowed' : '',
     className
   );
-  
+
+  // 动画变体配置
+  const animationVariants = {
+    scale: {
+      whileHover: { scale: disabled || isLoading ? 1 : 1.02 },
+      whileTap: { scale: disabled || isLoading ? 1 : 0.98 },
+    },
+    bounce: {
+      whileHover: { scale: disabled || isLoading ? 1 : 1.05 },
+      whileTap: { scale: disabled || isLoading ? 1 : 0.95, y: disabled || isLoading ? 0 : 1 },
+    },
+    none: {},
+  };
+
+  const motionProps = disableAnimation ? {} : animationVariants[animationVariant];
+
   return (
-    <button
+    <motion.button
       className={buttonClasses}
       disabled={disabled || isLoading}
+      transition={{
+        duration: 0.15,
+        ease: [0.4, 0.0, 0.2, 1],
+      }}
+      {...motionProps}
       {...props}
     >
       {isLoading && (
@@ -74,7 +99,7 @@ const Button: React.FC<ButtonProps> = ({
       {icon && iconPosition === 'right' && (
         <span className="ml-2">{icon}</span>
       )}
-    </button>
+    </motion.button>
   );
 };
 

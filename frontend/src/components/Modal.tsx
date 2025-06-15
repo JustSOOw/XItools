@@ -2,6 +2,7 @@ import React, { ReactNode, useEffect, useRef } from 'react';
 import classNames from 'classnames';
 import Button from './Button';
 import Portal from './Portal';
+import { ModalAnimation, ModalHeaderAnimation, ModalContentAnimation, ModalFooterAnimation } from './animations';
 
 export interface ModalProps {
   isOpen: boolean;
@@ -14,6 +15,8 @@ export interface ModalProps {
   closeOnEsc?: boolean;
   showCloseButton?: boolean;
   footer?: ReactNode;
+  animationVariant?: 'fade' | 'scale' | 'slideUp' | 'slideDown';
+  disableAnimation?: boolean;
 }
 
 const Modal: React.FC<ModalProps> = ({
@@ -27,6 +30,8 @@ const Modal: React.FC<ModalProps> = ({
   closeOnEsc = true,
   showCloseButton = true,
   footer,
+  animationVariant = 'scale',
+  disableAnimation = false,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   
@@ -74,25 +79,76 @@ const Modal: React.FC<ModalProps> = ({
     full: 'max-w-full max-h-[95vh] mx-4',
   };
   
-  if (!isOpen) return null;
+  // 如果禁用动画，使用原始实现
+  if (disableAnimation) {
+    if (!isOpen) return null;
 
+    return (
+      <Portal>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={handleOutsideClick}
+        >
+          <div
+            ref={modalRef}
+            className={classNames(
+              'bg-background rounded-lg shadow-xl w-full transition-all flex flex-col',
+              sizeClasses[size],
+              className
+            )}
+          >
+            {/* 模态框头部 */}
+            {(title || showCloseButton) && (
+              <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                {title && <h3 className="text-lg font-medium">{title}</h3>}
+
+                {showCloseButton && (
+                  <button
+                    onClick={onClose}
+                    className="text-text-secondary hover:text-text-primary focus:outline-none"
+                    aria-label="关闭"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* 模态框内容 */}
+            <div className="px-6 py-4 overflow-y-auto flex-1">{children}</div>
+
+            {/* 模态框底部 */}
+            {footer && (
+              <div className="flex justify-end space-x-2 px-6 py-4 border-t border-border flex-shrink-0">
+                {footer}
+              </div>
+            )}
+          </div>
+        </div>
+      </Portal>
+    );
+  }
+
+  // 使用动画版本
   return (
     <Portal>
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-        onClick={handleOutsideClick}
+      <ModalAnimation
+        isOpen={isOpen}
+        variant={animationVariant}
+        overlayClassName="bg-black/50 backdrop-blur-sm"
+        onOverlayClick={closeOnClickOutside ? onClose : undefined}
+        className={classNames(
+          'bg-background rounded-lg shadow-xl w-full flex flex-col',
+          sizeClasses[size],
+          className
+        )}
       >
-        <div
-          ref={modalRef}
-          className={classNames(
-            'bg-background rounded-lg shadow-xl w-full transition-all flex flex-col',
-            sizeClasses[size],
-            className
-          )}
-        >
+        <div ref={modalRef}>
           {/* 模态框头部 */}
           {(title || showCloseButton) && (
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+            <ModalHeaderAnimation className="flex items-center justify-between px-6 py-4 border-b border-border">
               {title && <h3 className="text-lg font-medium">{title}</h3>}
 
               {showCloseButton && (
@@ -106,20 +162,22 @@ const Modal: React.FC<ModalProps> = ({
                   </svg>
                 </button>
               )}
-            </div>
+            </ModalHeaderAnimation>
           )}
 
           {/* 模态框内容 */}
-          <div className="px-6 py-4 overflow-y-auto flex-1">{children}</div>
+          <ModalContentAnimation className="px-6 py-4 overflow-y-auto flex-1">
+            {children}
+          </ModalContentAnimation>
 
           {/* 模态框底部 */}
           {footer && (
-            <div className="flex justify-end space-x-2 px-6 py-4 border-t border-border flex-shrink-0">
+            <ModalFooterAnimation className="flex justify-end space-x-2 px-6 py-4 border-t border-border flex-shrink-0">
               {footer}
-            </div>
+            </ModalFooterAnimation>
           )}
         </div>
-      </div>
+      </ModalAnimation>
     </Portal>
   );
 };

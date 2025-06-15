@@ -40,6 +40,17 @@ import { toast } from './components/ui/Toast';
 import { ErrorBoundary, SimpleErrorFallback } from './components/ui/ErrorBoundary';
 import { EmptyTasks, EmptySearchResults, EmptyFilterResults } from './components/ui/EmptyState';
 
+// 动画组件
+import { ViewTransition, CardAnimation, CardListAnimation } from './components/animations';
+
+// 反馈组件
+import {
+  useConfirmDialog,
+  useSuccessAnimation,
+  useKeyboardShortcuts,
+  ConnectionStatus
+} from './components/feedback';
+
 import useMcpConnection from './hooks/useMcpConnection';
 import useTaskStore from './store/taskStore';
 import mcpService from './services/mcpService';
@@ -56,6 +67,15 @@ function App() {
     description: '',
     status: 'todo',
   });
+
+  // 反馈系统Hooks
+  const { showConfirm, ConfirmDialog } = useConfirmDialog();
+  const { showSuccess, SuccessAnimation } = useSuccessAnimation();
+  const {
+    addShortcut,
+    KeyboardShortcuts,
+    KeyboardShortcutsHelp
+  } = useKeyboardShortcuts();
 
 
 
@@ -98,9 +118,72 @@ function App() {
   useEffect(() => {
     loadColumns();
   }, []);
-  
+
   // 使用MCP连接
   const { isConnected, reconnect } = useMcpConnection();
+
+  // 配置快捷键 - 移到 reconnect 定义之后
+  useEffect(() => {
+    // 新建任务快捷键
+    addShortcut({
+      key: 'n',
+      description: '新建任务',
+      action: () => setIsCreateModalOpen(true),
+      category: '任务管理',
+      ctrlKey: true,
+    });
+
+    // 搜索快捷键
+    addShortcut({
+      key: 'f',
+      description: '搜索任务',
+      action: () => {
+        const searchInput = document.querySelector('input[placeholder*="搜索"]') as HTMLInputElement;
+        if (searchInput) {
+          searchInput.focus();
+        }
+      },
+      category: '导航',
+      ctrlKey: true,
+    });
+
+    // 视图切换快捷键
+    addShortcut({
+      key: '1',
+      description: '切换到看板视图',
+      action: () => useTaskStore.getState().setCurrentView('board'),
+      category: '视图',
+      ctrlKey: true,
+    });
+
+    addShortcut({
+      key: '2',
+      description: '切换到列表视图',
+      action: () => useTaskStore.getState().setCurrentView('list'),
+      category: '视图',
+      ctrlKey: true,
+    });
+
+    addShortcut({
+      key: '3',
+      description: '切换到日历视图',
+      action: () => useTaskStore.getState().setCurrentView('calendar'),
+      category: '视图',
+      ctrlKey: true,
+    });
+
+    // 刷新快捷键
+    addShortcut({
+      key: 'r',
+      description: '刷新数据',
+      action: () => {
+        reconnect();
+        toast.success('正在刷新数据...');
+      },
+      category: '系统',
+      ctrlKey: true,
+    });
+  }, [addShortcut, reconnect]);
   
   // 从store获取状态 - 使用selector函数避免不必要的重渲染
   const tasks = useTaskStore(state => state.tasks);
@@ -228,6 +311,14 @@ function App() {
         description: '',
         status: 'todo',
       });
+
+      // 显示成功动画
+      showSuccess({
+        message: '任务创建成功！',
+        variant: 'celebration',
+        duration: 2000,
+      });
+
       toast.success('任务创建成功！');
     } catch (error) {
       console.error('创建任务失败:', error);
@@ -503,19 +594,42 @@ function App() {
   };
 
   const handleDeleteColumn = async (columnId: string) => {
-    try {
-      await columnService.deleteColumn(columnId);
-      deleteColumn(columnId);
-      toast.success('列删除成功');
-    } catch (error) {
-      console.error('删除列失败:', error);
-      toast.error(error instanceof Error ? error.message : '删除列失败，请重试', {
-        action: {
-          label: '重试',
-          onClick: () => handleDeleteColumn(columnId),
-        },
-      });
-    }
+    const column = columns.find(c => c.id === columnId);
+    const columnName = column?.name || '该列';
+    const columnTasks = tasks.filter(task => task.status === columnId);
+
+    showConfirm(
+      {
+        title: '确认删除列',
+        message: `确定要删除列"${columnName}"吗？${columnTasks.length > 0 ? `该列中有 ${columnTasks.length} 个任务，删除后这些任务也会被删除。` : ''}此操作无法撤销。`,
+        type: 'danger',
+        confirmText: '删除',
+        cancelText: '取消',
+      },
+      async () => {
+        try {
+          await columnService.deleteColumn(columnId);
+          deleteColumn(columnId);
+
+          // 显示成功动画
+          showSuccess({
+            message: '列删除成功',
+            variant: 'simple',
+            duration: 1500,
+          });
+
+          toast.success('列删除成功');
+        } catch (error) {
+          console.error('删除列失败:', error);
+          toast.error(error instanceof Error ? error.message : '删除列失败，请重试', {
+            action: {
+              label: '重试',
+              onClick: () => handleDeleteColumn(columnId),
+            },
+          });
+        }
+      }
+    );
   };
 
   const handleColumnColorChange = async (columnId: string, color: string) => {
@@ -544,21 +658,43 @@ function App() {
   };
 
   const handleTaskDelete = async (taskId: string) => {
-    try {
-      await mcpService.deleteTask(taskId);
-      // 重新加载任务列表
-      const updatedTasks = await mcpService.listTasks();
-      setTasks(updatedTasks);
-      toast.success('任务删除成功');
-    } catch (error) {
-      console.error('删除任务失败:', error);
-      toast.error('删除任务失败，请重试', {
-        action: {
-          label: '重试',
-          onClick: () => handleTaskDelete(taskId),
-        },
-      });
-    }
+    const task = tasks.find(t => t.id === taskId);
+    const taskTitle = task?.title || '该任务';
+
+    showConfirm(
+      {
+        title: '确认删除任务',
+        message: `确定要删除任务"${taskTitle}"吗？此操作无法撤销。`,
+        type: 'danger',
+        confirmText: '删除',
+        cancelText: '取消',
+      },
+      async () => {
+        try {
+          await mcpService.deleteTask(taskId);
+          // 重新加载任务列表
+          const updatedTasks = await mcpService.listTasks();
+          setTasks(updatedTasks);
+
+          // 显示成功动画
+          showSuccess({
+            message: '任务删除成功',
+            variant: 'simple',
+            duration: 1500,
+          });
+
+          toast.success('任务删除成功');
+        } catch (error) {
+          console.error('删除任务失败:', error);
+          toast.error('删除任务失败，请重试', {
+            action: {
+              label: '重试',
+              onClick: () => handleTaskDelete(taskId),
+            },
+          });
+        }
+      }
+    );
   };
 
   const handleColumnSort = async (columnId: string, sortOption: string) => {
@@ -967,12 +1103,8 @@ function App() {
 
             {/* 右侧：操作按钮 */}
             <div className="flex items-center space-x-4">
-              <div className="flex items-center">
-                <span className={`w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                <span className="text-xs text-text-secondary">
-                  {isConnected ? '已连接' : '未连接'}
-                </span>
-              </div>
+              {/* 连接状态指示器 */}
+              <ConnectionStatus isConnected={isConnected} />
 
               {!isConnected && (
                 <Button
@@ -1035,57 +1167,59 @@ function App() {
         )}
 
         {/* 主要内容区 */}
-        {isLoading ? (
-          <div className="flex-1 p-4 flex flex-col min-h-0">
-            {currentView === 'board' ? (
-              <div className="modern-container h-full board-content">
-                <div className="h-full overflow-x-auto overflow-y-hidden p-6">
-                  <div className="flex space-x-4 h-full">
-                    {/* 渲染3个列的骨架屏 */}
-                    {[1, 2, 3].map((index) => (
-                      <div key={index} className="flex-shrink-0 w-80">
-                        <div className="bg-surface rounded-card p-4 h-full">
-                          <div className="h-6 bg-text-secondary/20 rounded-md w-24 mb-4 animate-pulse"></div>
-                          <div className="space-y-3">
-                            <SkeletonCard />
-                            <SkeletonCard />
-                            <SkeletonCard />
+        <ViewTransition viewKey={currentView} mode="fade" className="flex-1 p-4 flex flex-col min-h-0">
+          {isLoading ? (
+            <>
+              {currentView === 'board' ? (
+                <div className="modern-container h-full board-content">
+                  <div className="h-full overflow-x-auto overflow-y-hidden p-6">
+                    <div className="flex space-x-4 h-full">
+                      {/* 渲染3个列的骨架屏 */}
+                      {[1, 2, 3].map((index) => (
+                        <div key={index} className="flex-shrink-0 w-80">
+                          <div className="bg-surface rounded-card p-4 h-full">
+                            <div className="h-6 bg-text-secondary/20 rounded-md w-24 mb-4 animate-pulse"></div>
+                            <div className="space-y-3">
+                              <SkeletonCard />
+                              <SkeletonCard />
+                              <SkeletonCard />
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ) : currentView === 'list' ? (
-              <div className="flex-1 min-h-0">
-                <SkeletonList rows={8} />
-              </div>
-            ) : (
-              <div className="flex-1 min-h-0">
-                <SkeletonCalendar />
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="flex-1 p-4 flex flex-col min-h-0">
-            {currentView === 'board' ? (
-              <div className="modern-container h-full board-content">
-                <div className="h-full overflow-x-auto overflow-y-hidden p-6 custom-scrollbar">
+              ) : currentView === 'list' ? (
+                <div className="flex-1 min-h-0">
+                  <SkeletonList rows={8} />
+                </div>
+              ) : (
+                <div className="flex-1 min-h-0">
+                  <SkeletonCalendar />
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {currentView === 'board' ? (
+                <div className="modern-container h-full board-content">
+                  <div className="h-full overflow-x-auto overflow-y-hidden p-6 custom-scrollbar">
+                    <ErrorBoundary fallback={SimpleErrorFallback}>
+                      {renderViewContent()}
+                    </ErrorBoundary>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 min-h-0">
                   <ErrorBoundary fallback={SimpleErrorFallback}>
                     {renderViewContent()}
                   </ErrorBoundary>
                 </div>
-              </div>
-            ) : (
-              <div className="flex-1 min-h-0">
-                <ErrorBoundary fallback={SimpleErrorFallback}>
-                  {renderViewContent()}
-                </ErrorBoundary>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </>
+          )}
+        </ViewTransition>
         </div>
       
       {/* 新建任务模态框 */}
@@ -1201,6 +1335,12 @@ function App() {
           />
         ) : null}
       </DragOverlay>
+
+      {/* 反馈组件 */}
+      {KeyboardShortcuts}
+      {KeyboardShortcutsHelp}
+      {ConfirmDialog}
+      {SuccessAnimation}
     </Layout>
   </DndContext>
   );

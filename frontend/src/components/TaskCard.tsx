@@ -3,6 +3,7 @@ import { Task } from '../types/Task';
 import Card from './Card';
 import MoreButton, { MoreMenuItem } from './MoreButton';
 import ColorPickerModal from './ColorPickerModal';
+import { CardAnimation } from './animations';
 
 interface TaskCardProps {
   task: Task;
@@ -17,7 +18,6 @@ const TaskCard: React.FC<TaskCardProps> = ({
   onColorChange,
   onDelete,
 }) => {
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
 
   // 更多按钮菜单项
@@ -42,7 +42,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
         </svg>
       ),
-      onClick: () => setShowDeleteConfirm(true),
+      onClick: () => onDelete?.(),
       danger: true,
     },
   ];
@@ -79,15 +79,16 @@ const TaskCard: React.FC<TaskCardProps> = ({
 
   return (
     <>
-    <Card
-      variant="default"
-      className="cursor-pointer transition-all transform hover:shadow-md hover:-translate-y-0.5 relative group"
-      isHoverable
-      isInteractive
-      style={{
-        background: task.color || undefined,
-      }}
-    >
+    <CardAnimation variant="hover" className="w-full">
+      <Card
+        variant="default"
+        className="cursor-pointer relative group"
+        isHoverable
+        isInteractive
+        style={{
+          background: task.color || undefined,
+        }}
+      >
       {/* 更多按钮 - 悬停时显示 */}
       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-[100] task-more-button">
         <MoreButton
@@ -154,35 +155,10 @@ const TaskCard: React.FC<TaskCardProps> = ({
           </div>
         )}
 
-        {/* 删除确认对话框 */}
-        {showDeleteConfirm && (
-          <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded text-sm">
-            <p className="text-red-800 mb-2">确定要删除此任务吗？此操作不可撤销。</p>
-            <div className="flex space-x-2">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete?.();
-                  setShowDeleteConfirm(false);
-                }}
-                className="px-2 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 transition-colors"
-              >
-                确定删除
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowDeleteConfirm(false);
-                }}
-                className="px-2 py-1 bg-gray-300 text-gray-700 rounded text-xs hover:bg-gray-400 transition-colors"
-              >
-                取消
-              </button>
-            </div>
-          </div>
-        )}
+
       </div>
-    </Card>
+      </Card>
+    </CardAnimation>
 
     {/* 颜色选择器模态框 - 移到Card外部以避免z-index问题 */}
     <ColorPickerModal

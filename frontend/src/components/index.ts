@@ -27,3 +27,9 @@ export { default as CalendarView } from './CalendarView';
 
 // 增强功能组件
 export * from './enhanced';
+
+// 动画组件
+export * from './animations';
+
+// 反馈组件
+export * from './feedback';
