@@ -51,13 +51,16 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
   
   /**
    * 工具1: get_task_schema
-   * 
+   *
    * 获取任务对象的JSON Schema，用于指导LLM生成正确的数据格式。
-   * 这个工具对于确保LLM生成的任务数据符合应用程序的预期格式至关重要。
+   * 重要：包含当前可用的列UUID信息，status字段必须使用这些UUID。
    */
-  mcpServer.tool("get_task_schema", "获取任务对象的JSON Schema，用于指导LLM生成正确的数据格式", {}, 
+  mcpServer.tool("get_task_schema", "获取任务对象的JSON Schema，用于指导LLM生成正确的数据格式。重要：status字段必须使用返回的列UUID，不能使用列名称。", {},
     async (_args: any) => {
-      // 创建预定义的任务Schema
+      // 获取当前可用的列信息
+      const columns = await columnService.getAllColumns();
+
+      // 创建任务Schema
       const schema = {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Task",
@@ -79,7 +82,8 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
           },
           "status": {
             "type": "string",
-            "description": "任务状态，必须使用列UUID。可用列: 待办(41c632df-4c6e-470b-b1a5-bef81432a6b0), 进行中(db34f38c-5cc1-470d-9778-0b8edaaad762), 已完成(ae7d362b-a6b1-46c7-bca7-2b57fd4f9de7)"
+            "description": "任务状态 - 必须使用列的UUID，不能使用列名称",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
           },
           "priority": {
             "type": "string",
@@ -136,12 +140,30 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
           "status"
         ]
       };
-      
+
+      const result = {
+        schema: schema,
+        availableColumns: columns.map(col => ({
+          id: col.id,
+          name: col.name,
+          order: col.order
+        })),
+        usage: {
+          note: "创建任务时，status字段必须使用列的UUID（id字段），不能使用列名称",
+          example: {
+            title: "示例任务",
+            status: columns[0]?.id || "列UUID",
+            description: "任务描述",
+            priority: "High"
+          }
+        }
+      };
+
       return {
         content: [
           {
             type: "text",
-            text: JSON.stringify(schema)
+            text: JSON.stringify(result, null, 2)
           }
         ]
       };
@@ -150,16 +172,17 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
 
   /**
    * 工具2: submit_task_dataset
-   * 
+   *
    * 提交从PRD解析出的结构化任务数据集，服务器将处理并存储这些任务。
    * 此工具接收LLM解析PRD后生成的任务列表，验证数据格式，将任务存入数据库，
    * 并通过Socket.IO广播tasks_added事件，通知前端有新任务添加。
+   * 重要：status字段必须使用列UUID，请先调用get_task_schema获取可用的列UUID。
    */
-  mcpServer.tool("submit_task_dataset", "提交从PRD解析出的结构化任务数据集，服务器将处理并存储这些任务。状态字段必须使用列UUID: 待办(41c632df-4c6e-470b-b1a5-bef81432a6b0), 进行中(db34f38c-5cc1-470d-9778-0b8edaaad762), 已完成(ae7d362b-a6b1-46c7-bca7-2b57fd4f9de7)。",
+  mcpServer.tool("submit_task_dataset", "提交从PRD解析出的结构化任务数据集，服务器将处理并存储这些任务。状态字段必须使用列UUID，请先调用get_task_schema工具获取可用的列UUID。",
     {
       tasks: z.array(z.object({
         title: z.string(),
-        status: z.string(),
+        status: z.string().uuid("status必须是有效的UUID格式，请使用get_task_schema工具获取列UUID"),
         description: z.string().optional(),
         priority: z.enum(['High', 'Medium', 'Low']).nullable().optional(),
         dueDate: z.string().datetime().nullable().optional(),
@@ -179,10 +202,21 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
       try {
         console.log('开始创建任务，任务数量:', tasks.length);
 
+        // 获取可用的列UUID进行验证
+        const columns = await columnService.getAllColumns();
+        const validColumnIds = new Set(columns.map(col => col.id));
+
+        // 验证所有任务的状态UUID
+        for (const taskData of tasks) {
+          if (!validColumnIds.has(taskData.status)) {
+            throw new Error(`无效的状态UUID: ${taskData.status}。请使用get_task_schema工具获取有效的列UUID。可用列: ${columns.map(col => `${col.name}(${col.id})`).join(', ')}`);
+          }
+        }
+
         // 使用事务确保数据一致性
         await prisma.$transaction(async (tx) => {
           for (const taskData of tasks) {
-            console.log(`创建任务: "${taskData.title}" 状态: ${taskData.status}`);
+            console.log(`创建任务: "${taskData.title}" 状态UUID: ${taskData.status}`);
 
             // 处理标签 - 将标签名称数组转换为Tag关系
             const tags = taskData.tags ? {
@@ -197,7 +231,7 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
               data: {
                 title: taskData.title,
                 description: taskData.description || '',
-                status: taskData.status, // 直接使用传入的状态UUID
+                status: taskData.status, // 使用验证过的状态UUID
                 priority: taskData.priority || null,
                 dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
                 assignee: taskData.assignee || null,
@@ -966,7 +1000,7 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
         case 'submit_task_dataset': {
           try {
             const { tasks } = body.params || { tasks: [] };
-            
+
             if (!Array.isArray(tasks) || tasks.length === 0) {
               reply.status(400).send({
                 jsonrpc: '2.0',
@@ -978,31 +1012,51 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
               });
               return;
             }
-            
+
+            // 获取可用的列UUID进行验证
+            const columns = await columnService.getAllColumns();
+            const validColumnIds = new Set(columns.map(col => col.id));
+
+            // 验证所有任务的状态UUID
+            for (const taskData of tasks) {
+              if (!taskData.title || !taskData.status) {
+                throw new Error('任务必须包含标题和状态');
+              }
+
+              // 验证UUID格式
+              const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+              if (!uuidRegex.test(taskData.status)) {
+                throw new Error(`无效的状态格式: ${taskData.status}。status必须是有效的UUID格式，请使用get_task_schema工具获取列UUID。`);
+              }
+
+              // 验证UUID是否对应实际存在的列
+              if (!validColumnIds.has(taskData.status)) {
+                throw new Error(`无效的状态UUID: ${taskData.status}。请使用get_task_schema工具获取有效的列UUID。可用列: ${columns.map(col => `${col.name}(${col.id})`).join(', ')}`);
+              }
+            }
+
             // 创建任务
             const createdTasks: any[] = [];
-            
+
             // 使用事务确保数据一致性
             await prisma.$transaction(async (tx) => {
               for (const taskData of tasks) {
-                if (!taskData.title || !taskData.status) {
-                  throw new Error('任务必须包含标题和状态');
-                }
-                
+                console.log(`创建任务: "${taskData.title}" 状态UUID: ${taskData.status}`);
+
                 // 处理标签 - 将标签名称数组转换为Tag关系
-                const tags = taskData.tags ? { 
+                const tags = taskData.tags ? {
                   connectOrCreate: taskData.tags.map((tagName: any) => ({
                     where: { name: typeof tagName === 'string' ? tagName : tagName.name },
                     create: { name: typeof tagName === 'string' ? tagName : tagName.name }
                   }))
                 } : undefined;
-                
+
                 // 创建任务记录
                 const task = await tx.task.create({
                   data: {
                     title: taskData.title,
                     description: taskData.description || '',
-                    status: taskData.status,
+                    status: taskData.status, // 使用验证过的状态UUID
                     priority: taskData.priority || null,
                     dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
                     assignee: taskData.assignee || null,
@@ -1016,7 +1070,7 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
                     tags: true,
                   }
                 });
-                
+
                 createdTasks.push(task);
               }
             });
@@ -1286,7 +1340,10 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
         
         case 'get_task_schema': {
           try {
-            // 创建预定义的任务Schema
+            // 获取当前可用的列信息
+            const columns = await columnService.getAllColumns();
+
+            // 创建任务Schema
             const schema = {
               "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "Task",
@@ -1308,7 +1365,8 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
                 },
                 "status": {
                   "type": "string",
-                  "description": "Current status of the task (e.g., 'To Do', 'In Progress', 'Done') - 通常对应看板的列名"
+                  "description": "任务状态 - 必须使用列的UUID，不能使用列名称",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
                 },
                 "priority": {
                   "type": "string",
@@ -1365,11 +1423,29 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
                 "status"
               ]
             };
-            
+
+            const result = {
+              schema: schema,
+              availableColumns: columns.map(col => ({
+                id: col.id,
+                name: col.name,
+                order: col.order
+              })),
+              usage: {
+                note: "创建任务时，status字段必须使用列的UUID（id字段），不能使用列名称",
+                example: {
+                  title: "示例任务",
+                  status: columns[0]?.id || "列UUID",
+                  description: "任务描述",
+                  priority: "High"
+                }
+              }
+            };
+
             // 返回JSON-RPC格式的响应
             reply.send({
               jsonrpc: '2.0',
-              result: schema,
+              result: result,
               id: body.id,
             });
             return;
