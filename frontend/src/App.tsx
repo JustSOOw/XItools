@@ -41,14 +41,13 @@ import { ErrorBoundary, SimpleErrorFallback } from './components/ui/ErrorBoundar
 import { EmptyTasks, EmptySearchResults, EmptyFilterResults } from './components/ui/EmptyState';
 
 // 动画组件
-import { ViewTransition, CardAnimation, CardListAnimation } from './components/animations';
+import { ViewTransition } from './components/animations';
 
 // 反馈组件
 import {
   useConfirmDialog,
   useSuccessAnimation,
-  useKeyboardShortcuts,
-  ConnectionStatus
+  useKeyboardShortcuts
 } from './components/feedback';
 
 import useMcpConnection from './hooks/useMcpConnection';
@@ -1103,8 +1102,13 @@ function App() {
 
             {/* 右侧：操作按钮 */}
             <div className="flex items-center space-x-4">
-              {/* 连接状态指示器 */}
-              <ConnectionStatus isConnected={isConnected} />
+              {/* 连接状态指示器 - 小点样式 */}
+              <div className="flex items-center">
+                <span className={`w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                <span className="text-xs text-text-secondary">
+                  {isConnected ? '已连接' : '未连接'}
+                </span>
+              </div>
 
               {!isConnected && (
                 <Button
@@ -1116,32 +1120,49 @@ function App() {
                 </Button>
               )}
 
-              {/* 开发模式测试按钮 */}
-              {process.env.NODE_ENV === 'development' && tasks.length > 0 && (
+              {/* 删除所有任务按钮 */}
+              {tasks.length > 0 && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={async () => {
-                    if (confirm('确定要删除所有任务来测试空状态吗？')) {
-                      try {
-                        // 删除所有任务
-                        for (const task of tasks) {
-                          await mcpService.deleteTask(task.id);
+                    showConfirm(
+                      {
+                        title: '确认删除所有任务',
+                        message: `确定要删除所有 ${tasks.length} 个任务吗？此操作无法撤销。`,
+                        type: 'danger',
+                        confirmText: '删除全部',
+                        cancelText: '取消',
+                      },
+                      async () => {
+                        try {
+                          // 删除所有任务
+                          for (const task of tasks) {
+                            await mcpService.deleteTask(task.id);
+                          }
+                          // 重新加载任务列表
+                          const updatedTasks = await mcpService.listTasks();
+                          setTasks(updatedTasks);
+
+                          // 显示成功动画
+                          showSuccess({
+                            message: '所有任务已删除',
+                            variant: 'simple',
+                            duration: 2000,
+                          });
+
+                          toast.success('所有任务已删除');
+                        } catch (error) {
+                          console.error('删除任务失败:', error);
+                          toast.error('删除任务失败');
                         }
-                        // 重新加载任务列表
-                        const updatedTasks = await mcpService.listTasks();
-                        setTasks(updatedTasks);
-                        toast.success('所有任务已删除，现在可以测试空状态了');
-                      } catch (error) {
-                        console.error('删除任务失败:', error);
-                        toast.error('删除任务失败');
                       }
-                    }
+                    );
                   }}
                   className="text-xs"
-                  title="删除所有任务以测试空状态"
+                  title="删除所有任务"
                 >
-                  🧪 清空测试
+                  🗑️ 清空全部
                 </Button>
               )}
 
@@ -1167,7 +1188,7 @@ function App() {
         )}
 
         {/* 主要内容区 */}
-        <ViewTransition viewKey={currentView} mode="fade" className="flex-1 p-4 flex flex-col min-h-0">
+        <ViewTransition viewKey={currentView} mode="scale" className="flex-1 p-4 flex flex-col min-h-0">
           {isLoading ? (
             <>
               {currentView === 'board' ? (
