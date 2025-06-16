@@ -301,6 +301,31 @@ class McpService {
   }
 
   /**
+   * 清空所有任务
+   * 对应MCP工具: clear_all_tasks
+   * ⚠️ 注意：此操作不可逆，会删除所有任务数据
+   */
+  async clearAllTasks(): Promise<any> {
+    try {
+      const response = await axios.post(this.baseUrl, {
+        jsonrpc: '2.0',
+        method: 'clear_all_tasks',
+        params: {},
+        id: this.generateRequestId(),
+      }, {
+        timeout: this.requestTimeout,
+        headers: this.headers
+      });
+
+      console.log('清空所有任务成功:', response.data.result);
+      return response.data.result;
+    } catch (error) {
+      console.error('清空所有任务失败:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 任务排序（跨列拖拽）
    * 直接调用后端API而不是MCP工具
    */

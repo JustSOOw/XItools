@@ -854,6 +854,92 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
     }
   );
 
+  /**
+   * 工具14: clear_all_tasks
+   *
+   * 删除所有任务卡片（用于测试和开发）
+   * 此工具会删除数据库中的所有任务，并通过WebSocket广播清空事件通知前端。
+   * 注意：此操作不可逆，请谨慎使用。
+   */
+  mcpServer.tool("clear_all_tasks", "删除所有任务卡片，用于测试和开发。注意：此操作不可逆，请谨慎使用。", {},
+    async (_args) => {
+      try {
+        console.log('开始清空所有任务...');
+
+        // 获取所有任务ID用于广播
+        const allTasks = await prisma.task.findMany({
+          select: { id: true, title: true }
+        });
+
+        const taskCount = allTasks.length;
+        console.log(`找到 ${taskCount} 个任务需要删除`);
+
+        if (taskCount === 0) {
+          const result = {
+            success: true,
+            message: '没有任务需要删除',
+            deletedCount: 0,
+            deletedTaskIds: []
+          };
+
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(result, null, 2)
+              }
+            ]
+          };
+        }
+
+        // 使用事务删除所有任务
+        await prisma.$transaction(async (tx) => {
+          // 删除所有任务（由于外键约束，相关的标签关系会自动处理）
+          await tx.task.deleteMany({});
+          console.log(`已删除 ${taskCount} 个任务`);
+        });
+
+        // 广播所有任务删除事件
+        const deletedTaskIds = allTasks.map(task => task.id);
+        io.emit('tasks_cleared', { deletedTaskIds, deletedCount: taskCount });
+        console.log(`已广播任务清空事件，删除了 ${taskCount} 个任务`);
+
+        const result = {
+          success: true,
+          message: `成功删除了 ${taskCount} 个任务`,
+          deletedCount: taskCount,
+          deletedTaskIds: deletedTaskIds,
+          deletedTasks: allTasks.map(task => ({ id: task.id, title: task.title }))
+        };
+
+        console.log(result.message);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2)
+            }
+          ]
+        };
+      } catch (error) {
+        console.error('清空所有任务失败:', error);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : '清空所有任务失败'
+              })
+            }
+          ],
+          isError: true
+        };
+      }
+    }
+  );
+
   // 在注册完所有工具后连接到传输层
   mcpServer.connect(transport);
   
@@ -887,7 +973,7 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
         const mcpMethods = [
           'get_task_schema', 'submit_task_dataset', 'list_tasks', 'get_task_details', 'update_task', 'delete_task',
           'get_columns', 'create_column', 'update_column', 'delete_column', 'reorder_columns', 'migrate_task_status',
-          'update_task_color'
+          'update_task_color', 'clear_all_tasks'
         ];
         if (mcpMethods.includes(body.method)) {
           console.log(`使用自定义处理函数处理${body.method}请求`);
@@ -1783,6 +1869,76 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
               error: {
                 code: -32603,
                 message: '更新任务颜色失败: ' + (error as Error).message,
+              },
+              id: body.id,
+            });
+            return;
+          }
+        }
+
+        case 'clear_all_tasks': {
+          try {
+            console.log('开始清空所有任务...');
+
+            // 获取所有任务ID用于广播
+            const allTasks = await prisma.task.findMany({
+              select: { id: true, title: true }
+            });
+
+            const taskCount = allTasks.length;
+            console.log(`找到 ${taskCount} 个任务需要删除`);
+
+            if (taskCount === 0) {
+              const result = {
+                success: true,
+                message: '没有任务需要删除',
+                deletedCount: 0,
+                deletedTaskIds: []
+              };
+
+              reply.send({
+                jsonrpc: '2.0',
+                result: result,
+                id: body.id,
+              });
+              return;
+            }
+
+            // 使用事务删除所有任务
+            await prisma.$transaction(async (tx) => {
+              // 删除所有任务（由于外键约束，相关的标签关系会自动处理）
+              await tx.task.deleteMany({});
+              console.log(`已删除 ${taskCount} 个任务`);
+            });
+
+            // 广播所有任务删除事件
+            const deletedTaskIds = allTasks.map(task => task.id);
+            io.emit('tasks_cleared', { deletedTaskIds, deletedCount: taskCount });
+            console.log(`已广播任务清空事件，删除了 ${taskCount} 个任务`);
+
+            const result = {
+              success: true,
+              message: `成功删除了 ${taskCount} 个任务`,
+              deletedCount: taskCount,
+              deletedTaskIds: deletedTaskIds,
+              deletedTasks: allTasks.map(task => ({ id: task.id, title: task.title }))
+            };
+
+            console.log(result.message);
+
+            reply.send({
+              jsonrpc: '2.0',
+              result: result,
+              id: body.id,
+            });
+            return;
+          } catch (error) {
+            console.error('清空所有任务失败:', error);
+            reply.status(500).send({
+              jsonrpc: '2.0',
+              error: {
+                code: -32603,
+                message: '清空所有任务失败: ' + (error as Error).message,
               },
               id: body.id,
             });

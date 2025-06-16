@@ -79,6 +79,13 @@ class SocketService {
       useTaskStore.getState().deleteTask(taskId);
     });
 
+    // 清空所有任务事件
+    this.socket.on('tasks_cleared', ({ deletedTaskIds, deletedCount }: { deletedTaskIds: string[]; deletedCount: number }) => {
+      console.log('收到任务清空事件:', { deletedCount, deletedTaskIds: deletedTaskIds.slice(0, 3) });
+      // 清空所有任务
+      useTaskStore.getState().setTasks([]);
+    });
+
     // 列任务重排序事件 - 完全禁用，避免干扰乐观更新
     this.socket.on('column_tasks_reordered', ({ columnId, taskIds }: { columnId: string; taskIds: string[] }) => {
       console.log('收到列任务重排序（已忽略）:', { columnId, taskCount: taskIds.length });

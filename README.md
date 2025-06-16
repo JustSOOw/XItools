@@ -683,6 +683,7 @@ XItools集成了完整的MCP（Model Context Protocol）工具，支持通过AI�
 - `get_task_details` - 获取任务详情
 - `update_task` - 更新任务
 - `delete_task` - 删除任务
+- `clear_all_tasks` - 删除所有任务（测试用）
 
 ### 使用示例
 

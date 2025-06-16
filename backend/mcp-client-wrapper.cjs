@@ -182,6 +182,14 @@ async function handleToolsList(request) {
         },
         required: ['task_id']
       }
+    },
+    {
+      name: 'clear_all_tasks',
+      description: '删除所有任务卡片，用于测试和开发。注意：此操作不可逆，请谨慎使用。',
+      inputSchema: {
+        type: 'object',
+        properties: {}
+      }
     }
   ];
   

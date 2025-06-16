@@ -420,6 +420,87 @@ async function registerMCPTools(server: McpServer): Promise<void> {
     }
   );
 
+  /**
+   * 工具7: clear_all_tasks
+   *
+   * 删除所有任务卡片（用于测试和开发）
+   * 此工具会删除数据库中的所有任务。
+   * 注意：此操作不可逆，请谨慎使用。
+   */
+  server.tool("clear_all_tasks", "删除所有任务卡片，用于测试和开发。注意：此操作不可逆，请谨慎使用。", {},
+    async (_args) => {
+      try {
+        console.error('开始清空所有任务...');
+
+        // 获取所有任务ID用于返回信息
+        const allTasks = await prisma.task.findMany({
+          select: { id: true, title: true }
+        });
+
+        const taskCount = allTasks.length;
+        console.error(`找到 ${taskCount} 个任务需要删除`);
+
+        if (taskCount === 0) {
+          const result = {
+            success: true,
+            message: '没有任务需要删除',
+            deletedCount: 0,
+            deletedTaskIds: []
+          };
+
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(result, null, 2)
+              }
+            ]
+          };
+        }
+
+        // 使用事务删除所有任务
+        await prisma.$transaction(async (tx) => {
+          // 删除所有任务（由于外键约束，相关的标签关系会自动处理）
+          await tx.task.deleteMany({});
+          console.error(`已删除 ${taskCount} 个任务`);
+        });
+
+        const result = {
+          success: true,
+          message: `成功删除了 ${taskCount} 个任务`,
+          deletedCount: taskCount,
+          deletedTaskIds: allTasks.map(task => task.id),
+          deletedTasks: allTasks.map(task => ({ id: task.id, title: task.title }))
+        };
+
+        console.error(result.message);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2)
+            }
+          ]
+        };
+      } catch (error) {
+        console.error('清空所有任务失败:', error);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : '清空所有任务失败'
+              })
+            }
+          ],
+          isError: true
+        };
+      }
+    }
+  );
+
   console.error('MCP工具注册完成');
 }
 

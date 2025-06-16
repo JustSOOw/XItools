@@ -285,6 +285,40 @@ interface TaskUpdate {
 请使用delete_task工具删除任务ID为"xxx"的任务
 ```
 
+### 7. clear_all_tasks
+
+**功能**: 删除所有任务卡片，用于测试和开发
+
+**输入参数**: 无
+
+**返回类型**:
+```typescript
+{
+  content: [{
+    type: "text",
+    text: string  // 删除结果（JSON字符串）
+  }]
+}
+```
+
+**返回数据结构**:
+```typescript
+{
+  success: boolean,
+  message: string,
+  deletedCount: number,
+  deletedTaskIds: string[],
+  deletedTasks: Array<{id: string, title: string}>
+}
+```
+
+**使用示例**:
+```
+请使用clear_all_tasks工具清空所有任务卡片
+```
+
+**⚠️ 重要提示**: 此操作不可逆，会删除数据库中的所有任务。请仅在测试和开发环境中使用。
+
 ## 重要注意事项
 
 ### 状态字段规范
