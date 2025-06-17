@@ -501,6 +501,228 @@ async function registerMCPTools(server: McpServer): Promise<void> {
     }
   );
 
+  /**
+   * 工具8: get_columns
+   *
+   * 获取所有看板列，按order排序。
+   * 此工具允许LLM查询当前的看板列配置。
+   */
+  server.tool("get_columns", "获取所有看板列，按order排序", {},
+    async (_args) => {
+      try {
+        console.error('开始获取所有列...');
+        const columns = await columnService.getAllColumns();
+        console.error(`获取到 ${columns.length} 个列`);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(columns, null, 2)
+            }
+          ]
+        };
+      } catch (error) {
+        console.error('获取列列表失败:', error);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : '获取列列表失败'
+              })
+            }
+          ],
+          isError: true
+        };
+      }
+    }
+  );
+
+  /**
+   * 工具9: create_column
+   *
+   * 创建新的看板列。
+   * 此工具允许LLM创建新的看板列。
+   */
+  server.tool("create_column", "创建新的看板列",
+    {
+      column_data: z.object({
+        name: z.string().min(1, '列名不能为空').max(50, '列名不能超过50个字符'),
+        order: z.number().int().min(0, '排序值不能为负数'),
+        color: z.string().optional(),
+        isDefault: z.boolean().optional().default(false),
+      })
+    },
+    async (args) => {
+      const { column_data } = args;
+      try {
+        console.error('开始创建新列:', column_data.name);
+        const newColumn = await columnService.createColumn(column_data);
+        console.error(`列 ${newColumn.id} 创建成功`);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(newColumn, null, 2)
+            }
+          ]
+        };
+      } catch (error) {
+        console.error('创建列失败:', error);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : '创建列失败'
+              })
+            }
+          ],
+          isError: true
+        };
+      }
+    }
+  );
+
+  /**
+   * 工具10: update_column
+   *
+   * 更新现有看板列的属性。
+   * 此工具允许LLM更新列的名称、顺序、颜色等属性。
+   */
+  server.tool("update_column", "更新现有看板列的属性",
+    {
+      column_id: z.string().describe('要更新的列ID'),
+      updates: z.object({
+        name: z.string().min(1).max(50).optional(),
+        order: z.number().int().min(0).optional(),
+        color: z.string().optional(),
+        isDefault: z.boolean().optional(),
+      })
+    },
+    async (args) => {
+      const { column_id, updates } = args;
+      try {
+        console.error('开始更新列:', column_id);
+        const updatedColumn = await columnService.updateColumn(column_id, updates);
+        console.error(`列 ${column_id} 更新成功`);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(updatedColumn, null, 2)
+            }
+          ]
+        };
+      } catch (error) {
+        console.error('更新列失败:', error);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : '更新列失败'
+              })
+            }
+          ],
+          isError: true
+        };
+      }
+    }
+  );
+
+  /**
+   * 工具11: delete_column
+   *
+   * 删除指定的看板列。
+   * 此工具允许LLM删除看板列，但会检查列中是否有任务。
+   */
+  server.tool("delete_column", "删除指定的看板列",
+    {
+      column_id: z.string().describe('要删除的列ID')
+    },
+    async (args) => {
+      const { column_id } = args;
+      try {
+        console.error('开始删除列:', column_id);
+        const result = await columnService.deleteColumn(column_id);
+        console.error(`列 ${column_id} 删除成功`);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2)
+            }
+          ]
+        };
+      } catch (error) {
+        console.error('删除列失败:', error);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : '删除列失败'
+              })
+            }
+          ],
+          isError: true
+        };
+      }
+    }
+  );
+
+  /**
+   * 工具12: reorder_columns
+   *
+   * 重新排序看板列。
+   * 此工具允许LLM重新排序看板列的顺序。
+   */
+  server.tool("reorder_columns", "重新排序看板列",
+    {
+      column_ids: z.array(z.string()).describe('按新顺序排列的列ID数组')
+    },
+    async (args) => {
+      const { column_ids } = args;
+      try {
+        console.error('开始重新排序列:', column_ids);
+        const reorderedColumns = await columnService.reorderColumns(column_ids);
+        console.error('列重新排序成功');
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(reorderedColumns, null, 2)
+            }
+          ]
+        };
+      } catch (error) {
+        console.error('重新排序列失败:', error);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : '重新排序列失败'
+              })
+            }
+          ],
+          isError: true
+        };
+      }
+    }
+  );
+
   console.error('MCP工具注册完成');
 }
 

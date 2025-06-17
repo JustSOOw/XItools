@@ -319,6 +319,171 @@ interface TaskUpdate {
 
 **⚠️ 重要提示**: 此操作不可逆，会删除数据库中的所有任务。请仅在测试和开发环境中使用。
 
+## 列管理工具
+
+### 8. get_columns
+
+**功能**: 获取所有看板列，按order排序
+
+**输入参数**: 无
+
+**返回类型**:
+```typescript
+{
+  content: [{
+    type: "text",
+    text: string  // 列对象数组（JSON字符串）
+  }]
+}
+```
+
+**使用示例**:
+```
+请调用get_columns工具查看当前的看板列配置
+```
+
+### 9. create_column
+
+**功能**: 创建新的看板列
+
+**输入参数**:
+```typescript
+{
+  column_data: {
+    name: string,        // 列名称
+    order: number,       // 排序顺序
+    color?: string,      // 列背景色（可选）
+    isDefault: boolean   // 是否为默认列
+  }
+}
+```
+
+**返回类型**:
+```typescript
+{
+  content: [{
+    type: "text",
+    text: string  // 创建的列对象（JSON字符串）
+  }]
+}
+```
+
+**使用示例**:
+```
+请使用create_column工具创建一个新列：
+- 名称："测试中"
+- 排序：1.5
+- 颜色："#FFA500"
+- 非默认列
+```
+
+### 10. update_column
+
+**功能**: 更新现有看板列的属性
+
+**输入参数**:
+```typescript
+{
+  column_id: string,     // 列ID
+  updates: {
+    name?: string,       // 新名称
+    order?: number,      // 新排序
+    color?: string,      // 新颜色
+    isDefault?: boolean  // 是否默认
+  }
+}
+```
+
+**返回类型**:
+```typescript
+{
+  content: [{
+    type: "text",
+    text: string  // 更新后的列对象（JSON字符串）
+  }]
+}
+```
+
+**使用示例**:
+```
+请使用update_column工具更新列ID为"xxx"的名称为"代码审查"
+```
+
+### 11. delete_column
+
+**功能**: 删除指定的看板列
+
+**输入参数**:
+```typescript
+{
+  column_id: string  // 要删除的列ID
+}
+```
+
+**返回类型**:
+```typescript
+{
+  content: [{
+    type: "text",
+    text: string  // 删除结果（JSON字符串）
+  }]
+}
+```
+
+**使用示例**:
+```
+请使用delete_column工具删除列ID为"xxx"的列
+```
+
+**⚠️ 注意**: 删除前会检查列中是否有任务，有任务的列无法删除。
+
+### 12. reorder_columns
+
+**功能**: 重新排序看板列
+
+**输入参数**:
+```typescript
+{
+  column_ids: string[]  // 按新顺序排列的列ID数组
+}
+```
+
+**返回类型**:
+```typescript
+{
+  content: [{
+    type: "text",
+    text: string  // 重新排序后的列数组（JSON字符串）
+  }]
+}
+```
+
+**使用示例**:
+```
+请使用reorder_columns工具将列按以下顺序重排：
+["列ID1", "列ID2", "列ID3"]
+```
+
+## 工具总览
+
+XItools MCP服务提供了**12个工具**，分为三大类：
+
+### 任务管理工具（7个）
+1. `get_task_schema` - 获取任务数据结构
+2. `submit_task_dataset` - 批量创建任务
+3. `list_tasks` - 查询任务列表
+4. `get_task_details` - 获取任务详情
+5. `update_task` - 更新任务
+6. `delete_task` - 删除任务
+7. `clear_all_tasks` - 清空所有任务（测试用）
+
+### 列管理工具（5个）
+8. `get_columns` - 获取所有列
+9. `create_column` - 创建新列
+10. `update_column` - 更新列属性
+11. `delete_column` - 删除列
+12. `reorder_columns` - 重新排序列
+
 ## 重要注意事项
 
 ### 状态字段规范

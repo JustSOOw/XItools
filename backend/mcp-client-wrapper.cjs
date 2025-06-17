@@ -190,6 +190,98 @@ async function handleToolsList(request) {
         type: 'object',
         properties: {}
       }
+    },
+    {
+      name: 'get_columns',
+      description: '获取所有看板列，按order排序',
+      inputSchema: {
+        type: 'object',
+        properties: {}
+      }
+    },
+    {
+      name: 'create_column',
+      description: '创建新的看板列',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          column_data: {
+            type: 'object',
+            properties: {
+              name: {
+                type: 'string',
+                description: '列名称'
+              },
+              order: {
+                type: 'number',
+                description: '排序顺序'
+              },
+              color: {
+                type: 'string',
+                description: '列背景色（可选）'
+              },
+              isDefault: {
+                type: 'boolean',
+                description: '是否为默认列'
+              }
+            },
+            required: ['name', 'order', 'isDefault']
+          }
+        },
+        required: ['column_data']
+      }
+    },
+    {
+      name: 'update_column',
+      description: '更新现有看板列的属性',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          column_id: {
+            type: 'string',
+            description: '列ID'
+          },
+          updates: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              order: { type: 'number' },
+              color: { type: 'string' },
+              isDefault: { type: 'boolean' }
+            }
+          }
+        },
+        required: ['column_id', 'updates']
+      }
+    },
+    {
+      name: 'delete_column',
+      description: '删除指定的看板列',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          column_id: {
+            type: 'string',
+            description: '要删除的列ID'
+          }
+        },
+        required: ['column_id']
+      }
+    },
+    {
+      name: 'reorder_columns',
+      description: '重新排序看板列',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          column_ids: {
+            type: 'array',
+            items: { type: 'string' },
+            description: '按新顺序排列的列ID数组'
+          }
+        },
+        required: ['column_ids']
+      }
     }
   ];
   
