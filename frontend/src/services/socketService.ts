@@ -2,19 +2,38 @@ import { io, Socket } from 'socket.io-client';
 import useTaskStore from '../store/taskStore';
 import { Task } from '../types/Task';
 
+// 获取后端服务地址
+const getBackendUrl = (): string => {
+  // 开发环境
+  if (import.meta.env.DEV) {
+    return 'http://localhost:3000';
+  }
+
+  // 生产环境 - 检查是否有云端服务配置
+  const cloudUrl = import.meta.env.VITE_CLOUD_BACKEND_URL;
+  if (cloudUrl) {
+    return cloudUrl;
+  }
+
+  // 默认本地服务
+  return 'http://localhost:3000';
+};
+
 class SocketService {
   private socket: Socket | null = null;
   private isConnected = false;
-  
+
   /**
    * 初始化Socket.IO连接
    * @param url 后端MCP服务WebSocket URL
    */
-  connect(url: string = 'http://localhost:3000'): void {
+  connect(url?: string): void {
+    const backendUrl = url || getBackendUrl();
     if (this.isConnected && this.socket) return;
-    
+
     try {
-      this.socket = io(url, {
+      console.log('连接到后端服务:', backendUrl);
+      this.socket = io(backendUrl, {
         reconnection: true,
         reconnectionDelay: 1000,
         reconnectionAttempts: 5,
