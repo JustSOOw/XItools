@@ -147,3 +147,17 @@ dist
 # 保留 schema.prisma 和迁移文件
 !**/schema.prisma
 !**/migrations/
+
+# Electron打包文件
+**/dist-electron/
+**/out/
+**/*.exe
+**/*.dmg
+**/*.AppImage
+**/*.deb
+**/*.rpm
+**/*.snap
+**/*.tar.gz
+**/*.zip
+**/*.blockmap
+**/builder-effective-config.yaml

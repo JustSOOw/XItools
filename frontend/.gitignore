@@ -10,6 +10,19 @@
 /dist
 /build
 
+# Electron打包文件
+/dist-electron
+/out
+*.exe
+*.dmg
+*.AppImage
+*.deb
+*.rpm
+*.snap
+*.tar.gz
+*.zip
+*.blockmap
+
 # 杂项
 .DS_Store
 .env.local

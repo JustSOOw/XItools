@@ -10,6 +10,16 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  base: './', // 重要：Electron需要相对路径
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
+  },
   server: {
     port: 5173,
     proxy: {
@@ -24,4 +34,4 @@ export default defineConfig({
       },
     },
   },
-}); 
+});
