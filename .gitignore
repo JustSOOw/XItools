@@ -161,3 +161,4 @@ dist
 **/*.zip
 **/*.blockmap
 **/builder-effective-config.yaml
+rsync-exclude.txt
