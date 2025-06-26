@@ -223,7 +223,8 @@
       "justNow": "Just now",
       "minutesAgo": "{{count}} minutes ago",
       "hoursAgo": "{{count}} hours ago",
-      "daysAgo": "{{count}} days ago"
+      "daysAgo": "{{count}} days ago",
+      "unknown": "Unknown time"
     },
     "noHistory": "No operation history",
     "by": "by",

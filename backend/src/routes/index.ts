@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import healthRoutes from './healthRoutes';
 import columnRoutes from './columnRoutes';
-import { PrismaClient } from '../generated/prisma';
+import { PrismaClient } from '@prisma/client';
 
 // 初始化Prisma客户端
 const prisma = new PrismaClient();

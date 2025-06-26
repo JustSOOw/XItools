@@ -1,4 +1,4 @@
-import { PrismaClient } from '../generated/prisma';
+import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 
 const prisma = new PrismaClient();
@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 export const columnSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1, '列名不能为空').max(50, '列名不能超过50个字符'),
-  order: z.number().int().min(0, '排序值不能为负数'),
+  order: z.number().min(0, '排序值不能为负数').transform(val => Math.round(val)),
   color: z.string().optional(),
   isDefault: z.boolean().optional().default(false),
 });

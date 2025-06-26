@@ -73,12 +73,17 @@ class McpService {
         method: 'get_task_schema',
         params: {},
         id: this.generateRequestId(),
-      }, { 
+      }, {
         timeout: this.requestTimeout,
         headers: this.headers
       });
-      
-      return response.data.result;
+
+      if (response.data.error) {
+        console.error('MCP工具调用错误:', response.data.error);
+        throw new Error(response.data.error.message);
+      }
+
+      return response.data.result?.content?.[0]?.text ? JSON.parse(response.data.result.content[0].text) : response.data.result;
     } catch (error) {
       console.error('获取任务Schema失败:', error);
       throw error;
@@ -97,12 +102,17 @@ class McpService {
         method: 'submit_task_dataset',
         params: { tasks },
         id: this.generateRequestId(),
-      }, { 
+      }, {
         timeout: this.requestTimeout,
         headers: this.headers
       });
-      
-      return response.data.result;
+
+      if (response.data.error) {
+        console.error('MCP工具调用错误:', response.data.error);
+        return [];
+      }
+
+      return response.data.result?.content?.[0]?.text ? JSON.parse(response.data.result.content[0].text) : response.data.result || [];
     } catch (error) {
       console.error('提交任务数据集失败:', error);
       // 如果后端服务不可用，返回空数组，不抛出错误
@@ -125,9 +135,10 @@ class McpService {
       // 首先尝试使用直接API端点
       try {
         console.log('尝试使用直接API端点获取任务列表');
-        const directApiResponse = await axios.post('http://localhost:3000/api/tasks/list', 
-          { filter_options: filterOptions || {} }, 
-          { 
+        const apiUrl = this.baseUrl.replace('/mcp', '/api/tasks/list');
+        const directApiResponse = await axios.post(apiUrl,
+          { filter_options: filterOptions || {} },
+          {
             timeout: this.requestTimeout,
             headers: this.headers
           }
@@ -148,12 +159,17 @@ class McpService {
         method: 'list_tasks',
         params: { filter_options: filterOptions || {} },
         id: this.generateRequestId(),
-      }, { 
+      }, {
         timeout: this.requestTimeout,
         headers: this.headers
       });
-      
-      return response.data.result;
+
+      if (response.data.error) {
+        console.error('MCP工具调用错误:', response.data.error);
+        return [];
+      }
+
+      return response.data.result?.content?.[0]?.text ? JSON.parse(response.data.result.content[0].text) : response.data.result || [];
     } catch (error) {
       console.error('获取任务列表失败:', error);
       // 如果后端服务不可用，返回空数组，不抛出错误
@@ -176,12 +192,17 @@ class McpService {
         method: 'get_task_details',
         params: { task_id: taskId },
         id: this.generateRequestId(),
-      }, { 
+      }, {
         timeout: this.requestTimeout,
         headers: this.headers
       });
-      
-      return response.data.result;
+
+      if (response.data.error) {
+        console.error('MCP工具调用错误:', response.data.error);
+        return null;
+      }
+
+      return response.data.result?.content?.[0]?.text ? JSON.parse(response.data.result.content[0].text) : response.data.result;
     } catch (error) {
       console.error('获取任务详情失败:', error);
       // 如果后端服务不可用，返回null
@@ -205,12 +226,17 @@ class McpService {
         method: 'update_task',
         params: { task_id: taskId, updates },
         id: this.generateRequestId(),
-      }, { 
+      }, {
         timeout: this.requestTimeout,
         headers: this.headers
       });
-      
-      return response.data.result;
+
+      if (response.data.error) {
+        console.error('MCP工具调用错误:', response.data.error);
+        return null;
+      }
+
+      return response.data.result?.content?.[0]?.text ? JSON.parse(response.data.result.content[0].text) : response.data.result;
     } catch (error) {
       console.error('更新任务失败:', error);
       // 如果后端服务不可用，返回null
@@ -331,7 +357,8 @@ class McpService {
    */
   async sortTask(taskId: string, targetId: string, columnId: string, insertPosition: string = 'before'): Promise<any> {
     try {
-      const response = await axios.post('http://localhost:3000/api/tasks/sort', {
+      const apiUrl = this.baseUrl.replace('/mcp', '/api/tasks/sort');
+      const response = await axios.post(apiUrl, {
         taskId,
         targetId,
         columnId,
@@ -362,7 +389,8 @@ class McpService {
    */
   async sortColumnTasks(columnId: string, sortOption: string): Promise<any> {
     try {
-      const response = await axios.post(`http://localhost:3000/api/columns/${columnId}/sort`, {
+      const apiUrl = this.baseUrl.replace('/mcp', `/api/columns/${columnId}/sort`);
+      const response = await axios.post(apiUrl, {
         sortOption
       }, {
         timeout: this.requestTimeout,
@@ -402,6 +430,20 @@ class McpService {
   }
 }
 
-// 导出单例实例
-const mcpService = new McpService();
-export default mcpService; 
+// 获取后端服务地址
+const getBackendUrl = (): string => {
+  // 优先检查是否有云端服务配置
+  const cloudUrl = import.meta.env.VITE_CLOUD_BACKEND_URL;
+  if (cloudUrl) {
+    console.log('MCP服务使用云端配置:', cloudUrl);
+    return cloudUrl;
+  }
+
+  // 默认本地服务
+  console.log('MCP服务使用默认本地配置: http://localhost:3000');
+  return 'http://localhost:3000';
+};
+
+// 导出单例实例，使用正确的URL
+const mcpService = new McpService(`${getBackendUrl()}/mcp`);
+export default mcpService;

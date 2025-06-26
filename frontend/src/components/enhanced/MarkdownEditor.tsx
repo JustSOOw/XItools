@@ -30,12 +30,20 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   const [mode, setMode] = useState<'edit' | 'preview' | 'split'>('edit');
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [initialValue, setInitialValue] = useState(value); // 记录初始值
+  const [lastSavedValue, setLastSavedValue] = useState(value); // 记录上次保存的值
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
 
+  // 当value从外部更新时，更新初始值和上次保存的值
+  useEffect(() => {
+    setInitialValue(value);
+    setLastSavedValue(value);
+  }, [value]);
+
   // 自动保存逻辑
   useEffect(() => {
-    if (autoSave && onSave && value !== '') {
+    if (autoSave && onSave && value !== '' && value !== lastSavedValue) {
       if (autoSaveTimeoutRef.current) {
         clearTimeout(autoSaveTimeoutRef.current);
       }
@@ -45,6 +53,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           setIsSaving(true);
           await onSave(value);
           setLastSaved(new Date());
+          setLastSavedValue(value); // 更新上次保存的值
         } catch (error) {
           console.error('自动保存失败:', error);
         } finally {
@@ -58,15 +67,16 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         clearTimeout(autoSaveTimeoutRef.current);
       }
     };
-  }, [value, autoSave, onSave, autoSaveDelay]);
+  }, [value, autoSave, onSave, autoSaveDelay, lastSavedValue]);
 
   const handleManualSave = async () => {
-    if (!onSave) return;
+    if (!onSave || value === lastSavedValue) return;
 
     try {
       setIsSaving(true);
       await onSave(value);
       setLastSaved(new Date());
+      setLastSavedValue(value); // 更新上次保存的值
     } catch (error) {
       console.error('保存失败:', error);
     } finally {

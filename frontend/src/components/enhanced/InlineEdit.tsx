@@ -68,6 +68,14 @@ const InlineEdit: React.FC<InlineEditProps> = ({
   };
 
   const handleSave = async () => {
+    // 检查值是否真的发生了变化
+    if (editValue === value) {
+      // 值没有变化，直接退出编辑模式
+      setIsEditing(false);
+      setError(null);
+      return;
+    }
+
     // 验证
     if (validation) {
       const validationError = validation(editValue);

@@ -256,6 +256,8 @@ MCP服务通过Socket.IO与前端进行实时通信，发送以下事件：
 
 ### 开发设置
 
+#### 传统开发方式
+
 1. 安装依赖：
    ```bash
    cd backend
@@ -287,6 +289,37 @@ MCP服务通过Socket.IO与前端进行实时通信，发送以下事件：
    ```bash
    http://localhost:3000/documentation
    ```
+
+#### Docker开发方式（推荐）
+
+使用Docker可以确保开发环境与生产环境的一致性：
+
+1. 启动Docker服务：
+   ```bash
+   docker-compose up --build -d
+   ```
+
+2. 检查服务状态：
+   ```bash
+   docker-compose ps
+   ```
+
+3. 查看日志：
+   ```bash
+   docker-compose logs -f
+   ```
+
+4. 测试健康检查：
+   ```bash
+   curl http://localhost:3000/health
+   ```
+
+5. 停止服务：
+   ```bash
+   docker-compose down
+   ```
+
+详细的Docker部署说明请参考 [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md)。
 
 ## 前端应用
 

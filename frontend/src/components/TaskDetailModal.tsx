@@ -166,6 +166,7 @@ const TaskDetailsTab: React.FC<{
               {t('task:fields.title')}
             </label>
             <InlineEdit
+              key={`title-${task.id}`}
               value={task.title}
               onSave={(value) => onUpdate('title', value)}
               placeholder={t('task:placeholders.title')}
@@ -180,10 +181,16 @@ const TaskDetailsTab: React.FC<{
               {t('task:fields.status')}
             </label>
             <InlineEdit
+              key={`status-${task.id}-${task.status}`}
               value={columns.find(col => col.id === task.status)?.name || task.status}
               onSave={(value) => {
                 const column = columns.find(col => col.name === value);
-                return onUpdate('status', column?.id || value);
+                const newStatusId = column?.id || value;
+                // 只有当状态真的发生变化时才更新
+                if (newStatusId !== task.status) {
+                  return onUpdate('status', newStatusId);
+                }
+                return Promise.resolve();
               }}
               type="select"
               options={columns.map(col => ({ value: col.name, label: col.name }))}
@@ -196,6 +203,7 @@ const TaskDetailsTab: React.FC<{
               {t('task:fields.priority')}
             </label>
             <InlineEdit
+              key={`priority-${task.id}-${task.priority}`}
               value={task.priority === 'High' ? t('task:priority.high') : task.priority === 'Medium' ? t('task:priority.medium') : task.priority === 'Low' ? t('task:priority.low') : t('task:priority.none')}
               onSave={(value) => {
                 const priorityMap: Record<string, string | null> = {
@@ -204,7 +212,12 @@ const TaskDetailsTab: React.FC<{
                   [t('task:priority.low')]: 'Low',
                   [t('task:priority.none')]: null
                 };
-                return onUpdate('priority', priorityMap[value]);
+                const newPriority = priorityMap[value];
+                // 只有当优先级真的发生变化时才更新
+                if (newPriority !== task.priority) {
+                  return onUpdate('priority', newPriority);
+                }
+                return Promise.resolve();
               }}
               type="select"
               options={[
@@ -246,18 +259,22 @@ const TaskDetailsTab: React.FC<{
       <div className="bg-accent/5 rounded-lg p-4">
         <h3 className="text-lg font-semibold text-text-primary mb-4">{t('task:detail.sections.description')}</h3>
         <MarkdownEditor
+          key={`description-${task.id}`}
           value={localDescription}
           onChange={(value) => {
             // 实时更新本地状态，用于预览
             setLocalDescription(value);
           }}
           onSave={(value) => {
-            // 保存到后端并更新全局状态
-            return onUpdate('description', value);
+            // 只有当描述真的发生变化时才保存
+            if (value !== task.description) {
+              return onUpdate('description', value);
+            }
+            return Promise.resolve();
           }}
           placeholder={t('task:placeholders.description')}
           autoSave
-          autoSaveDelay={1500}
+          autoSaveDelay={3000}
           minHeight="200px"
         />
       </div>

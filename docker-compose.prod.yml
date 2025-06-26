@@ -1,51 +1,55 @@
-version: '3.8'
 services:
   # PostgreSQL数据库服务
   postgres:
     image: postgres:14
-    container_name: xitools-postgres
+    container_name: xitools-postgres-prod
     restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: xitools
     ports:
-      - "5432:5432"
+      - "5433:5432"  # 使用不同端口避免与开发环境冲突
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - pg_data_prod:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - xitools-network
 
   # XItools后端服务
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: xitools-backend
+    container_name: xitools-backend-prod
     restart: always
     environment:
       - NODE_ENV=production
       - PORT=3000
       - HOST=0.0.0.0
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/xitools
-      - CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/xitools
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000,http://xitools.furdow.com,https://xitools.furdow.com}
     ports:
       - "3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      # 挂载后端代码用于开发（可选）
-      - ./backend/src:/app/src:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - xitools-network
+
+networks:
+  xitools-network:
+    driver: bridge
 
 volumes:
-  pg_data:
+  pg_data_prod:

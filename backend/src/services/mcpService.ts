@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { Server as SocketIOServer } from 'socket.io';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { PrismaClient } from '../generated/prisma';
+import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { taskSchema, taskUpdateSchema } from '../types/taskSchema';
 import { columnService, columnSchema, columnUpdateSchema } from './columnService';
@@ -226,21 +226,30 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
               }))
             } : undefined;
 
+            // 准备任务数据
+            const taskCreateData: any = {
+              title: taskData.title,
+              description: taskData.description || '',
+              status: taskData.status, // 使用验证过的状态UUID
+              priority: taskData.priority || null,
+              dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
+              assignee: taskData.assignee || null,
+              acceptanceCriteria: taskData.acceptanceCriteria || '',
+              estimatedEffort: taskData.estimatedEffort || null,
+              loggedTime: taskData.loggedTime || null,
+              tags: tags,
+            };
+
+            // 如果有父任务ID，使用关系字段
+            if (taskData.parentId) {
+              taskCreateData.parent = {
+                connect: { id: taskData.parentId }
+              };
+            }
+
             // 创建任务记录
             const task = await tx.task.create({
-              data: {
-                title: taskData.title,
-                description: taskData.description || '',
-                status: taskData.status, // 使用验证过的状态UUID
-                priority: taskData.priority || null,
-                dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
-                assignee: taskData.assignee || null,
-                parentId: taskData.parentId || null,
-                acceptanceCriteria: taskData.acceptanceCriteria || '',
-                estimatedEffort: taskData.estimatedEffort || null,
-                loggedTime: taskData.loggedTime || null,
-                tags: tags,
-              },
+              data: taskCreateData,
               include: {
                 tags: true,
               }
@@ -971,6 +980,7 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
         
         // 处理所有已定义的MCP工具方法
         const mcpMethods = [
+          'initialize', 'notifications/initialized', 'tools/list', 'tools/call',
           'get_task_schema', 'submit_task_dataset', 'list_tasks', 'get_task_details', 'update_task', 'delete_task',
           'get_columns', 'create_column', 'update_column', 'delete_column', 'reorder_columns', 'migrate_task_status',
           'update_task_color', 'clear_all_tasks'
@@ -1083,6 +1093,1046 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
       
       // 根据方法名分派到对应的工具处理函数
       switch (body.method) {
+        case 'initialize': {
+          try {
+            // MCP协议初始化握手
+            const { protocolVersion, capabilities, clientInfo } = body.params || {};
+
+            console.log('MCP初始化请求:', {
+              protocolVersion,
+              capabilities,
+              clientInfo
+            });
+
+            // 返回服务器能力和信息
+            reply.send({
+              jsonrpc: '2.0',
+              result: {
+                protocolVersion: '2024-11-05',
+                capabilities: {
+                  tools: {},
+                  resources: {},
+                  prompts: {},
+                  logging: {}
+                },
+                serverInfo: {
+                  name: 'xitools-mcp-server',
+                  version: '1.0.0'
+                }
+              },
+              id: body.id,
+            });
+            return;
+          } catch (error) {
+            console.error('MCP初始化失败:', error);
+            reply.status(500).send({
+              jsonrpc: '2.0',
+              error: {
+                code: -32603,
+                message: '初始化失败: ' + (error instanceof Error ? error.message : '未知错误'),
+              },
+              id: body.id,
+            });
+            return;
+          }
+        }
+
+        case 'notifications/initialized': {
+          try {
+            // MCP协议通知：客户端已完成初始化
+            console.log('MCP客户端初始化完成通知');
+
+            // 对于通知类型的请求，通常不需要响应
+            // 但为了兼容性，我们返回一个简单的确认
+            reply.send({
+              jsonrpc: '2.0',
+              result: {},
+              id: body.id,
+            });
+            return;
+          } catch (error) {
+            console.error('处理初始化通知失败:', error);
+            reply.status(500).send({
+              jsonrpc: '2.0',
+              error: {
+                code: -32603,
+                message: '处理通知失败: ' + (error instanceof Error ? error.message : '未知错误'),
+              },
+              id: body.id,
+            });
+            return;
+          }
+        }
+
+        case 'tools/list': {
+          try {
+            // 返回所有可用的MCP工具列表
+            const tools = [
+              {
+                name: 'get_task_schema',
+                description: '获取任务对象的JSON Schema，用于指导LLM生成正确的数据格式。重要：status字段必须使用返回的列UUID，不能使用列名称。',
+                inputSchema: {
+                  type: 'object',
+                  properties: {},
+                  required: []
+                }
+              },
+              {
+                name: 'submit_task_dataset',
+                description: '批量提交任务数据集，服务器将处理并存储这些任务',
+                inputSchema: {
+                  type: 'object',
+                  properties: {
+                    tasks: {
+                      type: 'array',
+                      description: '任务数组',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          title: { type: 'string', description: '任务标题' },
+                          status: { type: 'string', description: '任务状态（列UUID）' },
+                          description: { type: 'string', description: '任务描述' },
+                          priority: { type: 'string', enum: ['High', 'Medium', 'Low'], description: '优先级' }
+                        },
+                        required: ['title', 'status']
+                      }
+                    }
+                  },
+                  required: ['tasks']
+                }
+              },
+              {
+                name: 'list_tasks',
+                description: '获取任务列表，支持过滤条件',
+                inputSchema: {
+                  type: 'object',
+                  properties: {
+                    filter_options: {
+                      type: 'object',
+                      description: '过滤选项',
+                      properties: {
+                        status: { type: 'string', description: '按状态过滤' },
+                        priority: { type: 'string', description: '按优先级过滤' },
+                        assignee: { type: 'string', description: '按负责人过滤' }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                name: 'get_task_details',
+                description: '获取特定任务的详细信息',
+                inputSchema: {
+                  type: 'object',
+                  properties: {
+                    task_id: { type: 'string', description: '任务ID' }
+                  },
+                  required: ['task_id']
+                }
+              },
+              {
+                name: 'update_task',
+                description: '更新现有任务的一个或多个属性',
+                inputSchema: {
+                  type: 'object',
+                  properties: {
+                    task_id: { type: 'string', description: '任务ID' },
+                    updates: { type: 'object', description: '更新内容' }
+                  },
+                  required: ['task_id', 'updates']
+                }
+              },
+              {
+                name: 'delete_task',
+                description: '删除指定的任务',
+                inputSchema: {
+                  type: 'object',
+                  properties: {
+                    task_id: { type: 'string', description: '任务ID' }
+                  },
+                  required: ['task_id']
+                }
+              },
+              {
+                name: 'get_columns',
+                description: '获取所有看板列，按order排序',
+                inputSchema: {
+                  type: 'object',
+                  properties: {},
+                  required: []
+                }
+              },
+              {
+                name: 'create_column',
+                description: '创建新的看板列',
+                inputSchema: {
+                  type: 'object',
+                  properties: {
+                    column_data: {
+                      type: 'object',
+                      properties: {
+                        name: { type: 'string', description: '列名称' },
+                        order: { type: 'number', description: '排序顺序' },
+                        color: { type: 'string', description: '列背景色' },
+                        isDefault: { type: 'boolean', description: '是否为默认列' }
+                      },
+                      required: ['name', 'order', 'isDefault']
+                    }
+                  },
+                  required: ['column_data']
+                }
+              },
+              {
+                name: 'update_column',
+                description: '更新现有看板列的属性',
+                inputSchema: {
+                  type: 'object',
+                  properties: {
+                    column_id: { type: 'string', description: '要更新的列ID' },
+                    updates: {
+                      type: 'object',
+                      properties: {
+                        name: { type: 'string', description: '新名称' },
+                        order: { type: 'number', description: '新排序' },
+                        color: { type: 'string', description: '新颜色' },
+                        isDefault: { type: 'boolean', description: '是否默认' }
+                      }
+                    }
+                  },
+                  required: ['column_id', 'updates']
+                }
+              },
+              {
+                name: 'delete_column',
+                description: '删除指定的看板列',
+                inputSchema: {
+                  type: 'object',
+                  properties: {
+                    column_id: { type: 'string', description: '要删除的列ID' }
+                  },
+                  required: ['column_id']
+                }
+              },
+              {
+                name: 'reorder_columns',
+                description: '重新排序看板列',
+                inputSchema: {
+                  type: 'object',
+                  properties: {
+                    column_ids: {
+                      type: 'array',
+                      items: { type: 'string' },
+                      description: '按新顺序排列的列ID数组'
+                    }
+                  },
+                  required: ['column_ids']
+                }
+              },
+              {
+                name: 'clear_all_tasks',
+                description: '删除所有任务卡片，用于测试和开发。注意：此操作不可逆',
+                inputSchema: {
+                  type: 'object',
+                  properties: {},
+                  required: []
+                }
+              }
+            ];
+
+            reply.send({
+              jsonrpc: '2.0',
+              result: {
+                tools: tools
+              },
+              id: body.id,
+            });
+            return;
+          } catch (error) {
+            console.error('获取工具列表失败:', error);
+            reply.status(500).send({
+              jsonrpc: '2.0',
+              error: {
+                code: -32603,
+                message: '获取工具列表失败: ' + (error instanceof Error ? error.message : '未知错误'),
+              },
+              id: body.id,
+            });
+            return;
+          }
+        }
+
+        case 'tools/call': {
+          try {
+            // 工具调用请求 - 将参数转发给对应的工具方法
+            const { name, arguments: toolArgs } = body.params || {};
+
+            if (!name) {
+              reply.status(400).send({
+                jsonrpc: '2.0',
+                error: {
+                  code: -32602,
+                  message: '无效的参数: 缺少工具名称',
+                },
+                id: body.id,
+              });
+              return;
+            }
+
+            console.log(`工具调用: ${name}，参数:`, toolArgs);
+
+            // 直接调用对应的工具方法
+            switch (name) {
+              case 'get_task_schema': {
+                // 获取当前可用的列信息
+                const columns = await columnService.getAllColumns();
+
+                // 创建任务Schema
+                const schema = {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "Task",
+                  "description": "Schema for a single task item",
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "Unique identifier for the task (e.g., UUID)",
+                      "readOnly": true
+                    },
+                    "title": {
+                      "type": "string",
+                      "description": "The main title or name of the task"
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "Detailed description of the task (can be Markdown)"
+                    },
+                    "status": {
+                      "type": "string",
+                      "description": "任务状态 - 必须使用列的UUID，不能使用列名称",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                    },
+                    "priority": {
+                      "type": "string",
+                      "enum": ["High", "Medium", "Low", null],
+                      "description": "Priority of the task"
+                    },
+                    "dueDate": {
+                      "type": ["string", "null"],
+                      "format": "date-time",
+                      "description": "Optional due date for the task"
+                    },
+                    "assignee": {
+                      "type": ["string", "null"],
+                      "description": "Identifier of the person assigned to the task (e.g., user ID or name)"
+                    },
+                    "tags": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "List of tags associated with the task"
+                    },
+                    "parentId": {
+                      "type": ["string", "null"],
+                      "description": "ID of the parent task, if this is a sub-task"
+                    },
+                    "acceptanceCriteria": {
+                      "type": "string",
+                      "description": "Acceptance criteria for completing the task"
+                    },
+                    "estimatedEffort": {
+                      "type": ["number", "null"],
+                      "description": "Estimated effort in hours or points"
+                    },
+                    "loggedTime": {
+                      "type": ["number", "null"],
+                      "description": "Actual time logged for the task"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "Timestamp of when the task was created",
+                      "readOnly": true
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "Timestamp of when the task was last updated",
+                      "readOnly": true
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "status"
+                  ]
+                };
+
+                const result = {
+                  schema: schema,
+                  availableColumns: columns.map((col: any) => ({
+                    id: col.id,
+                    name: col.name,
+                    order: col.order
+                  })),
+                  usage: {
+                    note: "创建任务时，status字段必须使用列的UUID（id字段），不能使用列名称",
+                    example: {
+                      title: "示例任务",
+                      status: columns[0]?.id || "列UUID",
+                      description: "任务描述",
+                      priority: "High"
+                    }
+                  }
+                };
+
+                reply.send({
+                  jsonrpc: '2.0',
+                  result: {
+                    content: [
+                      {
+                        type: "text",
+                        text: JSON.stringify(result, null, 2)
+                      }
+                    ]
+                  },
+                  id: body.id,
+                });
+                return;
+              }
+
+              case 'get_columns': {
+                const columns = await columnService.getAllColumns();
+                console.log(`获取到 ${columns.length} 个列`);
+
+                reply.send({
+                  jsonrpc: '2.0',
+                  result: {
+                    content: [
+                      {
+                        type: "text",
+                        text: JSON.stringify(columns, null, 2)
+                      }
+                    ]
+                  },
+                  id: body.id,
+                });
+                return;
+              }
+
+              case 'list_tasks': {
+                const filterOptions = toolArgs?.filter_options || {};
+
+                // 构建查询条件
+                const where: any = {};
+
+                if (filterOptions) {
+                  if (filterOptions.status) {
+                    where.status = filterOptions.status;
+                  }
+                  if (filterOptions.priority) {
+                    where.priority = filterOptions.priority;
+                  }
+                  if (filterOptions.assignee) {
+                    where.assignee = filterOptions.assignee;
+                  }
+                  if (filterOptions.tags && filterOptions.tags.length > 0) {
+                    where.tags = {
+                      some: {
+                        name: {
+                          in: filterOptions.tags
+                        }
+                      }
+                    };
+                  }
+                }
+
+                // 查询数据库
+                const tasks = await prisma.task.findMany({
+                  where,
+                  include: {
+                    tags: true,
+                  },
+                  orderBy: [
+                    { sortOrder: 'asc' },
+                    { createdAt: 'desc' }
+                  ]
+                });
+
+                console.log(`MCP方法返回 ${tasks.length} 个任务`);
+
+                reply.send({
+                  jsonrpc: '2.0',
+                  result: {
+                    content: [
+                      {
+                        type: "text",
+                        text: JSON.stringify(tasks, null, 2)
+                      }
+                    ]
+                  },
+                  id: body.id,
+                });
+                return;
+              }
+
+              case 'submit_task_dataset': {
+                const { tasks } = toolArgs || {};
+
+                if (!tasks || !Array.isArray(tasks)) {
+                  reply.status(400).send({
+                    jsonrpc: '2.0',
+                    error: {
+                      code: -32602,
+                      message: '无效的参数: tasks必须是数组',
+                    },
+                    id: body.id,
+                  });
+                  return;
+                }
+
+                console.log(`准备创建 ${tasks.length} 个任务`);
+
+                // 获取可用的列UUID进行验证
+                const columns = await columnService.getAllColumns();
+                const validColumnIds = new Set(columns.map((col: any) => col.id));
+
+                // 验证所有任务的状态UUID
+                for (const taskData of tasks) {
+                  if (!taskData.title) {
+                    reply.status(400).send({
+                      jsonrpc: '2.0',
+                      error: {
+                        code: -32602,
+                        message: '无效的参数: 每个任务必须有title',
+                      },
+                      id: body.id,
+                    });
+                    return;
+                  }
+
+                  if (!taskData.status) {
+                    reply.status(400).send({
+                      jsonrpc: '2.0',
+                      error: {
+                        code: -32602,
+                        message: '无效的参数: 每个任务必须有status（列UUID）',
+                      },
+                      id: body.id,
+                    });
+                    return;
+                  }
+
+                  // 验证UUID是否对应实际存在的列
+                  if (!validColumnIds.has(taskData.status)) {
+                    reply.status(400).send({
+                      jsonrpc: '2.0',
+                      error: {
+                        code: -32602,
+                        message: `无效的状态UUID: ${taskData.status}。请使用get_task_schema工具获取有效的列UUID。可用列: ${columns.map((col: any) => `${col.name}(${col.id})`).join(', ')}`,
+                      },
+                      id: body.id,
+                    });
+                    return;
+                  }
+                }
+
+                const createdTasks: any[] = [];
+
+                // 使用事务确保数据一致性
+                await prisma.$transaction(async (tx: any) => {
+                  for (const taskData of tasks) {
+                    console.log(`创建任务: "${taskData.title}" 状态UUID: ${taskData.status}`);
+
+                    // 处理标签
+                    const tagNames = taskData.tags || [];
+                    const tagConnections = [];
+
+                    for (const tagName of tagNames) {
+                      // 查找或创建标签
+                      let tag = await tx.tag.findFirst({
+                        where: { name: tagName }
+                      });
+
+                      if (!tag) {
+                        tag = await tx.tag.create({
+                          data: { name: tagName }
+                        });
+                        console.log(`创建新标签: ${tagName}`);
+                      }
+
+                      tagConnections.push({ id: tag.id });
+                    }
+
+                    // 准备任务数据
+                    const taskCreateData: any = {
+                      title: taskData.title,
+                      description: taskData.description || '',
+                      status: taskData.status,
+                      priority: taskData.priority || null,
+                      assignee: taskData.assignee || null,
+                      dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
+                      acceptanceCriteria: taskData.acceptanceCriteria || '',
+                      estimatedEffort: taskData.estimatedEffort || null,
+                      loggedTime: taskData.loggedTime || null,
+                      tags: {
+                        connect: tagConnections
+                      }
+                    };
+
+                    // 如果有父任务ID，使用关系字段
+                    if (taskData.parentId) {
+                      taskCreateData.parent = {
+                        connect: { id: taskData.parentId }
+                      };
+                    }
+
+                    // 创建任务
+                    const task = await tx.task.create({
+                      data: taskCreateData,
+                      include: {
+                        tags: true
+                      }
+                    });
+
+                    createdTasks.push(task);
+                    console.log(`任务创建成功: ${task.id}`);
+                  }
+                });
+
+                console.log(`成功创建 ${createdTasks.length} 个任务`);
+
+                // 广播任务创建事件
+                io.emit('tasks_created', createdTasks);
+
+                reply.send({
+                  jsonrpc: '2.0',
+                  result: {
+                    content: [
+                      {
+                        type: "text",
+                        text: JSON.stringify(createdTasks, null, 2)
+                      }
+                    ]
+                  },
+                  id: body.id,
+                });
+                return;
+              }
+
+              case 'get_task_details': {
+                const { task_id } = toolArgs || {};
+
+                if (!task_id) {
+                  reply.status(400).send({
+                    jsonrpc: '2.0',
+                    error: {
+                      code: -32602,
+                      message: '无效的参数: 缺少task_id',
+                    },
+                    id: body.id,
+                  });
+                  return;
+                }
+
+                const task = await prisma.task.findUnique({
+                  where: { id: task_id },
+                  include: {
+                    tags: true,
+                  }
+                });
+
+                if (!task) {
+                  reply.status(404).send({
+                    jsonrpc: '2.0',
+                    error: {
+                      code: -32602,
+                      message: `任务不存在: ${task_id}`,
+                    },
+                    id: body.id,
+                  });
+                  return;
+                }
+
+                console.log(`获取任务详情: ${task.id}`);
+
+                reply.send({
+                  jsonrpc: '2.0',
+                  result: {
+                    content: [
+                      {
+                        type: "text",
+                        text: JSON.stringify(task, null, 2)
+                      }
+                    ]
+                  },
+                  id: body.id,
+                });
+                return;
+              }
+
+              case 'update_task': {
+                const { task_id, updates } = toolArgs || {};
+
+                if (!task_id || !updates) {
+                  reply.status(400).send({
+                    jsonrpc: '2.0',
+                    error: {
+                      code: -32602,
+                      message: '无效的参数: 缺少task_id或updates',
+                    },
+                    id: body.id,
+                  });
+                  return;
+                }
+
+                // 验证任务是否存在
+                const existingTask = await prisma.task.findUnique({
+                  where: { id: task_id }
+                });
+
+                if (!existingTask) {
+                  reply.status(404).send({
+                    jsonrpc: '2.0',
+                    error: {
+                      code: -32602,
+                      message: `任务不存在: ${task_id}`,
+                    },
+                    id: body.id,
+                  });
+                  return;
+                }
+
+                // 如果更新状态，验证状态UUID
+                if (updates.status) {
+                  const columns = await columnService.getAllColumns();
+                  const validColumnIds = new Set(columns.map((col: any) => col.id));
+
+                  if (!validColumnIds.has(updates.status)) {
+                    reply.status(400).send({
+                      jsonrpc: '2.0',
+                      error: {
+                        code: -32602,
+                        message: `无效的状态UUID: ${updates.status}`,
+                      },
+                      id: body.id,
+                    });
+                    return;
+                  }
+                }
+
+                // 处理标签更新
+                const updateData: any = { ...updates };
+                if (updates.tags) {
+                  const tagConnections = [];
+                  for (const tagName of updates.tags) {
+                    let tag = await prisma.tag.findFirst({
+                      where: { name: tagName }
+                    });
+
+                    if (!tag) {
+                      tag = await prisma.tag.create({
+                        data: { name: tagName }
+                      });
+                    }
+
+                    tagConnections.push({ id: tag.id });
+                  }
+
+                  updateData.tags = {
+                    set: tagConnections
+                  };
+                }
+
+                // 处理日期字段
+                if (updates.dueDate) {
+                  updateData.dueDate = new Date(updates.dueDate);
+                }
+
+                const updatedTask = await prisma.task.update({
+                  where: { id: task_id },
+                  data: updateData,
+                  include: {
+                    tags: true
+                  }
+                });
+
+                console.log(`任务 ${task_id} 更新成功`);
+
+                // 广播任务更新事件
+                io.emit('task_updated', updatedTask);
+
+                reply.send({
+                  jsonrpc: '2.0',
+                  result: {
+                    content: [
+                      {
+                        type: "text",
+                        text: JSON.stringify(updatedTask, null, 2)
+                      }
+                    ]
+                  },
+                  id: body.id,
+                });
+                return;
+              }
+
+              case 'delete_task': {
+                const { task_id } = toolArgs || {};
+
+                if (!task_id) {
+                  reply.status(400).send({
+                    jsonrpc: '2.0',
+                    error: {
+                      code: -32602,
+                      message: '无效的参数: 缺少task_id',
+                    },
+                    id: body.id,
+                  });
+                  return;
+                }
+
+                // 验证任务是否存在
+                const task = await prisma.task.findUnique({
+                  where: { id: task_id }
+                });
+
+                if (!task) {
+                  reply.status(404).send({
+                    jsonrpc: '2.0',
+                    error: {
+                      code: -32602,
+                      message: `任务不存在: ${task_id}`,
+                    },
+                    id: body.id,
+                  });
+                  return;
+                }
+
+                await prisma.task.delete({
+                  where: { id: task_id }
+                });
+
+                console.log(`任务 ${task_id} 删除成功`);
+
+                // 广播任务删除事件
+                io.emit('task_deleted', { taskId: task_id });
+
+                reply.send({
+                  jsonrpc: '2.0',
+                  result: {
+                    content: [
+                      {
+                        type: "text",
+                        text: JSON.stringify({ success: true, taskId: task_id }, null, 2)
+                      }
+                    ]
+                  },
+                  id: body.id,
+                });
+                return;
+              }
+
+              case 'create_column': {
+                const { column_data } = toolArgs || {};
+
+                if (!column_data) {
+                  reply.status(400).send({
+                    jsonrpc: '2.0',
+                    error: {
+                      code: -32602,
+                      message: '无效的参数: 缺少column_data',
+                    },
+                    id: body.id,
+                  });
+                  return;
+                }
+
+                const newColumn = await columnService.createColumn(column_data);
+                console.log(`列 ${newColumn.id} 创建成功`);
+
+                // 广播列创建事件
+                io.emit('column_created', newColumn);
+
+                reply.send({
+                  jsonrpc: '2.0',
+                  result: {
+                    content: [
+                      {
+                        type: "text",
+                        text: JSON.stringify(newColumn, null, 2)
+                      }
+                    ]
+                  },
+                  id: body.id,
+                });
+                return;
+              }
+
+              case 'update_column': {
+                const { column_id, updates } = toolArgs || {};
+
+                if (!column_id || !updates) {
+                  reply.status(400).send({
+                    jsonrpc: '2.0',
+                    error: {
+                      code: -32602,
+                      message: '无效的参数: 缺少column_id或updates',
+                    },
+                    id: body.id,
+                  });
+                  return;
+                }
+
+                const updatedColumn = await columnService.updateColumn(column_id, updates);
+                console.log(`列 ${column_id} 更新成功`);
+
+                // 广播列更新事件
+                io.emit('column_updated', updatedColumn);
+
+                reply.send({
+                  jsonrpc: '2.0',
+                  result: {
+                    content: [
+                      {
+                        type: "text",
+                        text: JSON.stringify(updatedColumn, null, 2)
+                      }
+                    ]
+                  },
+                  id: body.id,
+                });
+                return;
+              }
+
+              case 'delete_column': {
+                const { column_id } = toolArgs || {};
+
+                if (!column_id) {
+                  reply.status(400).send({
+                    jsonrpc: '2.0',
+                    error: {
+                      code: -32602,
+                      message: '无效的参数: 缺少column_id',
+                    },
+                    id: body.id,
+                  });
+                  return;
+                }
+
+                const result = await columnService.deleteColumn(column_id);
+                console.log(`列 ${column_id} 删除成功`);
+
+                // 广播列删除事件
+                io.emit('column_deleted', { columnId: column_id });
+
+                reply.send({
+                  jsonrpc: '2.0',
+                  result: {
+                    content: [
+                      {
+                        type: "text",
+                        text: JSON.stringify(result, null, 2)
+                      }
+                    ]
+                  },
+                  id: body.id,
+                });
+                return;
+              }
+
+              case 'reorder_columns': {
+                const { column_ids } = toolArgs || {};
+
+                if (!column_ids || !Array.isArray(column_ids)) {
+                  reply.status(400).send({
+                    jsonrpc: '2.0',
+                    error: {
+                      code: -32602,
+                      message: '无效的参数: column_ids必须是数组',
+                    },
+                    id: body.id,
+                  });
+                  return;
+                }
+
+                const reorderedColumns = await columnService.reorderColumns(column_ids);
+                console.log('列重新排序成功');
+
+                // 广播列重排序事件
+                io.emit('columns_reordered', reorderedColumns);
+
+                reply.send({
+                  jsonrpc: '2.0',
+                  result: {
+                    content: [
+                      {
+                        type: "text",
+                        text: JSON.stringify(reorderedColumns, null, 2)
+                      }
+                    ]
+                  },
+                  id: body.id,
+                });
+                return;
+              }
+
+              case 'clear_all_tasks': {
+                // 删除所有任务
+                const deletedTasks = await prisma.task.deleteMany({});
+
+                const result = {
+                  success: true,
+                  deletedCount: deletedTasks.count,
+                  message: `成功删除 ${deletedTasks.count} 个任务`
+                };
+
+                console.log(`所有任务已清除，删除了 ${deletedTasks.count} 个任务`);
+
+                // 广播任务清除事件
+                io.emit('all_tasks_cleared', result);
+
+                reply.send({
+                  jsonrpc: '2.0',
+                  result: {
+                    content: [
+                      {
+                        type: "text",
+                        text: JSON.stringify(result, null, 2)
+                      }
+                    ]
+                  },
+                  id: body.id,
+                });
+                return;
+              }
+
+              default: {
+                reply.status(400).send({
+                  jsonrpc: '2.0',
+                  error: {
+                    code: -32601,
+                    message: `工具 ${name} 未实现`,
+                  },
+                  id: body.id,
+                });
+                return;
+              }
+            }
+
+          } catch (error) {
+            console.error('工具调用失败:', error);
+            reply.status(500).send({
+              jsonrpc: '2.0',
+              error: {
+                code: -32603,
+                message: '工具调用失败: ' + (error instanceof Error ? error.message : '未知错误'),
+              },
+              id: body.id,
+            });
+            return;
+          }
+        }
+
         case 'submit_task_dataset': {
           try {
             const { tasks } = body.params || { tasks: [] };
@@ -1165,10 +2215,17 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
             io.emit('tasks_added', createdTasks);
             console.log(`已创建 ${createdTasks.length} 个任务并广播通知`);
             
-            // 返回JSON-RPC格式的响应
+            // 返回MCP标准格式的响应
             reply.send({
               jsonrpc: '2.0',
-              result: createdTasks,
+              result: {
+                content: [
+                  {
+                    type: "text",
+                    text: JSON.stringify(createdTasks, null, 2)
+                  }
+                ]
+              },
               id: body.id,
             });
             return;
@@ -1228,10 +2285,17 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
             
             console.log(`MCP方法返回 ${tasks.length} 个任务`);
             
-            // 返回JSON-RPC格式的响应
+            // 返回MCP标准格式的响应
             reply.send({
               jsonrpc: '2.0',
-              result: tasks,
+              result: {
+                content: [
+                  {
+                    type: "text",
+                    text: JSON.stringify(tasks, null, 2)
+                  }
+                ]
+              },
               id: body.id,
             });
             return;
@@ -1290,10 +2354,17 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
               return;
             }
             
-            // 返回JSON-RPC格式的响应
+            // 返回MCP标准格式的响应
             reply.send({
               jsonrpc: '2.0',
-              result: task,
+              result: {
+                content: [
+                  {
+                    type: "text",
+                    text: JSON.stringify(task, null, 2)
+                  }
+                ]
+              },
               id: body.id,
             });
             return;
@@ -1357,10 +2428,17 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
             io.emit('task_updated', updatedTask);
             console.log(`任务 ${task_id} 已更新并广播通知`);
 
-            // 返回JSON-RPC格式的响应
+            // 返回MCP标准格式的响应
             reply.send({
               jsonrpc: '2.0',
-              result: updatedTask,
+              result: {
+                content: [
+                  {
+                    type: "text",
+                    text: JSON.stringify(updatedTask, null, 2)
+                  }
+                ]
+              },
               id: body.id,
             });
             return;
@@ -1403,10 +2481,17 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
             io.emit('task_deleted', { taskId: task_id });
             console.log(`任务 ${task_id} 已删除并广播通知`);
 
-            // 返回JSON-RPC格式的响应
+            // 返回MCP标准格式的响应
             reply.send({
               jsonrpc: '2.0',
-              result: { success: true, taskId: task_id },
+              result: {
+                content: [
+                  {
+                    type: "text",
+                    text: JSON.stringify({ success: true, taskId: task_id }, null, 2)
+                  }
+                ]
+              },
               id: body.id,
             });
             return;
@@ -1528,10 +2613,17 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
               }
             };
 
-            // 返回JSON-RPC格式的响应
+            // 返回MCP标准格式的响应
             reply.send({
               jsonrpc: '2.0',
-              result: result,
+              result: {
+                content: [
+                  {
+                    type: "text",
+                    text: JSON.stringify(result, null, 2)
+                  }
+                ]
+              },
               id: body.id,
             });
             return;
@@ -1928,7 +3020,14 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
 
             reply.send({
               jsonrpc: '2.0',
-              result: result,
+              result: {
+                content: [
+                  {
+                    type: "text",
+                    text: JSON.stringify(result, null, 2)
+                  }
+                ]
+              },
               id: body.id,
             });
             return;
@@ -1939,6 +3038,234 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
               error: {
                 code: -32603,
                 message: '清空所有任务失败: ' + (error as Error).message,
+              },
+              id: body.id,
+            });
+            return;
+          }
+        }
+
+        case 'get_columns': {
+          try {
+            const columns = await columnService.getAllColumns();
+            console.log(`获取到 ${columns.length} 个列`);
+
+            reply.send({
+              jsonrpc: '2.0',
+              result: {
+                content: [
+                  {
+                    type: "text",
+                    text: JSON.stringify(columns, null, 2)
+                  }
+                ]
+              },
+              id: body.id,
+            });
+            return;
+          } catch (error) {
+            console.error('获取列列表失败:', error);
+            reply.status(500).send({
+              jsonrpc: '2.0',
+              error: {
+                code: -32603,
+                message: '获取列列表失败: ' + (error instanceof Error ? error.message : '未知错误'),
+              },
+              id: body.id,
+            });
+            return;
+          }
+        }
+
+        case 'create_column': {
+          try {
+            const { column_data } = body.params || {};
+
+            if (!column_data) {
+              reply.status(400).send({
+                jsonrpc: '2.0',
+                error: {
+                  code: -32602,
+                  message: '无效的参数: 缺少column_data',
+                },
+                id: body.id,
+              });
+              return;
+            }
+
+            const newColumn = await columnService.createColumn(column_data);
+            console.log(`列 ${newColumn.id} 创建成功`);
+
+            // 广播列创建事件
+            io.emit('column_created', newColumn);
+
+            reply.send({
+              jsonrpc: '2.0',
+              result: {
+                content: [
+                  {
+                    type: "text",
+                    text: JSON.stringify(newColumn, null, 2)
+                  }
+                ]
+              },
+              id: body.id,
+            });
+            return;
+          } catch (error) {
+            console.error('创建列失败:', error);
+            reply.status(500).send({
+              jsonrpc: '2.0',
+              error: {
+                code: -32603,
+                message: '创建列失败: ' + (error instanceof Error ? error.message : '未知错误'),
+              },
+              id: body.id,
+            });
+            return;
+          }
+        }
+
+        case 'update_column': {
+          try {
+            const { column_id, updates } = body.params || {};
+
+            if (!column_id || !updates) {
+              reply.status(400).send({
+                jsonrpc: '2.0',
+                error: {
+                  code: -32602,
+                  message: '无效的参数: 缺少column_id或updates',
+                },
+                id: body.id,
+              });
+              return;
+            }
+
+            const updatedColumn = await columnService.updateColumn(column_id, updates);
+            console.log(`列 ${column_id} 更新成功`);
+
+            // 广播列更新事件
+            io.emit('column_updated', updatedColumn);
+
+            reply.send({
+              jsonrpc: '2.0',
+              result: {
+                content: [
+                  {
+                    type: "text",
+                    text: JSON.stringify(updatedColumn, null, 2)
+                  }
+                ]
+              },
+              id: body.id,
+            });
+            return;
+          } catch (error) {
+            console.error('更新列失败:', error);
+            reply.status(500).send({
+              jsonrpc: '2.0',
+              error: {
+                code: -32603,
+                message: '更新列失败: ' + (error instanceof Error ? error.message : '未知错误'),
+              },
+              id: body.id,
+            });
+            return;
+          }
+        }
+
+        case 'delete_column': {
+          try {
+            const { column_id } = body.params || {};
+
+            if (!column_id) {
+              reply.status(400).send({
+                jsonrpc: '2.0',
+                error: {
+                  code: -32602,
+                  message: '无效的参数: 缺少column_id',
+                },
+                id: body.id,
+              });
+              return;
+            }
+
+            const result = await columnService.deleteColumn(column_id);
+            console.log(`列 ${column_id} 删除成功`);
+
+            // 广播列删除事件
+            io.emit('column_deleted', { columnId: column_id });
+
+            reply.send({
+              jsonrpc: '2.0',
+              result: {
+                content: [
+                  {
+                    type: "text",
+                    text: JSON.stringify(result, null, 2)
+                  }
+                ]
+              },
+              id: body.id,
+            });
+            return;
+          } catch (error) {
+            console.error('删除列失败:', error);
+            reply.status(500).send({
+              jsonrpc: '2.0',
+              error: {
+                code: -32603,
+                message: '删除列失败: ' + (error instanceof Error ? error.message : '未知错误'),
+              },
+              id: body.id,
+            });
+            return;
+          }
+        }
+
+        case 'reorder_columns': {
+          try {
+            const { column_ids } = body.params || {};
+
+            if (!column_ids || !Array.isArray(column_ids)) {
+              reply.status(400).send({
+                jsonrpc: '2.0',
+                error: {
+                  code: -32602,
+                  message: '无效的参数: column_ids必须是数组',
+                },
+                id: body.id,
+              });
+              return;
+            }
+
+            const reorderedColumns = await columnService.reorderColumns(column_ids);
+            console.log('列重新排序成功');
+
+            // 广播列重排序事件
+            io.emit('columns_reordered', reorderedColumns);
+
+            reply.send({
+              jsonrpc: '2.0',
+              result: {
+                content: [
+                  {
+                    type: "text",
+                    text: JSON.stringify(reorderedColumns, null, 2)
+                  }
+                ]
+              },
+              id: body.id,
+            });
+            return;
+          } catch (error) {
+            console.error('重新排序列失败:', error);
+            reply.status(500).send({
+              jsonrpc: '2.0',
+              error: {
+                code: -32603,
+                message: '重新排序列失败: ' + (error instanceof Error ? error.message : '未知错误'),
               },
               id: body.id,
             });

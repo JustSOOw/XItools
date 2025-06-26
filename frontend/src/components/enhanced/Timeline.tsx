@@ -104,7 +104,19 @@ const Timeline: React.FC<TimelineProps> = ({
   };
 
   const formatTimestamp = (timestamp: string) => {
+    // 验证时间戳是否有效
+    if (!timestamp) {
+      return t('task:timeline.time.unknown');
+    }
+
     const date = new Date(timestamp);
+
+    // 检查日期是否有效
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid timestamp:', timestamp);
+      return t('task:timeline.time.unknown');
+    }
+
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / (1000 * 60));
@@ -115,14 +127,19 @@ const Timeline: React.FC<TimelineProps> = ({
     if (diffMins < 60) return t('task:timeline.time.minutesAgo', { count: diffMins });
     if (diffHours < 24) return t('task:timeline.time.hoursAgo', { count: diffHours });
     if (diffDays < 7) return t('task:timeline.time.daysAgo', { count: diffDays });
-    
-    return new Intl.DateTimeFormat(t('common:locale'), {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date);
+
+    try {
+      return new Intl.DateTimeFormat(t('common:locale'), {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(date);
+    } catch (error) {
+      console.warn('Error formatting date:', error);
+      return t('task:timeline.time.unknown');
+    }
   };
 
   if (events.length === 0) {
@@ -201,29 +218,47 @@ const Timeline: React.FC<TimelineProps> = ({
   );
 };
 
+// 验证时间戳是否有效的辅助函数
+const isValidTimestamp = (timestamp: any): boolean => {
+  if (!timestamp) return false;
+  const date = new Date(timestamp);
+  return !isNaN(date.getTime());
+};
+
 // 生成示例时间线事件的工具函数
 // 注意：这个函数需要在组件内部调用以访问翻译函数
 export const generateTimelineEvents = (task: any, t?: (key: string, options?: any) => string): TimelineEvent[] => {
   const events: TimelineEvent[] = [];
 
+  // 获取有效的时间戳，如果无效则使用当前时间
+  const getValidTimestamp = (timestamp: any): string => {
+    if (isValidTimestamp(timestamp)) {
+      return timestamp;
+    }
+    console.warn('Invalid timestamp detected, using current time:', timestamp);
+    return new Date().toISOString();
+  };
+
   // 创建事件
-  events.push({
-    id: `created-${task.id}`,
-    type: 'created',
-    title: '', // 移除硬编码title，让组件使用翻译函数
-    description: t ? t('task:timeline.descriptions.created', { title: task.title }) : `创建了任务 "${task.title}"`,
-    timestamp: task.createdAt,
-    user: task.assignee || (t ? t('task:timeline.system') : '系统'),
-  });
+  if (task.createdAt || task.id) {
+    events.push({
+      id: `created-${task.id}`,
+      type: 'created',
+      title: '', // 移除硬编码title，让组件使用翻译函数
+      description: t ? t('task:timeline.descriptions.created', { title: task.title }) : `创建了任务 "${task.title}"`,
+      timestamp: getValidTimestamp(task.createdAt),
+      user: task.assignee || (t ? t('task:timeline.system') : '系统'),
+    });
+  }
 
   // 如果有更新时间且不同于创建时间，添加更新事件
-  if (task.updatedAt && task.updatedAt !== task.createdAt) {
+  if (task.updatedAt && task.updatedAt !== task.createdAt && isValidTimestamp(task.updatedAt)) {
     events.push({
       id: `updated-${task.id}`,
       type: 'updated',
       title: '', // 移除硬编码title
       description: t ? t('task:timeline.descriptions.updated') : '任务信息已更新',
-      timestamp: task.updatedAt,
+      timestamp: getValidTimestamp(task.updatedAt),
       user: task.assignee || (t ? t('task:timeline.system') : '系统'),
     });
   }
@@ -235,13 +270,15 @@ export const generateTimelineEvents = (task: any, t?: (key: string, options?: an
       type: 'completed',
       title: '', // 移除硬编码title
       description: t ? t('task:timeline.descriptions.completed') : '任务已标记为完成',
-      timestamp: task.updatedAt || task.createdAt,
+      timestamp: getValidTimestamp(task.updatedAt || task.createdAt),
       user: task.assignee || (t ? t('task:timeline.system') : '系统'),
     });
   }
 
-  // 按时间排序（最新的在前）
-  return events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  // 过滤掉无效的事件并按时间排序（最新的在前）
+  return events
+    .filter(event => isValidTimestamp(event.timestamp))
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 };
 
 export default Timeline;

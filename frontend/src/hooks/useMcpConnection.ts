@@ -3,11 +3,25 @@ import socketService from '../services/socketService';
 import mcpService from '../services/mcpService';
 import useTaskStore from '../store/taskStore';
 
+// 获取后端服务地址
+const getBackendUrl = (): string => {
+  // 优先检查是否有云端服务配置
+  const cloudUrl = import.meta.env.VITE_CLOUD_BACKEND_URL;
+  if (cloudUrl) {
+    console.log('MCP连接使用云端配置:', cloudUrl);
+    return cloudUrl;
+  }
+
+  // 默认本地服务
+  console.log('MCP连接使用默认本地配置: http://localhost:3000');
+  return 'http://localhost:3000';
+};
+
 /**
  * 自定义钩子，用于初始化MCP服务连接并加载任务数据
  * @param mcpUrl MCP服务URL
  */
-const useMcpConnection = (mcpUrl: string = 'http://localhost:3000') => {
+const useMcpConnection = (mcpUrl: string = getBackendUrl()) => {
   const { setTasks, setLoading, setError } = useTaskStore();
   const [isConnected, setIsConnected] = useState(false);
   

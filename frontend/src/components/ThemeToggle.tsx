@@ -9,9 +9,8 @@
  * Copyright (c) 2025 by Furdow, All Rights Reserved. 
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useThemeStore } from '../store/themeStore';
-import ThemeSettingsModal from './ThemeSettingsModal';
 import { useI18n } from '../hooks/useI18n';
 
 interface ThemeToggleProps {
@@ -67,7 +66,6 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
 }) => {
   const { t } = useI18n();
   const { currentTheme, toggleTheme, configs } = useThemeStore();
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const currentConfig = configs[currentTheme] || configs.light;
 
@@ -75,73 +73,39 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
     toggleTheme();
   };
 
-  const handleOpenSettings = () => {
-    setIsSettingsOpen(true);
-  };
-
   if (variant === 'icon') {
     return (
-      <>
-        <button
-          onClick={handleQuickToggle}
-          onDoubleClick={handleOpenSettings}
-          className={`
-            inline-flex items-center justify-center rounded-md transition-colors
-            hover:bg-primary/10 text-text-primary hover:text-primary
-            ${size === 'sm' ? 'p-1' : size === 'lg' ? 'p-3' : 'p-2'}
-            ${className}
-          `}
-          title={`${t('settings:theme.currentTheme')}: ${t(`settings:theme.themes.${currentTheme}`)} (${t('settings:theme.doubleClickToOpenSettings')})`}
-        >
-          <ThemeIcon theme={currentTheme} size={size} />
-        </button>
-        
-        <ThemeSettingsModal
-          isOpen={isSettingsOpen}
-          onClose={() => setIsSettingsOpen(false)}
-        />
-      </>
+      <button
+        onClick={handleQuickToggle}
+        className={`
+          inline-flex items-center justify-center rounded-md transition-colors
+          hover:bg-primary/10 text-text-primary hover:text-primary
+          ${size === 'sm' ? 'p-1' : size === 'lg' ? 'p-3' : 'p-2'}
+          ${className}
+        `}
+        title={`${t('settings:theme.currentTheme')}: ${t(`settings:theme.themes.${currentTheme}`)}`}
+      >
+        <ThemeIcon theme={currentTheme} size={size} />
+      </button>
     );
   }
 
   return (
     <>
-      <div className={`flex items-center space-x-2 ${className}`}>
-        {/* 快速切换按钮 */}
-        <button
-          onClick={handleQuickToggle}
-          className={`
-            inline-flex items-center space-x-2 px-3 py-2 rounded-md transition-colors
-            bg-primary/10 hover:bg-primary/20 text-primary
-            ${size === 'sm' ? 'text-sm' : size === 'lg' ? 'text-lg' : 'text-base'}
-          `}
-          title={t('settings:theme.quickToggle')}
-        >
-          <ThemeIcon theme={currentTheme} size={size} />
-          {showLabel && <span>{t(`settings:theme.themes.${currentTheme}`)}</span>}
-        </button>
-        
-        {/* 设置按钮 */}
-        <button
-          onClick={handleOpenSettings}
-          className={`
-            inline-flex items-center justify-center rounded-md transition-colors
-            hover:bg-surface text-text-secondary hover:text-text-primary
-            ${size === 'sm' ? 'p-1' : size === 'lg' ? 'p-3' : 'p-2'}
-          `}
-          title={t('settings:theme.title')}
-        >
-          <svg className={size === 'sm' ? 'h-4 w-4' : size === 'lg' ? 'h-6 w-6' : 'h-5 w-5'} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-        </button>
-      </div>
-      
-      <ThemeSettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-      />
+      {/* 快速切换按钮 */}
+      <button
+        onClick={handleQuickToggle}
+        className={`
+          inline-flex items-center space-x-2 px-3 py-2 rounded-md transition-colors
+          bg-primary/10 hover:bg-primary/20 text-primary w-full
+          ${size === 'sm' ? 'text-sm' : size === 'lg' ? 'text-lg' : 'text-base'}
+          ${className}
+        `}
+        title={t('settings:theme.quickToggle')}
+      >
+        <ThemeIcon theme={currentTheme} size={size} />
+        {showLabel && <span>{t(`settings:theme.themes.${currentTheme}`)}</span>}
+      </button>
     </>
   );
 };

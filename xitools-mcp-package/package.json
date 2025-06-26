@@ -1,0 +1,39 @@
+{
+  "name": "furdow-xitools-mcp",
+  "version": "1.0.2",
+  "description": "XItools远程MCP服务客户端 - 通过stdio连接到xitools.furdow.com的MCP服务",
+  "main": "index.js",
+  "bin": {
+    "xitools-mcp": "./index.js"
+  },
+  "scripts": {
+    "test": "node test.js",
+    "start": "node index.js"
+  },
+  "keywords": [
+    "mcp",
+    "xitools",
+    "model-context-protocol",
+    "task-management",
+    "productivity"
+  ],
+  "author": "Furdow <your-email@example.com>",
+  "license": "MIT",
+  "dependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/furdow/xitools.git"
+  },
+  "homepage": "https://xitools.furdow.com",
+  "bugs": {
+    "url": "https://github.com/furdow/xitools/issues"
+  },
+  "files": [
+    "index.js",
+    "README.md",
+    "LICENSE"
+  ]
+}

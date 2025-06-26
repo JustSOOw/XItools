@@ -10,7 +10,7 @@ const http = require('http');
 const readline = require('readline');
 
 // MCP服务器配置
-const MCP_SERVER_URL = 'http://localhost:3000/mcp';
+const MCP_SERVER_URL = 'http://8.140.237.185:3000/mcp';
 
 // 创建readline接口用于处理stdin/stdout
 const rl = readline.createInterface({
@@ -30,7 +30,7 @@ function sendToMCPServer(data) {
     const postData = JSON.stringify(data);
     
     const options = {
-      hostname: 'localhost',
+      hostname: '8.140.237.185',
       port: 3000,
       path: '/mcp',
       method: 'POST',

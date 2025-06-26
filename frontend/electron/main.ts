@@ -67,8 +67,11 @@ function createMainWindow(): void {
   // 阻止导航到外部URL
   mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
     const parsedUrl = new URL(navigationUrl);
-    
-    if (parsedUrl.origin !== 'http://localhost:5173' && parsedUrl.origin !== 'file://') {
+
+    // 允许的源：开发服务器和文件协议
+    const allowedOrigins = ['http://localhost:5173', 'file://'];
+
+    if (!allowedOrigins.includes(parsedUrl.origin)) {
       event.preventDefault();
     }
   });

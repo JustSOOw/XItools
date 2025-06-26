@@ -4,18 +4,15 @@ import { Task } from '../types/Task';
 
 // 获取后端服务地址
 const getBackendUrl = (): string => {
-  // 开发环境
-  if (import.meta.env.DEV) {
-    return 'http://localhost:3000';
-  }
-
-  // 生产环境 - 检查是否有云端服务配置
+  // 优先检查是否有云端服务配置
   const cloudUrl = import.meta.env.VITE_CLOUD_BACKEND_URL;
   if (cloudUrl) {
+    console.log('使用云端服务配置:', cloudUrl);
     return cloudUrl;
   }
 
   // 默认本地服务
+  console.log('使用默认本地服务: http://localhost:3000');
   return 'http://localhost:3000';
 };
 
