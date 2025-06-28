@@ -1,0 +1,267 @@
+/**
+ * 看板管理路由
+ */
+
+import { FastifyInstance } from 'fastify';
+import { boardService } from '../services/boardService';
+import { boardSchema, boardUpdateSchema, reorderSchema } from '../types/multiBoardSchema';
+
+export default async function boardRoutes(fastify: FastifyInstance) {
+  // 获取工作区下的所有看板
+  fastify.get('/workspaces/:workspaceId/boards', async (request, reply) => {
+    try {
+      const { workspaceId } = request.params as { workspaceId: string };
+      const boards = await boardService.getBoardsByWorkspace(workspaceId);
+      return { success: true, data: boards };
+    } catch (error) {
+      console.error('获取工作区看板列表失败:', error);
+      reply.status(500);
+      return { success: false, error: '获取工作区看板列表失败' };
+    }
+  });
+
+  // 获取项目下的所有看板
+  fastify.get('/projects/:projectId/boards', async (request, reply) => {
+    try {
+      const { projectId } = request.params as { projectId: string };
+      const boards = await boardService.getBoardsByProject(projectId);
+      return { success: true, data: boards };
+    } catch (error) {
+      console.error('获取项目看板列表失败:', error);
+      reply.status(500);
+      return { success: false, error: '获取项目看板列表失败' };
+    }
+  });
+
+  // 根据ID获取看板
+  fastify.get('/boards/:id', async (request, reply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const board = await boardService.getBoardById(id);
+      
+      if (!board) {
+        reply.status(404);
+        return { success: false, error: '看板不存在' };
+      }
+      
+      return { success: true, data: board };
+    } catch (error) {
+      console.error('获取看板失败:', error);
+      reply.status(500);
+      return { success: false, error: '获取看板失败' };
+    }
+  });
+
+  // 创建看板
+  fastify.post('/boards', async (request, reply) => {
+    try {
+      const boardData = boardSchema.parse(request.body);
+      const board = await boardService.createBoard(boardData);
+      
+      // 广播看板创建事件
+      const io = fastify.io;
+      if (io) {
+        io.emit('board_created', board);
+      }
+      
+      return { success: true, data: board };
+    } catch (error) {
+      console.error('创建看板失败:', error);
+      reply.status(500);
+      return { success: false, error: error instanceof Error ? error.message : '创建看板失败' };
+    }
+  });
+
+  // 更新看板
+  fastify.put('/boards/:id', async (request, reply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const updateData = boardUpdateSchema.parse(request.body);
+      const board = await boardService.updateBoard(id, updateData);
+      
+      // 广播看板更新事件
+      const io = fastify.io;
+      if (io) {
+        io.emit('board_updated', board);
+      }
+      
+      return { success: true, data: board };
+    } catch (error) {
+      console.error('更新看板失败:', error);
+      reply.status(500);
+      return { success: false, error: error instanceof Error ? error.message : '更新看板失败' };
+    }
+  });
+
+  // 删除看板
+  fastify.delete('/boards/:id', async (request, reply) => {
+    try {
+      const { id } = request.params as { id: string };
+      await boardService.deleteBoard(id);
+      
+      // 广播看板删除事件
+      const io = fastify.io;
+      if (io) {
+        io.emit('board_deleted', { boardId: id });
+      }
+      
+      return { success: true, message: '看板删除成功' };
+    } catch (error) {
+      console.error('删除看板失败:', error);
+      reply.status(500);
+      return { success: false, error: error instanceof Error ? error.message : '删除看板失败' };
+    }
+  });
+
+  // 移动看板
+  fastify.post('/boards/:id/move', async (request, reply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const { targetWorkspaceId, targetProjectId } = request.body as { 
+        targetWorkspaceId?: string; 
+        targetProjectId?: string; 
+      };
+      
+      const board = await boardService.moveBoard(id, targetWorkspaceId, targetProjectId);
+      
+      // 广播看板移动事件
+      const io = fastify.io;
+      if (io) {
+        io.emit('board_moved', { board, targetWorkspaceId, targetProjectId });
+      }
+      
+      return { success: true, data: board };
+    } catch (error) {
+      console.error('移动看板失败:', error);
+      reply.status(500);
+      return { success: false, error: error instanceof Error ? error.message : '移动看板失败' };
+    }
+  });
+
+  // 重新排序看板（工作区下）
+  fastify.post('/workspaces/:workspaceId/boards/reorder', async (request, reply) => {
+    try {
+      const { workspaceId } = request.params as { workspaceId: string };
+      const { itemIds } = reorderSchema.parse(request.body);
+      const boards = await boardService.reorderBoards(workspaceId, itemIds, 'workspace');
+      
+      // 广播看板重排序事件
+      const io = fastify.io;
+      if (io) {
+        io.emit('boards_reordered', { workspaceId, boards, type: 'workspace' });
+      }
+      
+      return { success: true, data: boards };
+    } catch (error) {
+      console.error('工作区看板重排序失败:', error);
+      reply.status(500);
+      return { success: false, error: error instanceof Error ? error.message : '工作区看板重排序失败' };
+    }
+  });
+
+  // 重新排序看板（项目下）
+  fastify.post('/projects/:projectId/boards/reorder', async (request, reply) => {
+    try {
+      const { projectId } = request.params as { projectId: string };
+      const { itemIds } = reorderSchema.parse(request.body);
+      const boards = await boardService.reorderBoards(projectId, itemIds, 'project');
+      
+      // 广播看板重排序事件
+      const io = fastify.io;
+      if (io) {
+        io.emit('boards_reordered', { projectId, boards, type: 'project' });
+      }
+      
+      return { success: true, data: boards };
+    } catch (error) {
+      console.error('项目看板重排序失败:', error);
+      reply.status(500);
+      return { success: false, error: error instanceof Error ? error.message : '项目看板重排序失败' };
+    }
+  });
+
+  // 复制看板
+  fastify.post('/boards/:id/duplicate', async (request, reply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const { newName, targetWorkspaceId, targetProjectId } = request.body as { 
+        newName?: string;
+        targetWorkspaceId?: string;
+        targetProjectId?: string;
+      };
+      
+      const board = await boardService.duplicateBoard(id, newName, targetWorkspaceId, targetProjectId);
+      
+      // 广播看板复制事件
+      const io = fastify.io;
+      if (io) {
+        io.emit('board_duplicated', { originalId: id, newBoard: board });
+      }
+      
+      return { success: true, data: board };
+    } catch (error) {
+      console.error('复制看板失败:', error);
+      reply.status(500);
+      return { success: false, error: error instanceof Error ? error.message : '复制看板失败' };
+    }
+  });
+
+  // 获取看板统计信息
+  fastify.get('/boards/:id/stats', async (request, reply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const stats = await boardService.getBoardStats(id);
+      return { success: true, data: stats };
+    } catch (error) {
+      console.error('获取看板统计失败:', error);
+      reply.status(500);
+      return { success: false, error: '获取看板统计失败' };
+    }
+  });
+
+  // 兼容性端点：获取所有看板（用于单看板模式）
+  fastify.get('/boards', async (request, reply) => {
+    try {
+      // 获取默认工作区的所有看板，保持向后兼容
+      const { workspaceService } = await import('../services/workspaceService');
+      const defaultWorkspace = await workspaceService.getDefaultWorkspace();
+      
+      if (!defaultWorkspace) {
+        return { success: true, data: [] };
+      }
+      
+      const boards = await boardService.getBoardsByWorkspace(defaultWorkspace.id);
+      return { success: true, data: boards };
+    } catch (error) {
+      console.error('获取看板列表失败:', error);
+      reply.status(500);
+      return { success: false, error: '获取看板列表失败' };
+    }
+  });
+
+  // 兼容性端点：获取当前看板（用于单看板模式）
+  fastify.get('/board/current', async (request, reply) => {
+    try {
+      // 返回默认工作区的第一个看板，保持向后兼容
+      const { workspaceService } = await import('../services/workspaceService');
+      const defaultWorkspace = await workspaceService.getDefaultWorkspace();
+      
+      if (!defaultWorkspace) {
+        reply.status(404);
+        return { success: false, error: '未找到默认工作区' };
+      }
+      
+      const boards = await boardService.getBoardsByWorkspace(defaultWorkspace.id);
+      if (boards.length === 0) {
+        reply.status(404);
+        return { success: false, error: '未找到看板' };
+      }
+      
+      return { success: true, data: boards[0] };
+    } catch (error) {
+      console.error('获取当前看板失败:', error);
+      reply.status(500);
+      return { success: false, error: '获取当前看板失败' };
+    }
+  });
+}

@@ -4,12 +4,63 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
-import { taskSchema, taskUpdateSchema } from '../types/taskSchema';
+import { taskUpdateSchema } from '../types/taskSchema';
 import { columnService, columnSchema, columnUpdateSchema } from './columnService';
+import { workspaceService } from './workspaceService';
+import { boardService } from './boardService';
+import { registerMultiBoardMCPTools } from './mcpMultiBoardTools';
 import { randomUUID } from 'crypto';
 
 // 初始化Prisma客户端
 const prisma = new PrismaClient();
+
+/**
+ * 兼容性函数：获取默认看板ID
+ */
+async function getDefaultBoardId(): Promise<string> {
+  try {
+    const defaultWorkspace = await workspaceService.getDefaultWorkspace();
+    if (!defaultWorkspace) {
+      // 如果没有默认工作区，创建一个
+      const workspace = await workspaceService.ensureDefaultWorkspace();
+      const boards = await boardService.getBoardsByWorkspace(workspace.id);
+      if (boards.length === 0) {
+        // 创建默认看板
+        const board = await boardService.createBoard({
+          name: '默认看板',
+          description: '系统默认看板',
+          workspaceId: workspace.id,
+          order: 0
+        });
+        if (!board) {
+          throw new Error('创建默认看板失败');
+        }
+        return board.id;
+      }
+      return boards[0].id;
+    }
+
+    const boards = await boardService.getBoardsByWorkspace(defaultWorkspace.id);
+    if (boards.length === 0) {
+      // 创建默认看板
+      const board = await boardService.createBoard({
+        name: '默认看板',
+        description: '系统默认看板',
+        workspaceId: defaultWorkspace.id,
+        order: 0
+      });
+      if (!board) {
+        throw new Error('创建默认看板失败');
+      }
+      return board.id;
+    }
+
+    return boards[0].id;
+  } catch (error) {
+    console.error('获取默认看板ID失败:', error);
+    throw new Error('无法获取默认看板');
+  }
+}
 
 /**
  * 设置MCP服务及其工具
@@ -57,8 +108,9 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
    */
   mcpServer.tool("get_task_schema", "获取任务对象的JSON Schema，用于指导LLM生成正确的数据格式。重要：status字段必须使用返回的列UUID，不能使用列名称。", {},
     async (_args: any) => {
-      // 获取当前可用的列信息
-      const columns = await columnService.getAllColumns();
+      // 获取当前可用的列信息（使用默认看板）
+      const defaultBoardId = await getDefaultBoardId();
+      const columns = await columnService.getColumnsByBoard(defaultBoardId);
 
       // 创建任务Schema
       const schema = {
@@ -203,7 +255,8 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
         console.log('开始创建任务，任务数量:', tasks.length);
 
         // 获取可用的列UUID进行验证
-        const columns = await columnService.getAllColumns();
+        const defaultBoardId = await getDefaultBoardId();
+        const columns = await columnService.getColumnsByBoard(defaultBoardId);
         const validColumnIds = new Set(columns.map(col => col.id));
 
         // 验证所有任务的状态UUID
@@ -515,7 +568,8 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
   mcpServer.tool("get_columns", "获取所有看板列，按order排序", {},
     async (_args) => {
       try {
-        const columns = await columnService.getAllColumns();
+        const defaultBoardId = await getDefaultBoardId();
+        const columns = await columnService.getColumnsByBoard(defaultBoardId);
 
         return {
           content: [
@@ -672,7 +726,9 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
     async (args) => {
       const { column_ids } = args;
       try {
-        const reorderedColumns = await columnService.reorderColumns(column_ids);
+        // 获取默认看板ID以保持兼容性
+        const defaultBoardId = await getDefaultBoardId();
+        const reorderedColumns = await columnService.reorderColumns(defaultBoardId, column_ids);
 
         // 广播列重排序事件
         io.emit('columns_reordered', reorderedColumns);
@@ -712,7 +768,8 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
         console.log('开始迁移任务状态数据...');
 
         // 1. 获取所有列
-        const columns = await columnService.getAllColumns();
+        const defaultBoardId = await getDefaultBoardId();
+        const columns = await columnService.getColumnsByBoard(defaultBoardId);
         console.log('找到列:', columns.map(col => `${col.name} (${col.id})`));
 
         // 2. 创建状态映射
@@ -948,6 +1005,9 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
       }
     }
   );
+
+  // 注册多看板扩展工具
+  registerMultiBoardMCPTools(mcpServer);
 
   // 在注册完所有工具后连接到传输层
   mcpServer.connect(transport);
@@ -1384,7 +1444,8 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
             switch (name) {
               case 'get_task_schema': {
                 // 获取当前可用的列信息
-                const columns = await columnService.getAllColumns();
+                const defaultBoardId = await getDefaultBoardId();
+                const columns = await columnService.getColumnsByBoard(defaultBoardId);
 
                 // 创建任务Schema
                 const schema = {
@@ -1501,7 +1562,8 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
               }
 
               case 'get_columns': {
-                const columns = await columnService.getAllColumns();
+                const defaultBoardId = await getDefaultBoardId();
+                const columns = await columnService.getColumnsByBoard(defaultBoardId);
                 console.log(`获取到 ${columns.length} 个列`);
 
                 reply.send({
@@ -1593,7 +1655,8 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
                 console.log(`准备创建 ${tasks.length} 个任务`);
 
                 // 获取可用的列UUID进行验证
-                const columns = await columnService.getAllColumns();
+                const defaultBoardId = await getDefaultBoardId();
+                const columns = await columnService.getColumnsByBoard(defaultBoardId);
                 const validColumnIds = new Set(columns.map((col: any) => col.id));
 
                 // 验证所有任务的状态UUID
@@ -1804,7 +1867,8 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
 
                 // 如果更新状态，验证状态UUID
                 if (updates.status) {
-                  const columns = await columnService.getAllColumns();
+                  const defaultBoardId = await getDefaultBoardId();
+                  const columns = await columnService.getColumnsByBoard(defaultBoardId);
                   const validColumnIds = new Set(columns.map((col: any) => col.id));
 
                   if (!validColumnIds.has(updates.status)) {
@@ -2055,7 +2119,9 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
                   return;
                 }
 
-                const reorderedColumns = await columnService.reorderColumns(column_ids);
+                // 获取默认看板ID以保持兼容性
+                const defaultBoardId = await getDefaultBoardId();
+                const reorderedColumns = await columnService.reorderColumns(defaultBoardId, column_ids);
                 console.log('列重新排序成功');
 
                 // 广播列重排序事件
@@ -2149,8 +2215,9 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
               return;
             }
 
-            // 获取可用的列UUID进行验证
-            const columns = await columnService.getAllColumns();
+            // 获取默认看板ID和列信息
+            const defaultBoardId = await getDefaultBoardId();
+            const columns = await columnService.getColumnsByBoard(defaultBoardId);
             const validColumnIds = new Set(columns.map(col => col.id));
 
             // 验证所有任务的状态UUID
@@ -2200,6 +2267,7 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
                     acceptanceCriteria: taskData.acceptanceCriteria || '',
                     estimatedEffort: taskData.estimatedEffort || null,
                     loggedTime: taskData.loggedTime || null,
+                    boardId: defaultBoardId, // 添加看板ID
                     tags: tags,
                   },
                   include: {
@@ -2512,7 +2580,8 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
         case 'get_task_schema': {
           try {
             // 获取当前可用的列信息
-            const columns = await columnService.getAllColumns();
+            const defaultBoardId = await getDefaultBoardId();
+            const columns = await columnService.getColumnsByBoard(defaultBoardId);
 
             // 创建任务Schema
             const schema = {
@@ -2643,7 +2712,8 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
 
         case 'get_columns': {
           try {
-            const columns = await columnService.getAllColumns();
+            const defaultBoardId = await getDefaultBoardId();
+            const columns = await columnService.getColumnsByBoard(defaultBoardId);
 
             reply.send({
               jsonrpc: '2.0',
@@ -2807,7 +2877,9 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
               return;
             }
 
-            const reorderedColumns = await columnService.reorderColumns(column_ids);
+            // 获取默认看板ID以保持兼容性
+            const defaultBoardId = await getDefaultBoardId();
+            const reorderedColumns = await columnService.reorderColumns(defaultBoardId, column_ids);
 
             // 广播列重排序事件
             io.emit('columns_reordered', reorderedColumns);
@@ -2836,7 +2908,8 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
         case 'migrate_task_status': {
           try {
             // 获取所有列
-            const columns = await columnService.getAllColumns();
+            const defaultBoardId = await getDefaultBoardId();
+            const columns = await columnService.getColumnsByBoard(defaultBoardId);
             console.log('找到列:', columns.map(col => `${col.name} (${col.id})`));
 
             // 创建状态映射
@@ -3047,7 +3120,8 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
 
         case 'get_columns': {
           try {
-            const columns = await columnService.getAllColumns();
+            const defaultBoardId = await getDefaultBoardId();
+            const columns = await columnService.getColumnsByBoard(defaultBoardId);
             console.log(`获取到 ${columns.length} 个列`);
 
             reply.send({
@@ -3240,7 +3314,9 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
               return;
             }
 
-            const reorderedColumns = await columnService.reorderColumns(column_ids);
+            // 获取默认看板ID以保持兼容性
+            const defaultBoardId = await getDefaultBoardId();
+            const reorderedColumns = await columnService.reorderColumns(defaultBoardId, column_ids);
             console.log('列重新排序成功');
 
             // 广播列重排序事件
@@ -3300,12 +3376,12 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
     }
   };
 
-  // 初始化默认列
+  // 初始化默认数据
   try {
-    await columnService.initializeDefaultColumns();
-    console.log('默认列初始化完成');
+    await workspaceService.initializeDefaultData();
+    console.log('默认数据初始化完成');
   } catch (error) {
-    console.error('初始化默认列失败:', error);
+    console.error('初始化默认数据失败:', error);
   }
 
   console.log('MCP 服务配置完成，已准备就绪');

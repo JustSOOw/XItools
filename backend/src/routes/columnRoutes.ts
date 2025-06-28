@@ -13,10 +13,37 @@ declare module 'fastify' {
  * 列管理相关的API路由
  */
 export default async function columnRoutes(fastify: FastifyInstance) {
-  // 获取所有列
+  // 获取指定看板的所有列
+  fastify.get('/boards/:boardId/columns', async (request, reply) => {
+    try {
+      const { boardId } = request.params as { boardId: string };
+      const columns = await columnService.getColumnsByBoard(boardId);
+      return { success: true, data: columns };
+    } catch (error) {
+      console.error('获取看板列失败:', error);
+      reply.status(500);
+      return { success: false, error: '获取看板列失败' };
+    }
+  });
+
+  // 兼容性端点：获取所有列（用于单看板模式）
   fastify.get('/columns', async (request, reply) => {
     try {
-      const columns = await columnService.getAllColumns();
+      // 获取默认看板的列，保持向后兼容
+      const { workspaceService } = await import('../services/workspaceService');
+      const { boardService } = await import('../services/boardService');
+
+      const defaultWorkspace = await workspaceService.getDefaultWorkspace();
+      if (!defaultWorkspace) {
+        return { success: true, data: [] };
+      }
+
+      const boards = await boardService.getBoardsByWorkspace(defaultWorkspace.id);
+      if (boards.length === 0) {
+        return { success: true, data: [] };
+      }
+
+      const columns = await columnService.getColumnsByBoard(boards[0].id);
       return { success: true, data: columns };
     } catch (error) {
       console.error('获取列列表失败:', error);
@@ -115,24 +142,70 @@ export default async function columnRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // 重新排序列
-  fastify.post('/columns/reorder', async (request, reply) => {
+  // 重新排序指定看板的列
+  fastify.post('/boards/:boardId/columns/reorder', async (request, reply) => {
     try {
+      const { boardId } = request.params as { boardId: string };
       const { columnIds } = request.body as { columnIds: string[] };
-      
+
       if (!Array.isArray(columnIds)) {
         reply.status(400);
         return { success: false, error: 'columnIds必须是数组' };
       }
-      
-      const reorderedColumns = await columnService.reorderColumns(columnIds);
-      
+
+      const reorderedColumns = await columnService.reorderColumns(boardId, columnIds);
+
       // 广播列重排序事件
       const io = fastify.io;
       if (io) {
-        io.emit('columns_reordered', reorderedColumns);
+        io.emit('columns_reordered', { boardId, columns: reorderedColumns });
       }
-      
+
+      return { success: true, data: reorderedColumns };
+    } catch (error) {
+      console.error('重新排序列失败:', error);
+      reply.status(400);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '重新排序列失败'
+      };
+    }
+  });
+
+  // 兼容性端点：重新排序列（用于单看板模式）
+  fastify.post('/columns/reorder', async (request, reply) => {
+    try {
+      const { columnIds } = request.body as { columnIds: string[] };
+
+      if (!Array.isArray(columnIds)) {
+        reply.status(400);
+        return { success: false, error: 'columnIds必须是数组' };
+      }
+
+      // 获取默认看板ID
+      const { workspaceService } = await import('../services/workspaceService');
+      const { boardService } = await import('../services/boardService');
+
+      const defaultWorkspace = await workspaceService.getDefaultWorkspace();
+      if (!defaultWorkspace) {
+        reply.status(404);
+        return { success: false, error: '未找到默认工作区' };
+      }
+
+      const boards = await boardService.getBoardsByWorkspace(defaultWorkspace.id);
+      if (boards.length === 0) {
+        reply.status(404);
+        return { success: false, error: '未找到看板' };
+      }
+
+      const reorderedColumns = await columnService.reorderColumns(boards[0].id, columnIds);
+
+      // 广播列重排序事件
+      const io = fastify.io;
+      if (io) {
+        io.emit('columns_reordered', { boardId: boards[0].id, columns: reorderedColumns });
+      }
+
       return { success: true, data: reorderedColumns };
     } catch (error) {
       console.error('重新排序列失败:', error);

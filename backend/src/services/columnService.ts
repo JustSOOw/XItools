@@ -3,27 +3,46 @@ import { z } from 'zod';
 
 const prisma = new PrismaClient();
 
-// 列数据验证Schema
+// 列数据验证Schema - 更新为支持多看板
 export const columnSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1, '列名不能为空').max(50, '列名不能超过50个字符'),
   order: z.number().min(0, '排序值不能为负数').transform(val => Math.round(val)),
   color: z.string().optional(),
+  sortOption: z.string().optional().default('manual'),
   isDefault: z.boolean().optional().default(false),
+  boardId: z.string().uuid('无效的看板ID'),
 });
 
-export const columnUpdateSchema = columnSchema.partial().omit({ id: true });
+export const columnUpdateSchema = columnSchema.partial().omit({ id: true, boardId: true });
 
 /**
- * 列管理服务类
+ * 列管理服务类 - 更新为支持多看板
  */
 export class ColumnService {
   /**
-   * 获取所有列，按order排序
+   * 获取指定看板的所有列，按order排序
+   */
+  async getColumnsByBoard(boardId: string) {
+    return await prisma.boardColumn.findMany({
+      where: { boardId },
+      orderBy: { order: 'asc' }
+    });
+  }
+
+  /**
+   * 获取所有列，按看板分组
+   * @deprecated 建议使用 getColumnsByBoard
    */
   async getAllColumns() {
     return await prisma.boardColumn.findMany({
-      orderBy: { order: 'asc' }
+      include: {
+        board: true
+      },
+      orderBy: [
+        { boardId: 'asc' },
+        { order: 'asc' }
+      ]
     });
   }
 
@@ -42,22 +61,40 @@ export class ColumnService {
   async createColumn(data: z.infer<typeof columnSchema>) {
     // 验证数据
     const validatedData = columnSchema.parse(data);
-    
-    // 检查order是否已存在
-    const existingColumn = await prisma.boardColumn.findFirst({
-      where: { order: validatedData.order }
+
+    // 检查看板是否存在
+    const board = await prisma.board.findUnique({
+      where: { id: validatedData.boardId }
     });
-    
+
+    if (!board) {
+      throw new Error('看板不存在');
+    }
+
+    // 检查在同一看板内order是否已存在
+    const existingColumn = await prisma.boardColumn.findFirst({
+      where: {
+        boardId: validatedData.boardId,
+        order: validatedData.order
+      }
+    });
+
     if (existingColumn) {
-      // 如果order已存在，将所有大于等于该order的列向后移动
+      // 如果order已存在，将同一看板内所有大于等于该order的列向后移动
       await prisma.boardColumn.updateMany({
-        where: { order: { gte: validatedData.order } },
+        where: {
+          boardId: validatedData.boardId,
+          order: { gte: validatedData.order }
+        },
         data: { order: { increment: 1 } }
       });
     }
 
     return await prisma.boardColumn.create({
-      data: validatedData
+      data: validatedData,
+      include: {
+        board: true
+      }
     });
   }
 
@@ -168,14 +205,17 @@ export class ColumnService {
   /**
    * 重新排序列
    */
-  async reorderColumns(columnIds: string[]) {
-    // 验证所有列ID是否存在
+  async reorderColumns(boardId: string, columnIds: string[]) {
+    // 验证所有列ID是否存在且属于同一看板
     const existingColumns = await prisma.boardColumn.findMany({
-      where: { id: { in: columnIds } }
+      where: {
+        id: { in: columnIds },
+        boardId
+      }
     });
 
     if (existingColumns.length !== columnIds.length) {
-      throw new Error('部分列ID不存在');
+      throw new Error('部分列ID不存在或不属于指定看板');
     }
 
     // 使用两阶段更新策略避免唯一约束冲突
@@ -197,29 +237,55 @@ export class ColumnService {
       }
     });
 
-    return await this.getAllColumns();
+    return await this.getColumnsByBoard(boardId);
   }
 
   /**
-   * 初始化默认列（如果数据库为空）
+   * 为指定看板初始化默认列
    */
-  async initializeDefaultColumns() {
-    const existingColumns = await prisma.boardColumn.count();
-    
+  async initializeDefaultColumns(boardId: string) {
+    // 检查看板是否存在
+    const board = await prisma.board.findUnique({
+      where: { id: boardId }
+    });
+
+    if (!board) {
+      throw new Error('看板不存在');
+    }
+
+    // 检查看板是否已有列
+    const existingColumns = await prisma.boardColumn.count({
+      where: { boardId }
+    });
+
     if (existingColumns === 0) {
       const defaultColumns = [
-        { name: '待办', order: 0, isDefault: true },
-        { name: '进行中', order: 1, isDefault: true },
-        { name: '已完成', order: 2, isDefault: true },
+        { name: '待办', order: 0, isDefault: true, boardId },
+        { name: '进行中', order: 1, isDefault: true, boardId },
+        { name: '已完成', order: 2, isDefault: true, boardId },
       ];
-      
+
       for (const column of defaultColumns) {
         await prisma.boardColumn.create({ data: column });
       }
-      
-      console.log('已初始化默认看板列');
+
+      console.log(`已为看板 ${boardId} 初始化默认列`);
     }
-    
+
+    return await this.getColumnsByBoard(boardId);
+  }
+
+  /**
+   * 初始化默认列（兼容旧版本）
+   * @deprecated 建议使用 initializeDefaultColumns(boardId)
+   */
+  async initializeDefaultColumnsLegacy() {
+    const existingColumns = await prisma.boardColumn.count();
+
+    if (existingColumns === 0) {
+      console.log('检测到旧版本数据结构，请先运行数据迁移');
+    }
+
     return await this.getAllColumns();
   }
 }

@@ -14,21 +14,82 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// 看板列模型
-model BoardColumn {
-  id         String   @id @default(uuid())
-  name       String   // 列名称，如"待办"、"进行中"、"已完成"
-  order      Int      @unique // 列的排序顺序
-  color      String?  // 列的背景色（可选）
-  sortOption String?  @default("manual") // 列的排序方式：manual, priority, created_asc, created_desc, title_asc, title_desc, due_date
-  isDefault  Boolean  @default(false) // 是否为默认列
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @default(now()) @updatedAt
+// 工作区模型 - 顶层容器
+model Workspace {
+  id          String    @id @default(uuid())
+  name        String    // 工作区名称
+  description String?   // 工作区描述
+  isDefault   Boolean   @default(false) // 是否为默认工作区
+  projects    Project[] // 包含的项目
+  boards      Board[]   // 直接在工作区下的看板
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
+  @@index([isDefault])
+}
+
+// 项目模型 - 项目级容器
+model Project {
+  id          String    @id @default(uuid())
+  name        String    // 项目名称
+  description String?   // 项目描述
+  color       String?   // 项目主题色
+  icon        String?   // 项目图标
+  workspaceId String    // 所属工作区
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  boards      Board[]   // 项目下的看板
+  order       Int       @default(0) // 在工作区中的排序
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([workspaceId])
   @@index([order])
 }
 
-// 任务模型
+// 看板模型 - 新增模型
+model Board {
+  id          String        @id @default(uuid())
+  name        String        // 看板名称
+  description String?       // 看板描述
+  color       String?       // 看板主题色
+  icon        String?       // 看板图标
+
+  // 层级关系 - 看板可以属于工作区或项目
+  workspaceId String?       // 直接属于工作区
+  workspace   Workspace?    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  projectId   String?       // 属于项目
+  project     Project?      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  columns     BoardColumn[] // 看板列
+  tasks       Task[]        // 看板任务
+  order       Int           @default(0) // 排序
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([workspaceId])
+  @@index([projectId])
+  @@index([order])
+}
+
+// 看板列模型 - 更新关联关系
+model BoardColumn {
+  id         String   @id @default(uuid())
+  name       String   // 列名称，如"待办"、"进行中"、"已完成"
+  order      Int      // 列的排序顺序（移除unique约束，因为现在是按看板分组）
+  color      String?  // 列的背景色（可选）
+  sortOption String?  @default("manual") // 列的排序方式：manual, priority, created_asc, created_desc, title_asc, title_desc, due_date
+  isDefault  Boolean  @default(false) // 是否为默认列
+  boardId    String   // 所属看板
+  board      Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  @@unique([boardId, order]) // 在同一看板内order唯一
+  @@index([boardId])
+  @@index([order])
+}
+
+// 任务模型 - 更新关联关系
 model Task {
   id                 String   @id @default(uuid())
   title              String
@@ -44,6 +105,8 @@ model Task {
   estimatedEffort    Float?
   loggedTime         Float?
   sortOrder          Int      @default(0) // 用于列内排序
+  boardId            String   // 所属看板
+  board              Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @default(now()) @updatedAt
 
@@ -53,6 +116,7 @@ model Task {
 
   @@index([status])
   @@index([parentId])
+  @@index([boardId])
 }
 
 // 标签模型
