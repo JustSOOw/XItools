@@ -4,36 +4,78 @@ XItools是一个基于React和Node.js的智能任务看板应用，集成了MCP�
 
 ## 快速启动
 
-项目提供了便捷的启动脚本，可以同时启动前端、后端和浏览器工具服务：
+### 🐳 Docker部署
 
-### 使用npm脚本启动（推荐）
+Docker部署提供了完整的容器化解决方案，包含前端、后端、数据库和nginx代理。
+
+#### 前提条件
+- 安装 [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- 确保Docker Desktop正在运行
+
+#### 快速启动
 ```bash
-# 启动所有服务
-npm run start:all
+# 开发环境（支持热重载）
+npm run dev
 
-# 或者单独启动各服务
-npm run start:frontend  # 启动前端
-npm run start:backend   # 启动后端
-npm run start:browser-tools  # 启动浏览器工具
+# 生产环境（nginx代理）
+npm run prod
+
+# 或者使用Docker专用命令
+npm run docker:dev    # 开发环境
+npm run docker:prod   # 生产环境
 ```
 
-### 直接使用脚本文件
+#### 访问地址
 
-#### Windows系统
+**开发环境**：
+- **前端应用**: http://localhost:5173
+- **后端API**: http://localhost:3000 (直接访问)
+- **nginx代理**: http://localhost:8080 (前端通过此地址访问后端)
+- **数据库**: localhost:5432 (PostgreSQL)
+- **API文档**: http://localhost:3000/documentation
+
+**生产环境**：
+- **应用入口**: http://localhost (nginx代理)
+- **后端API**: http://localhost/api (通过nginx代理)
+- **数据库**: Docker内部网络
+
+#### Docker环境管理
 ```bash
-# 在PowerShell中运行时，需要添加".\"前缀
-.\start-services.bat
+# 查看状态
+npm run docker:status:dev
+npm run docker:status:prod
 
-# 在CMD命令提示符中运行时，可直接使用
-start-services.bat
+# 查看日志
+npm run docker:logs:dev
+npm run docker:logs:prod
+
+# 停止环境
+npm run docker:stop:dev
+npm run docker:stop:prod
+
+# 重启环境
+npm run docker:restart:dev
+npm run docker:restart:prod
 ```
 
+#### Docker架构说明
+
+XItools采用了nginx反向代理架构，解决了前端在浏览器中无法直接访问Docker容器网络的问题：
+
+```
+浏览器前端 ←→ localhost:8080 ←→ nginx ←→ backend:3000 (API + MCP)
+外部Cursor ←→ localhost:3000 ←→ backend:3000 (MCP直接访问)
+```
+
+**架构优势**：
+- **统一访问**：前端通过nginx统一访问后端API和MCP服务
+- **MCP兼容**：外部工具（如Cursor）可直接访问MCP服务
+- **网络隔离解决**：nginx解决了Docker容器网络访问问题
+- **环境变量配置**：前端使用`VITE_BACKEND_URL`动态配置后端地址
 
 
-该脚本将同时启动:
-- 前端开发服务器 (frontend目录下的npm run dev)
-- 后端API服务器 (backend目录下的npm run dev)
-- 浏览器工具服务器 (@agentdeskai/browser-tools-server)
+
+
 
 ## 项目结构
 
@@ -41,11 +83,27 @@ start-services.bat
 
 ```
 XItools/
-├── frontend/          # 前端React应用
+├── frontend/          # 前端React应用（支持Web + 桌面双端）
+│   ├── Dockerfile     # 前端Docker配置
+│   ├── package.docker.json # Docker专用依赖配置（无Electron）
+│   ├── nginx.conf     # 前端nginx配置
+│   ├── .env.development # 开发环境配置
+│   ├── .env.production  # 生产环境配置
+│   ├── .env.local.example # 本地环境配置示例
+│   └── electron/      # Electron桌面应用配置
 ├── backend/           # 后端Node.js服务
+│   ├── Dockerfile     # 后端Docker配置
+│   ├── .env.example   # 环境配置示例
+│   └── .env.development # 开发环境配置
+├── nginx/             # Nginx配置文件
+│   └── xitools-docker.conf # Docker环境nginx配置
+├── scripts/           # Docker环境管理脚本
+│   └── docker-env.cjs # Docker环境管理脚本
 ├── shared-types/      # 前后端共享的TypeScript类型定义
 ├── word_md/           # 项目文档
-├── docker-compose.yml # Docker配置
+├── docker-compose.yml # Docker配置（开发环境）
+├── docker-compose.dev.yml # Docker开发环境配置
+├── docker-compose.prod.yml # Docker生产环境配置
 ├── package.json       # 主项目依赖
 ├── tsconfig.json      # TypeScript配置
 ├── .prettierrc        # 代码格式化配置
@@ -57,10 +115,45 @@ XItools/
 
 后端基于Node.js + Fastify + TypeScript + Prisma + Socket.IO构建，提供以下功能：
 
-- RESTful API接口，用于任务的CRUD操作
-- WebSocket实时通信
-- 与MCP服务集成，提供AI辅助功能
-- PostgreSQL数据库存储
+- **多级导航系统**：工作区 → 项目 → 看板的三级组织结构
+- **RESTful API接口**：完整的CRUD操作支持
+- **WebSocket实时通信**：多用户协作和实时同步
+- **MCP服务集成**：提供AI辅助功能
+- **PostgreSQL数据库**：可靠的数据持久化存储
+- **全局确认对话框**：统一的用户操作确认体验，支持全局弹窗显示
+
+### 🗂️ 多级导航功能
+
+XItools 实现了完整的三级导航系统：
+
+#### 功能特性
+- **工作区管理**：创建、重命名、删除工作区
+- **项目管理**：在工作区下创建和管理项目
+- **看板管理**：支持工作区直属看板和项目下看板
+- **实时同步**：所有操作实时同步到后端
+- **智能UI**：悬浮显示操作按钮，避免界面混乱
+- **全局确认对话框**：危险操作使用全局弹窗确认，提供一致的用户体验
+- **智能删除保护**：根据内容自动判断是否可删除，防止误删除有内容的容器
+
+#### 数据结构
+```
+工作区 (Workspace)
+├── 项目 (Project)
+│   └── 看板 (Board)
+└── 直属看板 (Board)
+```
+
+#### API端点
+- `GET /api/workspaces` - 获取所有工作区（包含项目和看板）
+- `POST /api/workspaces` - 创建工作区
+- `PUT /api/workspaces/:id` - 更新工作区
+- `DELETE /api/workspaces/:id` - 删除工作区
+- `POST /api/projects` - 创建项目
+- `PUT /api/projects/:id` - 更新项目
+- `DELETE /api/projects/:id` - 删除项目
+- `POST /api/boards` - 创建看板
+- `PUT /api/boards/:id` - 更新看板
+- `DELETE /api/boards/:id` - 删除看板
 
 ### 技术栈
 
@@ -253,73 +346,6 @@ MCP服务通过Socket.IO与前端进行实时通信，发送以下事件：
 - Prisma ORM
 - Zod (Schema验证)
 - MCP SDK
-
-### 开发设置
-
-#### 传统开发方式
-
-1. 安装依赖：
-   ```bash
-   cd backend
-   npm install
-   ```
-
-2. 创建`.env`文件或运行初始化脚本:
-   ```bash
-   node scripts/init.js
-   ```
-
-3. 启动PostgreSQL数据库:
-   ```bash
-   docker compose up -d
-   ```
-
-4. 生成Prisma客户端并运行数据库迁移:
-   ```bash
-   npm run prisma:generate
-   npm run prisma:migrate:dev
-   ```
-
-5. 启动开发服务器:
-   ```bash
-   npm run dev
-   ```
-
-6. 访问API文档:
-   ```bash
-   http://localhost:3000/documentation
-   ```
-
-#### Docker开发方式（推荐）
-
-使用Docker可以确保开发环境与生产环境的一致性：
-
-1. 启动Docker服务：
-   ```bash
-   docker-compose up --build -d
-   ```
-
-2. 检查服务状态：
-   ```bash
-   docker-compose ps
-   ```
-
-3. 查看日志：
-   ```bash
-   docker-compose logs -f
-   ```
-
-4. 测试健康检查：
-   ```bash
-   curl http://localhost:3000/health
-   ```
-
-5. 停止服务：
-   ```bash
-   docker-compose down
-   ```
-
-详细的Docker部署说明请参考 [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md)。
 
 ## 前端应用
 
@@ -555,6 +581,28 @@ XItools集成了基于Framer Motion的完整动画系统，提供流畅的用户
 - **帮助系统**：按?键显示快捷键帮助面板
 - **智能过滤**：自动忽略输入框中的快捷键
 
+### 多级导航系统 ✅ 新增
+
+XItools实现了完整的多级导航系统，支持工作区、项目、看板的层级管理：
+
+#### 导航结构
+- **工作区 (Workspace)**: 顶级容器，可包含多个项目和直属看板
+- **项目 (Project)**: 中级容器，属于工作区，可包含多个看板
+- **看板 (Board)**: 基础单元，可直接属于工作区或项目
+
+#### 核心特性
+- **层级化新建**: 每个层级都有对应的新建按钮，支持快速创建
+- **侧边栏高亮**: 当前选中的看板在侧边栏中高亮显示，替代面包屑导航
+- **悬停式操作**: 删除和新建按钮在悬停时显示，保持界面简洁
+- **状态持久化**: 导航状态和展开/收起状态自动保存
+- **工具栏集成**: 视图切换按钮集成到工具栏中，保持界面一致性
+
+#### 技术实现
+- **状态管理**: 使用Zustand管理导航状态
+- **API服务**: 独立的多看板API服务层
+- **组件化设计**: 模块化的导航组件，便于维护和扩展
+- **向后兼容**: 保持现有MCP工具和单看板功能不变
+
 ### 多语言支持 (i18n) ✅ 新增
 
 XItools提供完整的多语言支持，目前支持中文和英文：
@@ -690,16 +738,113 @@ if (!isConnected) {
 
 ## 开发指南
 
+### 🐳 Docker开发（推荐）
+
+Docker开发提供了一致的开发环境，无需手动配置数据库和依赖。
+
+#### 快速开始
+```bash
+# 启动开发环境（包含热重载）
+npm run dev
+
+# 或者使用Docker专用命令
+npm run docker:dev
+```
+
+#### 开发环境特性
+- **热重载**：代码修改自动反映到容器中
+- **数据库**：自动启动PostgreSQL容器
+- **网络隔离**：服务间通过Docker网络通信
+- **端口映射**：
+  - 前端：http://localhost:5173
+  - 后端：http://localhost:3000
+  - 数据库：localhost:5432
+
+#### 常用Docker命令
+```bash
+# 查看服务状态
+npm run docker:status:dev
+
+# 查看实时日志
+npm run docker:logs:dev
+
+# 查看特定服务日志
+docker-compose -f docker-compose.dev.yml logs -f backend
+docker-compose -f docker-compose.dev.yml logs -f frontend
+
+# 进入容器调试
+docker exec -it xitools-backend-dev sh
+docker exec -it xitools-frontend-dev sh
+
+# 重启服务
+npm run docker:restart:dev
+
+# 停止所有服务
+npm run docker:stop:dev
+```
+
+## 环境配置
+
+XItools 提供了完整的多环境配置支持：
+
+- **开发环境 (development)**：本地开发和调试
+- **生产环境 (production)**：服务器部署
+
+3. **本地环境 (local)**
+   - 前端：http://localhost:5173
+   - 后端：可配置本地或远程
+   - 数据库：可配置本地或远程
+   - 用途：个人开发配置
+
+#### 快速环境切换
+
+```bash
+# 使用npm脚本（推荐）
+npm run env:dev      # 切换到开发环境
+npm run env:prod     # 切换到生产环境
+npm run env:local    # 切换到本地环境
+
+# 或者直接使用脚本
+node scripts/env-setup.cjs development
+node scripts/env-setup.cjs production
+node scripts/env-setup.cjs local
+
+# Windows用户可以使用批处理脚本
+scripts\env-setup.bat development
+
+# Linux/macOS用户可以使用shell脚本
+./scripts/env-setup.sh development
+```
+
+#### 环境变量说明
+
+**前端环境变量：**
+- `VITE_BACKEND_URL`: 后端服务地址
+- `VITE_API_TIMEOUT`: API请求超时时间
+- `VITE_DEBUG_MODE`: 是否启用调试模式
+- `VITE_LOG_LEVEL`: 日志级别
+
+**后端环境变量：**
+- `PORT`: 服务器端口
+- `HOST`: 服务器主机地址
+- `NODE_ENV`: 运行环境
+- `DATABASE_URL`: 数据库连接字符串
+- `CORS_ORIGINS`: 允许的跨域来源
+- `LOG_LEVEL`: 日志级别
+- `DEBUG_MODE`: 是否启用调试模式
+
 ### 后端开发
 
-1. 安装依赖:
+1. 设置开发环境:
+```bash
+npm run env:dev
+```
+
+2. 安装依赖:
 ```bash
 cd backend
 npm install
 ```
-
-2. 设置环境变量:
-复制`.env.example`为`.env`并填写必要的环境变量。
 
 3. 初始化数据库:
 ```bash
@@ -713,41 +858,81 @@ npm run dev
 
 ### 前端开发
 
-1. 安装依赖:
+1. 设置开发环境:
+```bash
+npm run env:dev
+```
+
+2. 安装依赖:
 ```bash
 cd frontend
 npm install
 ```
 
-2. 启动开发服务器:
+3. 启动开发服务器:
 ```bash
 npm run dev
 ```
 
 ## 部署
 
-### 后端部署
+### 🐳 Docker部署（推荐）
 
-1. 构建项目:
+Docker部署提供了完整的生产环境解决方案，包含前端、后端、数据库和nginx反向代理。
+
+#### 生产环境部署
+
+1. **准备环境配置**：
 ```bash
-cd backend
-npm run build
+# 复制生产环境配置模板
+cp .env.prod.example .env.prod
+
+# 编辑生产环境配置
+nano .env.prod
 ```
 
-2. 启动服务:
+2. **启动生产环境**：
 ```bash
-npm start
+# 使用便捷命令
+npm run prod
+
+# 或者使用Docker专用命令
+npm run docker:prod
+
+# 或者直接使用docker-compose
+docker-compose -f docker-compose.prod.yml --env-file .env.prod up --build -d
 ```
 
-### 前端部署
-
-1. 构建项目:
+3. **验证部署**：
 ```bash
-cd frontend
-npm run build
+# 检查服务状态
+npm run docker:status:prod
+
+# 查看日志
+npm run docker:logs:prod
+
+# 测试健康检查
+curl http://localhost/health
 ```
 
-2. 将`dist`目录部署到Web服务器。
+#### 生产环境架构
+
+```
+Internet → Nginx (Port 80/443) → Frontend (Static Files)
+                                → Backend API (Port 3000)
+                                → WebSocket (Socket.IO)
+                                → MCP Service
+Backend → PostgreSQL (Docker Network)
+```
+
+#### 生产环境特性
+- **Nginx反向代理**：统一入口，处理静态文件和API代理
+- **容器网络**：服务间通过Docker内部网络通信
+- **数据持久化**：数据库数据持久化存储
+- **健康检查**：自动监控服务健康状态
+- **自动重启**：服务异常时自动重启
+
+
 
 ## 📚 文档
 
