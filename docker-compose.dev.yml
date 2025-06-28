@@ -1,0 +1,110 @@
+# 开发环境Docker Compose配置
+# 包含前端开发服务器、后端API和数据库
+
+services:
+  # PostgreSQL数据库服务
+  postgres:
+    image: postgres:14
+    container_name: xitools-postgres-dev
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: xitools
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - xitools-network
+
+  # XItools后端服务
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: xitools-backend-dev
+    restart: always
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - HOST=0.0.0.0
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/xitools
+      - CORS_ORIGINS=http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173
+      - LOG_LEVEL=debug
+      - DEBUG_MODE=true
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      # 挂载后端代码用于热重载
+      - ./backend/src:/app/src:ro
+      - ./backend/.env.development:/app/.env:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - xitools-network
+
+  # XItools前端服务（开发模式）
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: xitools-frontend-dev
+    restart: always
+    environment:
+      - VITE_NODE_ENV=development
+      - VITE_DEBUG_MODE=true
+      - VITE_LOG_LEVEL=debug
+    ports:
+      - "5173:5173"
+    volumes:
+      # 挂载前端代码用于热重载（移除:ro只读标志）
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.ts:/app/vite.config.ts
+      - ./frontend/tailwind.config.js:/app/tailwind.config.js
+      - ./frontend/postcss.config.js:/app/postcss.config.js
+      - ./frontend/tsconfig.json:/app/tsconfig.json
+      - ./frontend/tsconfig.node.json:/app/tsconfig.node.json
+      - ./frontend/.env.development:/app/.env.local
+    depends_on:
+      - backend
+    networks:
+      - xitools-network
+
+  # Nginx反向代理（开发环境）
+  nginx:
+    image: nginx:alpine
+    container_name: xitools-nginx-dev
+    restart: always
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/xitools-docker.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - xitools-network
+
+networks:
+  xitools-network:
+    driver: bridge
+
+volumes:
+  pg_data_dev:

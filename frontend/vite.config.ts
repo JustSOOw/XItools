@@ -7,21 +7,7 @@ export default defineConfig(({ mode }) => {
   // 加载环境变量
   const env = loadEnv(mode, process.cwd(), '');
 
-  // 获取后端服务地址
-  const getBackendUrl = (): string => {
-    // 优先检查是否有云端服务配置
-    const cloudUrl = env.VITE_CLOUD_BACKEND_URL;
-    if (cloudUrl) {
-      console.log('Vite代理使用云端配置:', cloudUrl);
-      return cloudUrl;
-    }
-
-    // 默认本地服务
-    console.log('Vite代理使用默认本地配置: http://localhost:3000');
-    return 'http://localhost:3000';
-  };
-
-  const backendUrl = getBackendUrl();
+  // 不再需要后端URL配置，直接使用nginx
 
   return {
     plugins: [react()],
@@ -42,17 +28,12 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: 5173,
-      proxy: {
-        '/api': {
-          target: backendUrl,
-          changeOrigin: true,
-        },
-        '/socket.io': {
-          target: backendUrl,
-          changeOrigin: true,
-          ws: true,
-        },
+      host: '0.0.0.0', // 允许外部访问
+      watch: {
+        usePolling: true, // Docker环境下启用轮询
+        interval: 1000,   // 轮询间隔
       },
+      // 移除代理配置，直接使用nginx
     },
   };
 });
