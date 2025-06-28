@@ -9,7 +9,7 @@
  * Copyright (c) 2025 by Furdow, All Rights Reserved. 
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { ToastProps, ToastAction } from './Toast';
 
 interface ToastOptions {
@@ -74,15 +74,15 @@ export const useToast = (): [ToastProps[], ToastAPI] => {
     setToasts([]);
   }, []);
 
-  // 便捷API
-  const api: ToastAPI = {
+  // 便捷API - 使用useMemo避免每次渲染都创建新对象
+  const api: ToastAPI = useMemo(() => ({
     success: (message, options) => addToast('success', message, options),
     error: (message, options) => addToast('error', message, options),
     warning: (message, options) => addToast('warning', message, options),
     info: (message, options) => addToast('info', message, options),
     dismiss,
     dismissAll,
-  };
+  }), [addToast, dismiss, dismissAll]);
 
   return [toasts, api];
 };

@@ -34,7 +34,7 @@ export const TaskManagementIllustration: React.FC<IllustrationProps> = ({
     <circle cx="60" cy="60" r="50" fill="currentColor" className="text-primary/10" />
     
     {/* 看板 */}
-    <rect x="25" y="35" width="70" height="50" rx="4" fill="currentColor" className="text-surface" stroke="currentColor" strokeWidth="1" className="text-border" />
+    <rect x="25" y="35" width="70" height="50" rx="4" fill="currentColor" className="text-surface" stroke="currentColor" strokeWidth="1" />
     
     {/* 列 */}
     <rect x="30" y="40" width="18" height="40" rx="2" fill="currentColor" className="text-primary/20" />
@@ -144,7 +144,7 @@ export const CalendarIllustration: React.FC<IllustrationProps> = ({
     <circle cx="60" cy="60" r="50" fill="currentColor" className="text-primary/10" />
     
     {/* 日历主体 */}
-    <rect x="30" y="35" width="60" height="50" rx="4" fill="currentColor" className="text-surface" stroke="currentColor" strokeWidth="1" className="text-border" />
+    <rect x="30" y="35" width="60" height="50" rx="4" fill="currentColor" className="text-surface" stroke="currentColor" strokeWidth="1" />
     
     {/* 日历头部 */}
     <rect x="30" y="35" width="60" height="12" rx="4" fill="currentColor" className="text-primary" />
@@ -195,7 +195,7 @@ export const FilterIllustration: React.FC<IllustrationProps> = ({
     <circle cx="60" cy="60" r="50" fill="currentColor" className="text-primary/10" />
     
     {/* 漏斗 */}
-    <path d="M 35 35 L 85 35 L 70 55 L 70 75 L 60 80 L 60 75 L 50 75 L 50 55 Z" fill="currentColor" className="text-primary/20" stroke="currentColor" strokeWidth="2" className="text-primary" />
+    <path d="M 35 35 L 85 35 L 70 55 L 70 75 L 60 80 L 60 75 L 50 75 L 50 55 Z" fill="currentColor" className="text-primary/20" stroke="currentColor" strokeWidth="2" />
     
     {/* 筛选项目 */}
     <circle cx="40" cy="40" r="2" fill="currentColor" className="text-secondary" />

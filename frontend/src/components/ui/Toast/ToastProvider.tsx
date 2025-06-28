@@ -24,7 +24,7 @@ interface ToastProviderProps {
 const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   const [toasts, toastAPI] = useToast();
 
-  // 设置全局Toast API
+  // 设置全局Toast API - 当API对象变化时更新
   useEffect(() => {
     setGlobalToastAPI(toastAPI);
   }, [toastAPI]);
@@ -32,9 +32,9 @@ const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   return (
     <>
       {children}
-      <ToastContainer 
-        toasts={toasts} 
-        onClose={toastAPI.dismiss} 
+      <ToastContainer
+        toasts={toasts}
+        onClose={toastAPI.dismiss}
       />
     </>
   );

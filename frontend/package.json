@@ -20,7 +20,12 @@
     "build:electron": "tsc -p electron/tsconfig.json",
     "prebuild": "npm run build:electron"
   },
-  "keywords": ["task", "kanban", "desktop", "electron"],
+  "keywords": [
+    "task",
+    "kanban",
+    "desktop",
+    "electron"
+  ],
   "author": "XItools Team",
   "license": "MIT",
   "devDependencies": {
@@ -49,6 +54,7 @@
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@heroicons/react": "^2.2.0",
     "@prisma/client": "^6.9.0",
     "@types/react-beautiful-dnd": "^13.1.8",
     "axios": "^1.9.0",
@@ -78,14 +84,18 @@
       {
         "from": "assets/",
         "to": "assets/",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "win": {
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.ico"
@@ -94,7 +104,10 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "icon": "assets/icon.icns"
@@ -103,7 +116,9 @@
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.png"

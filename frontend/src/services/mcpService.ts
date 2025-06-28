@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { Task, PartialTask, TaskUpdate } from '../types/Task';
+import { getBackendUrl, getApiTimeout, log } from '../utils/env';
 
 /**
  * MCP服务客户端
@@ -10,18 +11,18 @@ class McpService {
   private requestTimeout: number;
   private headers: Record<string, string>;
   
-  constructor(baseUrl: string = 'http://localhost:3000/mcp', timeout: number = 5000) {
-    this.baseUrl = baseUrl;
-    this.requestTimeout = timeout;
+  constructor(baseUrl?: string, timeout?: number) {
+    this.baseUrl = baseUrl || `${getBackendUrl()}/mcp`;
+    this.requestTimeout = timeout || getApiTimeout();
     this.headers = {
       'Content-Type': 'application/json',
       'Accept': 'application/json'
     };
-    
+
     // 添加请求拦截器
     axios.interceptors.request.use(
       config => {
-        console.log('发送请求:', {
+        log.debug('发送MCP请求:', {
           url: config.url,
           method: config.method,
           headers: config.headers,
@@ -30,7 +31,7 @@ class McpService {
         return config;
       },
       error => {
-        console.error('请求错误:', error);
+        log.error('MCP请求错误:', error);
         return Promise.reject(error);
       }
     );
@@ -430,20 +431,6 @@ class McpService {
   }
 }
 
-// 获取后端服务地址
-const getBackendUrl = (): string => {
-  // 优先检查是否有云端服务配置
-  const cloudUrl = import.meta.env.VITE_CLOUD_BACKEND_URL;
-  if (cloudUrl) {
-    console.log('MCP服务使用云端配置:', cloudUrl);
-    return cloudUrl;
-  }
-
-  // 默认本地服务
-  console.log('MCP服务使用默认本地配置: http://localhost:3000');
-  return 'http://localhost:3000';
-};
-
-// 导出单例实例，使用正确的URL
-const mcpService = new McpService(`${getBackendUrl()}/mcp`);
+// 导出单例实例，使用统一的环境配置
+const mcpService = new McpService();
 export default mcpService;

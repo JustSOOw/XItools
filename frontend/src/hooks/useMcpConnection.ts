@@ -2,26 +2,13 @@ import { useEffect, useState, useCallback } from 'react';
 import socketService from '../services/socketService';
 import mcpService from '../services/mcpService';
 import useTaskStore from '../store/taskStore';
-
-// 获取后端服务地址
-const getBackendUrl = (): string => {
-  // 优先检查是否有云端服务配置
-  const cloudUrl = import.meta.env.VITE_CLOUD_BACKEND_URL;
-  if (cloudUrl) {
-    console.log('MCP连接使用云端配置:', cloudUrl);
-    return cloudUrl;
-  }
-
-  // 默认本地服务
-  console.log('MCP连接使用默认本地配置: http://localhost:3000');
-  return 'http://localhost:3000';
-};
+import { getBackendUrl, log } from '../utils/env';
 
 /**
  * 自定义钩子，用于初始化MCP服务连接并加载任务数据
  * @param mcpUrl MCP服务URL
  */
-const useMcpConnection = (mcpUrl: string = getBackendUrl()) => {
+const useMcpConnection = (mcpUrl?: string) => {
   const { setTasks, setLoading, setError } = useTaskStore();
   const [isConnected, setIsConnected] = useState(false);
   
@@ -30,17 +17,20 @@ const useMcpConnection = (mcpUrl: string = getBackendUrl()) => {
     try {
       // 设置加载状态
       setLoading(true);
-      
+
+      const backendUrl = mcpUrl || getBackendUrl();
+      log.info('初始化MCP连接:', backendUrl);
+
       // 连接到WebSocket
-      socketService.connect(mcpUrl);
-      
+      socketService.connect(backendUrl);
+
       try {
         // 获取初始任务列表
         const tasks = await mcpService.listTasks();
         setTasks(tasks);
         setIsConnected(true);
       } catch (error) {
-        console.error('获取任务列表失败:', error);
+        log.error('获取任务列表失败:', error);
         // 即使获取任务失败，我们仍保持连接状态
         setIsConnected(socketService.isConnectedToServer());
         // 设置一些假数据用于测试
@@ -71,7 +61,7 @@ const useMcpConnection = (mcpUrl: string = getBackendUrl()) => {
       // 清除加载状态
       setLoading(false);
     } catch (error) {
-      console.error('初始化MCP连接失败:', error);
+      log.error('初始化MCP连接失败:', error);
       setError('初始化MCP连接失败，请稍后重试');
       setLoading(false);
       setIsConnected(false);

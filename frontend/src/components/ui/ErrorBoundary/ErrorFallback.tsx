@@ -14,6 +14,7 @@ import classNames from 'classnames';
 import Button from '../../Button';
 import { ErrorFallbackProps } from './ErrorBoundary';
 import { useI18n } from '../../../hooks/useI18n';
+import globalConfirmDialog from '../../../services/globalConfirmDialog';
 
 /**
  * 默认错误回退组件
@@ -43,11 +44,15 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({
     };
 
     console.log('Error Report:', errorReport);
-    
+
     // 可以发送到错误监控服务
     // errorReportingService.report(errorReport);
-    
-    alert(t('error:reportGenerated'));
+
+    globalConfirmDialog.info(
+      t('error:reportGenerated', { defaultValue: '错误报告已生成并记录到控制台。' }),
+      undefined,
+      t('error:reportTitle', { defaultValue: '错误报告' })
+    );
   };
 
   return (

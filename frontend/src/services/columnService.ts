@@ -1,19 +1,6 @@
 import axios from 'axios';
 import { BoardColumn } from '../store/taskStore';
-
-// 获取后端服务地址
-const getBackendUrl = (): string => {
-  // 优先检查是否有云端服务配置
-  const cloudUrl = import.meta.env.VITE_CLOUD_BACKEND_URL;
-  if (cloudUrl) {
-    console.log('Column服务使用云端配置:', cloudUrl);
-    return cloudUrl;
-  }
-
-  // 默认本地服务
-  console.log('Column服务使用默认本地配置: http://localhost:3000');
-  return 'http://localhost:3000';
-};
+import { getBackendUrl, log } from '../utils/env';
 
 const API_BASE_URL = getBackendUrl();
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import classNames from 'classnames';
 import {
   DndContext,
   DragOverlay,
@@ -42,6 +43,7 @@ import { EmptyTasks, EmptySearchResults, EmptyFilterResults } from './components
 
 // 动画组件
 import { ViewTransition } from './components/animations';
+import NavigationOverview from './components/navigation/NavigationOverview';
 
 // 反馈组件
 import {
@@ -50,8 +52,12 @@ import {
   useKeyboardShortcuts
 } from './components/feedback';
 
+// 全局确认对话框服务
+import { setGlobalConfirmDialogAPI } from './services/globalConfirmDialog';
+
 import useMcpConnection from './hooks/useMcpConnection';
 import useTaskStore from './store/taskStore';
+import { useNavigationStore } from './store/navigationStore';
 import mcpService from './services/mcpService';
 import columnService from './services/columnService';
 import { Task as TaskType, PartialTask } from './types/Task';
@@ -72,7 +78,7 @@ function App() {
   const { t } = useI18n();
 
   // 反馈系统Hooks
-  const { showConfirm, ConfirmDialog } = useConfirmDialog();
+  const { showConfirm, hideConfirm, ConfirmDialog } = useConfirmDialog();
   const { showSuccess, SuccessAnimation } = useSuccessAnimation();
   const {
     addShortcut,
@@ -80,7 +86,13 @@ function App() {
     KeyboardShortcutsHelp
   } = useKeyboardShortcuts();
 
-
+  // 注册全局确认对话框API
+  useEffect(() => {
+    setGlobalConfirmDialogAPI({
+      showConfirm,
+      hideConfirm,
+    });
+  }, [showConfirm, hideConfirm]);
 
   // 拖拽开始时的原始状态（仅用于错误恢复）
   const [dragStartState, setDragStartState] = useState<{
@@ -124,6 +136,9 @@ function App() {
 
   // 使用MCP连接
   const { isConnected, reconnect } = useMcpConnection();
+
+  // 导航状态
+  const { currentBoardId } = useNavigationStore();
 
   // 配置快捷键 - 移到 reconnect 定义之后
   useEffect(() => {
@@ -1074,6 +1089,7 @@ function App() {
     }
   };
 
+  // 🔥 热重载测试 - 这是一个测试注释
   return (
     <DndContext
       sensors={sensors}
@@ -1108,6 +1124,54 @@ function App() {
                 displayTasks={displayTasks}
               />
             </div>
+
+            {/* 中间：视图切换按钮 - 只在选中看板时显示 */}
+            {currentBoardId && (
+              <div className="flex items-center space-x-2 bg-surface/50 rounded-lg p-1">
+                <button
+                  onClick={() => useTaskStore.getState().setCurrentView('board')}
+                  className={classNames(
+                    'flex items-center px-3 py-2 rounded-md text-sm font-medium transition-all duration-200',
+                    currentView === 'board'
+                      ? 'bg-primary text-white shadow-sm'
+                      : 'text-text-secondary hover:text-text-primary hover:bg-surface/80'
+                  )}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1zM14 9a1 1 0 100 2h2a1 1 0 100-2h-2zM3 16a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1zM14 15a1 1 0 100 2h2a1 1 0 100-2h-2z" />
+                  </svg>
+                  {t('common:navigation.board')}
+                </button>
+                <button
+                  onClick={() => useTaskStore.getState().setCurrentView('list')}
+                  className={classNames(
+                    'flex items-center px-3 py-2 rounded-md text-sm font-medium transition-all duration-200',
+                    currentView === 'list'
+                      ? 'bg-primary text-white shadow-sm'
+                      : 'text-text-secondary hover:text-text-primary hover:bg-surface/80'
+                  )}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {t('common:navigation.list')}
+                </button>
+                <button
+                  onClick={() => useTaskStore.getState().setCurrentView('calendar')}
+                  className={classNames(
+                    'flex items-center px-3 py-2 rounded-md text-sm font-medium transition-all duration-200',
+                    currentView === 'calendar'
+                      ? 'bg-primary text-white shadow-sm'
+                      : 'text-text-secondary hover:text-text-primary hover:bg-surface/80'
+                  )}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                  </svg>
+                  {t('common:navigation.calendar')}
+                </button>
+              </div>
+            )}
 
             {/* 右侧：操作按钮 */}
             <div className="flex items-center space-x-4">
@@ -1201,56 +1265,65 @@ function App() {
 
         {/* 主要内容区 */}
         <ViewTransition viewKey={currentView} mode="scale" className="flex-1 p-4 flex flex-col min-h-0">
-          {isLoading ? (
+          {/* 如果选中了看板，显示看板内容；否则显示导航概览 */}
+          {currentBoardId ? (
+            // 显示看板内容
             <>
-              {currentView === 'board' ? (
-                <div className="modern-container h-full board-content">
-                  <div className="h-full overflow-x-auto overflow-y-hidden p-6">
-                    <div className="flex space-x-4 h-full">
-                      {/* 渲染3个列的骨架屏 */}
-                      {[1, 2, 3].map((index) => (
-                        <div key={index} className="flex-shrink-0 w-80">
-                          <div className="bg-surface rounded-card p-4 h-full">
-                            <div className="h-6 bg-text-secondary/20 rounded-md w-24 mb-4 animate-pulse"></div>
-                            <div className="space-y-3">
-                              <SkeletonCard />
-                              <SkeletonCard />
-                              <SkeletonCard />
+              {isLoading ? (
+                <>
+                  {currentView === 'board' ? (
+                    <div className="modern-container h-full board-content">
+                      <div className="h-full overflow-x-auto overflow-y-hidden p-6">
+                        <div className="flex space-x-4 h-full">
+                          {/* 渲染3个列的骨架屏 */}
+                          {[1, 2, 3].map((index) => (
+                            <div key={index} className="flex-shrink-0 w-80">
+                              <div className="bg-surface rounded-card p-4 h-full">
+                                <div className="h-6 bg-text-secondary/20 rounded-md w-24 mb-4 animate-pulse"></div>
+                                <div className="space-y-3">
+                                  <SkeletonCard />
+                                  <SkeletonCard />
+                                  <SkeletonCard />
+                                </div>
+                              </div>
                             </div>
-                          </div>
+                          ))}
                         </div>
-                      ))}
+                      </div>
                     </div>
-                  </div>
-                </div>
-              ) : currentView === 'list' ? (
-                <div className="flex-1 min-h-0">
-                  <SkeletonList rows={8} />
-                </div>
+                  ) : currentView === 'list' ? (
+                    <div className="flex-1 min-h-0">
+                      <SkeletonList rows={8} />
+                    </div>
+                  ) : (
+                    <div className="flex-1 min-h-0">
+                      <SkeletonCalendar />
+                    </div>
+                  )}
+                </>
               ) : (
-                <div className="flex-1 min-h-0">
-                  <SkeletonCalendar />
-                </div>
+                <>
+                  {currentView === 'board' ? (
+                    <div className="modern-container h-full board-content">
+                      <div className="h-full overflow-x-auto overflow-y-hidden p-6 custom-scrollbar">
+                        <ErrorBoundary fallback={SimpleErrorFallback}>
+                          {renderViewContent()}
+                        </ErrorBoundary>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex-1 min-h-0">
+                      <ErrorBoundary fallback={SimpleErrorFallback}>
+                        {renderViewContent()}
+                      </ErrorBoundary>
+                    </div>
+                  )}
+                </>
               )}
             </>
           ) : (
-            <>
-              {currentView === 'board' ? (
-                <div className="modern-container h-full board-content">
-                  <div className="h-full overflow-x-auto overflow-y-hidden p-6 custom-scrollbar">
-                    <ErrorBoundary fallback={SimpleErrorFallback}>
-                      {renderViewContent()}
-                    </ErrorBoundary>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex-1 min-h-0">
-                  <ErrorBoundary fallback={SimpleErrorFallback}>
-                    {renderViewContent()}
-                  </ErrorBoundary>
-                </div>
-              )}
-            </>
+            // 显示导航概览
+            <NavigationOverview />
           )}
         </ViewTransition>
         </div>

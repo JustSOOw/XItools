@@ -7,6 +7,7 @@ import classNames from 'classnames';
 import { Task } from '../../types/Task';
 import Button from '../Button';
 import { useI18n } from '../../hooks/useI18n';
+import globalConfirmDialog from '../../services/globalConfirmDialog';
 
 interface QuickActionsProps {
   task: Task;
@@ -183,9 +184,18 @@ const QuickActions: React.FC<QuickActionsProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => {
-                if (window.confirm(t('task:actions.deleteConfirm'))) {
-                  onDelete();
-                }
+                globalConfirmDialog.show(
+                  {
+                    title: t('task:actions.deleteTask', { defaultValue: '删除任务' }),
+                    message: t('task:actions.deleteConfirm', { defaultValue: '确定要删除这个任务吗？此操作不可撤销。' }),
+                    type: 'danger',
+                    confirmText: t('common:actions.delete'),
+                    cancelText: t('common:actions.cancel'),
+                  },
+                  () => {
+                    onDelete();
+                  }
+                );
               }}
               disabled={isLoading}
               className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"

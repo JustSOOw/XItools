@@ -1,20 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import useTaskStore from '../store/taskStore';
 import { Task } from '../types/Task';
-
-// 获取后端服务地址
-const getBackendUrl = (): string => {
-  // 优先检查是否有云端服务配置
-  const cloudUrl = import.meta.env.VITE_CLOUD_BACKEND_URL;
-  if (cloudUrl) {
-    console.log('使用云端服务配置:', cloudUrl);
-    return cloudUrl;
-  }
-
-  // 默认本地服务
-  console.log('使用默认本地服务: http://localhost:3000');
-  return 'http://localhost:3000';
-};
+import { getBackendUrl, log } from '../utils/env';
 
 class SocketService {
   private socket: Socket | null = null;
@@ -29,17 +16,17 @@ class SocketService {
     if (this.isConnected && this.socket) return;
 
     try {
-      console.log('连接到后端服务:', backendUrl);
+      log.info('连接到后端服务:', backendUrl);
       this.socket = io(backendUrl, {
         reconnection: true,
         reconnectionDelay: 1000,
         reconnectionAttempts: 5,
         timeout: 5000,
       });
-      
+
       this.setupEventListeners();
     } catch (error) {
-      console.error('创建Socket连接失败:', error);
+      log.error('创建Socket连接失败:', error);
     }
   }
   
@@ -51,15 +38,15 @@ class SocketService {
     
     // 连接事件
     this.socket.on('connect', () => {
-      console.log('已连接到MCP服务');
+      log.info('已连接到MCP服务');
       this.isConnected = true;
     });
-    
+
     this.socket.on('disconnect', () => {
-      console.log('已断开与MCP服务的连接');
+      log.info('已断开与MCP服务的连接');
       this.isConnected = false;
     });
-    
+
     this.socket.on('connect_error', (error) => {
       console.error('连接MCP服务失败:', error);
       this.isConnected = false;
