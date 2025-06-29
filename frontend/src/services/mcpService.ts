@@ -125,11 +125,51 @@ class McpService {
   }
   
   /**
-   * 获取任务列表
-   * 对应MCP工具: list_tasks
+   * 获取指定看板的任务列表
+   * @param boardId 看板ID
    * @param filterOptions 过滤选项
    */
-  async listTasks(filterOptions?: Record<string, any>): Promise<Task[]> {
+  async getTasksByBoard(boardId: string, filterOptions?: Record<string, any>): Promise<Task[]> {
+    try {
+      console.log('开始获取看板任务列表:', { boardId, filterOptions });
+
+      // 构建API URL - 从MCP URL转换为API URL
+      const backendUrl = getBackendUrl();
+      const apiUrl = `${backendUrl}/api/boards/${boardId}/tasks`;
+
+      const response = await axios.get(apiUrl, {
+        timeout: this.requestTimeout,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        params: filterOptions || {}
+      });
+
+      if (response.data && response.data.success) {
+        console.log('获取看板任务列表成功:', response.data.data.length);
+        return response.data.data;
+      } else {
+        console.error('获取看板任务列表失败:', response.data);
+        return [];
+      }
+    } catch (error) {
+      console.error('获取看板任务列表失败:', error);
+      // 如果后端服务不可用，返回空数组，不抛出错误
+      if (this.isServerUnavailableError(error)) {
+        return [];
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * 获取任务列表
+   * 对应MCP工具: list_tasks
+   * @param boardId 看板ID
+   * @param filterOptions 过滤选项
+   */
+  async listTasks(boardId?: string, filterOptions?: Record<string, any>): Promise<Task[]> {
     try {
       console.log('开始获取任务列表，过滤选项:', filterOptions);
       
@@ -138,7 +178,10 @@ class McpService {
         console.log('尝试使用直接API端点获取任务列表');
         const apiUrl = this.baseUrl.replace('/mcp', '/api/tasks/list');
         const directApiResponse = await axios.post(apiUrl,
-          { filter_options: filterOptions || {} },
+          {
+            boardId: boardId,
+            filter_options: filterOptions || {}
+          },
           {
             timeout: this.requestTimeout,
             headers: this.headers
@@ -158,7 +201,10 @@ class McpService {
       const response = await axios.post(this.baseUrl, {
         jsonrpc: '2.0',
         method: 'list_tasks',
-        params: { filter_options: filterOptions || {} },
+        params: {
+          boardId: boardId,
+          filter_options: filterOptions || {}
+        },
         id: this.generateRequestId(),
       }, {
         timeout: this.requestTimeout,
@@ -411,6 +457,8 @@ class McpService {
       throw new Error(error.message || '列任务排序失败');
     }
   }
+
+
 
   /**
    * 生成随机请求ID

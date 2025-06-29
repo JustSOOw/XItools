@@ -24,39 +24,9 @@ const useMcpConnection = (mcpUrl?: string) => {
       // 连接到WebSocket
       socketService.connect(backendUrl);
 
-      try {
-        // 获取初始任务列表
-        const tasks = await mcpService.listTasks();
-        setTasks(tasks);
-        setIsConnected(true);
-      } catch (error) {
-        log.error('获取任务列表失败:', error);
-        // 即使获取任务失败，我们仍保持连接状态
-        setIsConnected(socketService.isConnectedToServer());
-        // 设置一些假数据用于测试
-        setTasks([
-          {
-            id: '1',
-            title: '连接mcp服务',
-            description: '链接mcp服务失败，请检查mcp服务是否启动',
-            status: '待办',
-            priority: 'Medium',
-            tags: [],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          },
-          {
-            id: '2',
-            title: '直接API请求',
-            description: '这是一个临时数据卡片',
-            status: '进行中',
-            priority: 'High',
-            tags: [],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        ]);
-      }
+      // 直接设置连接状态，不再测试getTaskSchema（因为它现在需要boardId参数）
+      setIsConnected(true);
+      log.info('MCP服务连接初始化完成');
       
       // 清除加载状态
       setLoading(false);

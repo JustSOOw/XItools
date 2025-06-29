@@ -69,11 +69,11 @@ class SocketService {
       useTaskStore.getState().addTasks(tasks);
     });
     
-    // 更新任务事件 - 暂时禁用自动更新，避免干扰乐观更新
+    // 更新任务事件 - 重新启用，支持任务颜色等属性更新
     this.socket.on('task_updated', (task: Task) => {
-      console.log('收到任务更新（已忽略）:', task.id);
-      // 完全禁用WebSocket自动更新，让乐观更新生效
-      // useTaskStore.getState().updateTask(task);
+      console.log('收到任务更新:', task.id);
+      // 启用WebSocket自动更新，确保任务颜色等属性能正确同步
+      useTaskStore.getState().updateTask(task);
     });
     
     // 删除任务事件
@@ -103,6 +103,22 @@ class SocketService {
         this.refreshTasks();
       }, 100);
     });
+
+    // 列管理事件
+    this.socket.on('column_created', (column: any) => {
+      console.log('收到列创建事件:', column.id);
+      useTaskStore.getState().addColumn(column);
+    });
+
+    this.socket.on('column_updated', (column: any) => {
+      console.log('收到列更新事件:', column.id);
+      useTaskStore.getState().updateColumn(column.id, column);
+    });
+
+    this.socket.on('column_deleted', ({ columnId }: { columnId: string }) => {
+      console.log('收到列删除事件:', columnId);
+      useTaskStore.getState().deleteColumn(columnId);
+    });
   }
   
   /**
@@ -119,11 +135,20 @@ class SocketService {
    */
   private async refreshTasks(): Promise<void> {
     try {
+      // 获取当前选中的看板ID
+      const { useNavigationStore } = await import('../store/navigationStore');
+      const currentBoardId = useNavigationStore.getState().currentBoardId;
+
+      if (!currentBoardId) {
+        console.log('没有选中的看板，跳过任务刷新');
+        return;
+      }
+
       // 动态导入mcpService以避免循环依赖
       const { default: mcpService } = await import('./mcpService');
-      const tasks = await mcpService.listTasks();
+      const tasks = await mcpService.getTasksByBoard(currentBoardId);
       useTaskStore.getState().setTasks(tasks);
-      console.log('任务列表已刷新');
+      console.log('当前看板任务列表已刷新:', currentBoardId);
     } catch (error) {
       console.error('刷新任务列表失败:', error);
     }

@@ -21,6 +21,8 @@ const prisma = new PrismaClient();
 // 加载配置
 const config = loadConfig();
 
+
+
 /**
  * 创建并配置MCP服务器
  */
@@ -159,23 +161,52 @@ async function registerMCPTools(server: McpServer): Promise<void> {
         parentId: z.string().nullable().optional(),
         acceptanceCriteria: z.string().optional(),
         estimatedEffort: z.number().nullable().optional(),
-        loggedTime: z.number().nullable().optional()
+        loggedTime: z.number().nullable().optional(),
+        boardId: z.string() // boardId是必需的
       }))
     },
     async (args) => {
       const { tasks } = args;
       const createdTasks: any[] = [];
-      
+
       try {
+        // 验证所有任务都有boardId
+        for (const taskData of tasks) {
+          if (!taskData.boardId) {
+            throw new Error('每个任务都必须指定boardId');
+          }
+        }
+
+        // 收集所有涉及的看板ID，用于验证列
+        const boardIds = new Set<string>();
+        for (const task of tasks) {
+          boardIds.add(task.boardId);
+        }
+
+        // 获取所有相关看板的列，用于验证
+        const allValidColumnIds = new Set<string>();
+        for (const boardId of boardIds) {
+          const columns = await columnService.getColumnsByBoard(boardId);
+          columns.forEach((col: any) => allValidColumnIds.add(col.id));
+        }
+
+        // 验证所有任务的状态UUID
+        for (const taskData of tasks) {
+          if (!allValidColumnIds.has(taskData.status)) {
+            throw new Error(`无效的状态UUID: ${taskData.status}。请确保status对应看板 ${taskData.boardId} 中的有效列UUID。`);
+          }
+        }
+
         await prisma.$transaction(async (tx) => {
           for (const taskData of tasks) {
-            const tags = taskData.tags ? { 
+
+            const tags = taskData.tags ? {
               connectOrCreate: taskData.tags.map((tagName: any) => ({
                 where: { name: typeof tagName === 'string' ? tagName : tagName.name },
                 create: { name: typeof tagName === 'string' ? tagName : tagName.name }
               }))
             } : undefined;
-            
+
             const task = await tx.task.create({
               data: {
                 title: taskData.title,
@@ -188,13 +219,14 @@ async function registerMCPTools(server: McpServer): Promise<void> {
                 acceptanceCriteria: taskData.acceptanceCriteria || '',
                 estimatedEffort: taskData.estimatedEffort || null,
                 loggedTime: taskData.loggedTime || null,
+                boardId: taskData.boardId, // 使用传入的看板ID
                 tags: tags,
               },
               include: {
                 tags: true,
               }
             });
-            
+
             createdTasks.push(task);
           }
         });
@@ -504,14 +536,18 @@ async function registerMCPTools(server: McpServer): Promise<void> {
   /**
    * 工具8: get_columns
    *
-   * 获取所有看板列，按order排序。
-   * 此工具允许LLM查询当前的看板列配置。
+   * 获取指定看板的列，按order排序。
+   * 此工具允许LLM查询指定看板的列配置。
    */
-  server.tool("get_columns", "获取所有看板列，按order排序", {},
-    async (_args) => {
+  server.tool("get_columns", "获取指定看板的列，按order排序",
+    {
+      boardId: z.string().min(1, '看板ID不能为空')
+    },
+    async (args) => {
+      const { boardId } = args;
       try {
-        console.error('开始获取所有列...');
-        const columns = await columnService.getAllColumns();
+        console.error('开始获取看板列...', boardId);
+        const columns = await columnService.getColumnsByBoard(boardId);
         console.error(`获取到 ${columns.length} 个列`);
 
         return {
@@ -550,7 +586,9 @@ async function registerMCPTools(server: McpServer): Promise<void> {
     {
       column_data: z.object({
         name: z.string().min(1, '列名不能为空').max(50, '列名不能超过50个字符'),
+        boardId: z.string().min(1, '看板ID不能为空'),
         order: z.number().int().min(0, '排序值不能为负数'),
+        sortOption: z.string().default('manual'),
         color: z.string().optional(),
         isDefault: z.boolean().optional().default(false),
       })
@@ -688,13 +726,14 @@ async function registerMCPTools(server: McpServer): Promise<void> {
    */
   server.tool("reorder_columns", "重新排序看板列",
     {
+      boardId: z.string().min(1, '看板ID不能为空'),
       column_ids: z.array(z.string()).describe('按新顺序排列的列ID数组')
     },
     async (args) => {
-      const { column_ids } = args;
+      const { boardId, column_ids } = args;
       try {
         console.error('开始重新排序列:', column_ids);
-        const reorderedColumns = await columnService.reorderColumns(column_ids);
+        const reorderedColumns = await columnService.reorderColumns(boardId, column_ids);
         console.error('列重新排序成功');
 
         return {
@@ -731,10 +770,6 @@ async function registerMCPTools(server: McpServer): Promise<void> {
  */
 async function main() {
   try {
-    // 初始化默认列
-    await columnService.initializeDefaultColumns();
-    console.error('默认列初始化完成');
-
     // 创建MCP服务器
     const server = await createMCPServer();
     

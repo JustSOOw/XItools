@@ -34,26 +34,9 @@ const BoardContainer: React.FC<BoardContainerProps> = ({
   // 当前看板信息
   const currentBoard = getCurrentBoard();
 
-  // 当看板ID变化时，加载对应的任务和列数据
-  useEffect(() => {
-    if (boardId) {
-      loadBoardData(boardId);
-    }
-  }, [boardId]);
-
-  // 加载看板数据
-  const loadBoardData = async (boardId: string) => {
-    try {
-      // TODO: 实现加载特定看板的任务和列数据
-      // 这里需要调用API获取指定看板的数据
-      console.log('加载看板数据:', boardId);
-      
-      // 暂时使用现有的数据加载逻辑
-      // 后续需要修改为按看板ID加载
-    } catch (error) {
-      console.error('加载看板数据失败:', error);
-    }
-  };
+  // 注意：看板数据加载逻辑已移至App.tsx中的useEffect，
+  // 通过监听currentBoardId变化来触发数据加载
+  // 这里不再需要重复的数据加载逻辑
 
   // 如果没有选中看板，显示选择提示
   if (!boardId || !currentBoard) {

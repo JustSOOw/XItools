@@ -3,8 +3,11 @@
  */
 
 import { FastifyInstance } from 'fastify';
+import { PrismaClient } from '@prisma/client';
 import { boardService } from '../services/boardService';
 import { boardSchema, boardUpdateSchema, reorderSchema } from '../types/multiBoardSchema';
+
+const prisma = new PrismaClient();
 
 export default async function boardRoutes(fastify: FastifyInstance) {
   // 获取工作区下的所有看板
@@ -52,18 +55,20 @@ export default async function boardRoutes(fastify: FastifyInstance) {
     }
   });
 
+
+
   // 创建看板
   fastify.post('/boards', async (request, reply) => {
     try {
       const boardData = boardSchema.parse(request.body);
       const board = await boardService.createBoard(boardData);
-      
+
       // 广播看板创建事件
       const io = fastify.io;
       if (io) {
         io.emit('board_created', board);
       }
-      
+
       return { success: true, data: board };
     } catch (error) {
       console.error('创建看板失败:', error);

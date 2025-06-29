@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import classNames from 'classnames';
 import {
   DndContext,
@@ -71,7 +71,7 @@ function App() {
   const [newTask, setNewTask] = useState<PartialTask>({
     title: '',
     description: '',
-    status: 'todo',
+    status: 'todo', // 将在列加载后更新为实际的列UUID
   });
 
   // 翻译函数
@@ -106,39 +106,97 @@ function App() {
   
 
 
-  // 加载列数据
-  const loadColumns = async () => {
-    try {
-      const columns = await columnService.getAllColumns();
-      setColumns(columns);
-    } catch (error) {
-      console.error('加载列失败:', error);
-      // 如果加载失败，尝试初始化默认列
-      try {
-        const defaultColumns = await columnService.initializeDefaultColumns();
-        setColumns(defaultColumns);
-      } catch (initError) {
-        console.error('初始化默认列失败:', initError);
-        toast.error(t('common:messages.serverError'), {
-          action: {
-            label: t('common:actions.refresh'),
-            onClick: () => window.location.reload(),
-          },
-        });
-      }
-    }
-  };
-
-  // 初始化时加载列数据
-  useEffect(() => {
-    loadColumns();
-  }, []);
+  // 注意：列数据现在通过看板切换时按需加载，不再全局加载
 
   // 使用MCP连接
   const { isConnected, reconnect } = useMcpConnection();
 
   // 导航状态
-  const { currentBoardId } = useNavigationStore();
+  const { currentBoardId, getCurrentBoard } = useNavigationStore();
+
+  // 从store获取状态 - 需要在loadBoardData之前定义
+  const tasks = useTaskStore(state => state.tasks);
+  const columns = useTaskStore(state => state.columns);
+  const isLoading = useTaskStore(state => state.isLoading);
+  const activeTaskId = useTaskStore(state => state.activeTaskId);
+  const activeColumnId = useTaskStore(state => state.activeColumnId);
+  const setActiveTaskId = useTaskStore(state => state.setActiveTaskId);
+  const setActiveColumnId = useTaskStore(state => state.setActiveColumnId);
+  const addColumn = useTaskStore(state => state.addColumn);
+  const updateColumn = useTaskStore(state => state.updateColumn);
+  const deleteColumn = useTaskStore(state => state.deleteColumn);
+  const setColumns = useTaskStore(state => state.setColumns);
+  const reorderColumns = useTaskStore(state => state.reorderColumns);
+  const setTasks = useTaskStore(state => state.setTasks);
+  const setLoading = useTaskStore(state => state.setLoading);
+  const setColumnSort = useTaskStore(state => state.setColumnSort);
+  const clearColumnSort = useTaskStore(state => state.clearColumnSort);
+  const moveTask = useTaskStore(state => state.moveTask);
+  const reorderTasksInColumn = useTaskStore(state => state.reorderTasksInColumn);
+  const currentView = useTaskStore(state => state.currentView);
+  const filterOptions = useTaskStore(state => state.filterOptions);
+  const filteredTasks = useTaskStore(state => state.filteredTasks);
+  const setFilterOptions = useTaskStore(state => state.setFilterOptions);
+  const clearFilters = useTaskStore(state => state.clearFilters);
+
+  // 加载指定看板的数据
+  const loadBoardData = useCallback(async (boardId: string) => {
+    try {
+      setLoading(true);
+      console.log('开始加载看板数据:', boardId);
+
+      // 并行加载任务和列数据
+      const [tasks, columns] = await Promise.all([
+        mcpService.getTasksByBoard(boardId),
+        columnService.getColumnsByBoard(boardId)
+      ]);
+
+      console.log('看板数据加载完成:', {
+        boardId,
+        tasksCount: tasks.length,
+        columnsCount: columns.length
+      });
+
+      // 更新状态
+      setTasks(tasks);
+      setColumns(columns);
+    } catch (error) {
+      console.error('加载看板数据失败:', error);
+      toast.error(t('feedback:messages.loadBoardDataFailed'));
+      // 加载失败时清空数据，避免显示错误的数据
+      setTasks([]);
+      setColumns([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [setLoading, setTasks, setColumns, t]);
+
+  // 监听看板切换，重新加载对应看板的数据
+  useEffect(() => {
+    if (currentBoardId) {
+      loadBoardData(currentBoardId);
+    } else {
+      // 如果没有选中看板，清空任务和列数据
+      setTasks([]);
+      setColumns([]);
+    }
+  }, [currentBoardId, loadBoardData, setTasks, setColumns]);
+
+  // 监听columns变化，更新newTask的默认状态
+  useEffect(() => {
+    if (columns.length > 0) {
+      // 检查当前的status是否属于当前看板的列
+      const currentStatusValid = columns.some(col => col.id === newTask.status);
+
+      // 如果status无效或为空，更新为当前看板第一个列的UUID
+      if (!currentStatusValid || !newTask.status) {
+        setNewTask(prev => ({
+          ...prev,
+          status: columns[0].id
+        }));
+      }
+    }
+  }, [columns]); // 移除newTask.status依赖，避免无限循环
 
   // 配置快捷键 - 移到 reconnect 定义之后
   useEffect(() => {
@@ -202,37 +260,16 @@ function App() {
       ctrlKey: true,
     });
   }, [addShortcut, reconnect]);
-  
-  // 从store获取状态 - 使用selector函数避免不必要的重渲染
-  const tasks = useTaskStore(state => state.tasks);
-  const columns = useTaskStore(state => state.columns);
-  const isLoading = useTaskStore(state => state.isLoading);
 
-  const activeTaskId = useTaskStore(state => state.activeTaskId);
-  const activeColumnId = useTaskStore(state => state.activeColumnId);
-
-  const setActiveTaskId = useTaskStore(state => state.setActiveTaskId);
-  const setActiveColumnId = useTaskStore(state => state.setActiveColumnId);
-  // const reorderTasksInColumn = useTaskStore(state => state.reorderTasksInColumn); // 暂时不使用乐观更新
-  const addColumn = useTaskStore(state => state.addColumn);
-  const updateColumn = useTaskStore(state => state.updateColumn);
-  const deleteColumn = useTaskStore(state => state.deleteColumn);
-  const setColumns = useTaskStore(state => state.setColumns);
-  const reorderColumns = useTaskStore(state => state.reorderColumns);
-  const setTasks = useTaskStore(state => state.setTasks);
-  const setColumnSort = useTaskStore(state => state.setColumnSort);
-  const clearColumnSort = useTaskStore(state => state.clearColumnSort);
-  const moveTask = useTaskStore(state => state.moveTask);
-  const reorderTasksInColumn = useTaskStore(state => state.reorderTasksInColumn);
-
-  // 视图状态
-  const currentView = useTaskStore(state => state.currentView);
-
-  // 筛选和搜索状态
-  const filterOptions = useTaskStore(state => state.filterOptions);
-  const filteredTasks = useTaskStore(state => state.filteredTasks);
-  const setFilterOptions = useTaskStore(state => state.setFilterOptions);
-  const clearFilters = useTaskStore(state => state.clearFilters);
+  // 当列数据加载完成后，更新newTask的默认状态
+  useEffect(() => {
+    if (columns.length > 0 && newTask.status === 'todo') {
+      setNewTask(prev => ({
+        ...prev,
+        status: columns[0].id
+      }));
+    }
+  }, [columns, newTask.status]);
 
   // 配置拖拽传感器
   const sensors = useSensors(
@@ -321,13 +358,52 @@ function App() {
       return;
     }
 
+    // 获取当前看板信息
+    const currentBoard = getCurrentBoard();
+    if (!currentBoard) {
+      toast.error(t('feedback:messages.noBoardSelected'));
+      return;
+    }
+
+    // 确保状态是有效的列UUID
+    let statusColumnId = newTask.status;
+    if (typeof statusColumnId === 'string' && statusColumnId === 'todo') {
+      // 如果是默认的'todo'字符串，使用第一个列的ID
+      const firstColumn = columns[0];
+      if (firstColumn) {
+        statusColumnId = firstColumn.id;
+      } else {
+        toast.error('看板没有可用的列');
+        return;
+      }
+    }
+
     try {
-      await mcpService.submitTaskDataset([newTask]);
+      // 构建完整的任务数据，包含boardId
+      const taskData = {
+        ...newTask,
+        status: statusColumnId,
+        boardId: currentBoard.id
+      };
+
+      console.log('创建任务数据:', {
+        taskData,
+        currentBoardId: currentBoard.id,
+        statusColumnId
+      });
+
+      await mcpService.submitTaskDataset([taskData]);
+
+      // 任务创建成功后，重新加载当前看板的数据
+      if (currentBoard?.id) {
+        await loadBoardData(currentBoard.id);
+      }
+
       setIsCreateModalOpen(false);
       setNewTask({
         title: '',
         description: '',
-        status: 'todo',
+        status: columns[0]?.id || 'todo',
       });
 
       // 显示成功动画
@@ -575,18 +651,31 @@ function App() {
   // 列管理事件处理函数
   const handleAddColumn = async (name: string) => {
     try {
+      // 获取当前选中的看板ID
+      const currentBoardId = useNavigationStore.getState().currentBoardId;
+
+      if (!currentBoardId) {
+        toast.error(t('feedback:messages.noBoardSelected'));
+        return;
+      }
+
       const newOrder = Math.max(...columns.map(col => col.order), -1) + 1;
       const newColumn = await columnService.createColumn({
         name,
         order: newOrder,
+        boardId: currentBoardId, // 添加必需的boardId参数
       });
-      addColumn(newColumn);
-      toast.success('列添加成功');
+
+      console.log('列创建成功，重新加载看板数据:', currentBoardId);
+      // 列创建成功后，重新加载当前看板的数据以确保数据同步
+      await loadBoardData(currentBoardId);
+
+      toast.success(t('feedback:messages.columnAddSuccess'));
     } catch (error) {
       console.error('添加列失败:', error);
-      toast.error('添加列失败，请重试', {
+      toast.error(t('feedback:messages.columnAddFailed'), {
         action: {
-          label: '重试',
+          label: t('common:actions.retry'),
           onClick: () => handleAddColumn(name),
         },
       });
@@ -695,9 +784,11 @@ function App() {
       async () => {
         try {
           await mcpService.deleteTask(taskId);
-          // 重新加载任务列表
-          const updatedTasks = await mcpService.listTasks();
-          setTasks(updatedTasks);
+          // 重新加载当前看板的任务列表
+          const currentBoard = getCurrentBoard();
+          if (currentBoard?.id) {
+            await loadBoardData(currentBoard.id);
+          }
 
           // 显示成功动画
           showSuccess({
@@ -732,9 +823,11 @@ function App() {
 
       console.log(`列排序完成:`, result);
 
-      // 重新加载任务列表以确保一致性
-      const updatedTasks = await mcpService.listTasks();
-      setTasks(updatedTasks);
+      // 重新加载当前看板的任务列表以确保一致性
+      const currentBoard = getCurrentBoard();
+      if (currentBoard?.id) {
+        await loadBoardData(currentBoard.id);
+      }
 
     } catch (error) {
       console.error('列排序失败:', error);
@@ -897,8 +990,8 @@ function App() {
                           items={sortableItems}
                           strategy={verticalListSortingStrategy}
                         >
-                          {columnTasks.map(task => (
-                            <div key={task.id} className="mb-1.5">
+                          {columnTasks.map((task, index) => (
+                            <div key={`${column.id}-${task.id}-${index}`} className="mb-1.5">
                               <DraggableTaskCard
                                 task={task}
                                 onClick={handleTaskClick}
@@ -990,8 +1083,8 @@ function App() {
                       items={sortableItems}
                       strategy={verticalListSortingStrategy}
                     >
-                      {columnTasks.map(task => (
-                        <div key={task.id} className="mb-1.5">
+                      {columnTasks.map((task, index) => (
+                        <div key={`${column.id}-${task.id}-${index}`} className="mb-1.5">
                           <DraggableTaskCard
                             task={task}
                             onClick={handleTaskClick}
@@ -1216,9 +1309,11 @@ function App() {
                           for (const task of tasks) {
                             await mcpService.deleteTask(task.id);
                           }
-                          // 重新加载任务列表
-                          const updatedTasks = await mcpService.listTasks();
-                          setTasks(updatedTasks);
+                          // 重新加载当前看板的任务列表
+                          const currentBoard = getCurrentBoard();
+                          if (currentBoard?.id) {
+                            await loadBoardData(currentBoard.id);
+                          }
 
                           // 显示成功动画
                           showSuccess({

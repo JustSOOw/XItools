@@ -20,6 +20,8 @@ export default async function taskRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // 注意：获取看板列的路由已在 columnRoutes.ts 中定义，避免重复
+
   // 获取指定项目的所有任务
   fastify.get('/projects/:projectId/tasks', async (request, reply) => {
     try {

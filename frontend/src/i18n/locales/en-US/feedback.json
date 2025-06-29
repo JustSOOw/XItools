@@ -181,7 +181,11 @@
     "taskUpdated": "Task updated successfully",
     "taskUpdateFailed": "Failed to update task, please try again",
     "columnTitleUpdated": "Column title updated successfully",
-    "columnTitleUpdateFailed": "Failed to update column title, please try again"
+    "columnTitleUpdateFailed": "Failed to update column title, please try again",
+    "columnAddSuccess": "Column added successfully",
+    "columnAddFailed": "Failed to add column, please try again",
+    "noBoardSelected": "Please select a board first",
+    "loadBoardDataFailed": "Failed to load board data, please try again"
   },
   "warning": {
     "general": "Warning",

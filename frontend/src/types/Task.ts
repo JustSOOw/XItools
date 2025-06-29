@@ -9,7 +9,7 @@ export interface Task {
   status: string;
   createdAt: string;
   updatedAt: string;
-  
+
   // 可选字段
   description?: string;
   priority?: 'High' | 'Medium' | 'Low' | null;
@@ -23,6 +23,7 @@ export interface Task {
   estimatedEffort?: number | null;
   loggedTime?: number | null;
   sortOrder?: number; // 用于列内排序
+  boardId?: string; // 所属看板ID（多级导航系统）
 }
 
 /**

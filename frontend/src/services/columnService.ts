@@ -9,6 +9,7 @@ export interface CreateColumnData {
   order: number;
   color?: string;
   isDefault?: boolean;
+  boardId: string; // 添加必需的boardId字段
 }
 
 export interface UpdateColumnData {
@@ -23,6 +24,38 @@ export interface UpdateColumnData {
  */
 class ColumnService {
   private baseURL = `${API_BASE_URL}/api`;
+
+  /**
+   * 获取指定看板的所有列
+   * @param boardId 看板ID
+   */
+  async getColumnsByBoard(boardId: string): Promise<BoardColumn[]> {
+    try {
+      console.log('开始获取看板列数据:', boardId);
+
+      // 使用直接API端点获取指定看板的列
+      const apiUrl = `${this.baseURL}/boards/${boardId}/columns`;
+      const response = await axios.get(apiUrl, {
+        timeout: 10000 // 10秒超时
+      });
+
+      if (response.data && response.data.success) {
+        console.log('获取看板列数据成功:', response.data.data.length);
+        return response.data.data;
+      } else {
+        console.error('获取看板列数据失败:', response.data);
+        return [];
+      }
+    } catch (error) {
+      console.error('获取看板列数据失败:', error);
+      // 如果是网络错误或服务不可用，返回空数组
+      if (axios.isAxiosError(error) && (!error.response || error.response.status >= 500)) {
+        console.warn('后端服务不可用，返回空列数组');
+        return [];
+      }
+      throw error;
+    }
+  }
 
   /**
    * 获取所有列

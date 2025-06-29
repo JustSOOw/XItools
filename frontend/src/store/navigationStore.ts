@@ -355,18 +355,35 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
       const expandedWorkspaces = new Set(defaultWorkspace ? [defaultWorkspace.id] : []);
       const expandedProjects = new Set<string>();
 
+      // 自动选择默认看板
+      let currentWorkspaceId = null;
+      let currentBoardId = null;
+
+      if (defaultWorkspace) {
+        currentWorkspaceId = defaultWorkspace.id;
+        // 查找默认工作区的第一个看板
+        const defaultWorkspaceBoards = boards.filter(b => b.workspaceId === defaultWorkspace.id && !b.projectId);
+        if (defaultWorkspaceBoards.length > 0) {
+          currentBoardId = defaultWorkspaceBoards[0].id;
+        }
+      }
+
       set({
         workspaces: formattedWorkspaces,
         projects,
         boards,
         expandedWorkspaces,
-        expandedProjects
+        expandedProjects,
+        currentWorkspaceId,
+        currentBoardId
       });
 
       console.log('导航状态初始化完成', {
         workspaces: formattedWorkspaces.length,
         projects: projects.length,
-        boards: boards.length
+        boards: boards.length,
+        currentWorkspaceId,
+        currentBoardId
       });
     } catch (error) {
       console.error('导航状态初始化失败:', error);
@@ -385,7 +402,9 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
         projects: [],
         boards: [],
         expandedWorkspaces: new Set(['default-workspace']),
-        expandedProjects: new Set()
+        expandedProjects: new Set(),
+        currentWorkspaceId: 'default-workspace',
+        currentBoardId: null // 将在实际数据加载后设置
       });
 
       console.log('使用默认数据初始化导航状态');

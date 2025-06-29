@@ -181,7 +181,11 @@
     "taskUpdated": "任务更新成功",
     "taskUpdateFailed": "更新任务失败，请重试",
     "columnTitleUpdated": "列标题更新成功",
-    "columnTitleUpdateFailed": "更新列标题失败，请重试"
+    "columnTitleUpdateFailed": "更新列标题失败，请重试",
+    "columnAddSuccess": "列添加成功",
+    "columnAddFailed": "添加列失败，请重试",
+    "noBoardSelected": "请先选择一个看板",
+    "loadBoardDataFailed": "加载看板数据失败，请重试"
   },
   "warning": {
     "general": "警告",

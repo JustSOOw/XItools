@@ -14,53 +14,7 @@ import { randomUUID } from 'crypto';
 // 初始化Prisma客户端
 const prisma = new PrismaClient();
 
-/**
- * 兼容性函数：获取默认看板ID
- */
-async function getDefaultBoardId(): Promise<string> {
-  try {
-    const defaultWorkspace = await workspaceService.getDefaultWorkspace();
-    if (!defaultWorkspace) {
-      // 如果没有默认工作区，创建一个
-      const workspace = await workspaceService.ensureDefaultWorkspace();
-      const boards = await boardService.getBoardsByWorkspace(workspace.id);
-      if (boards.length === 0) {
-        // 创建默认看板
-        const board = await boardService.createBoard({
-          name: '默认看板',
-          description: '系统默认看板',
-          workspaceId: workspace.id,
-          order: 0
-        });
-        if (!board) {
-          throw new Error('创建默认看板失败');
-        }
-        return board.id;
-      }
-      return boards[0].id;
-    }
 
-    const boards = await boardService.getBoardsByWorkspace(defaultWorkspace.id);
-    if (boards.length === 0) {
-      // 创建默认看板
-      const board = await boardService.createBoard({
-        name: '默认看板',
-        description: '系统默认看板',
-        workspaceId: defaultWorkspace.id,
-        order: 0
-      });
-      if (!board) {
-        throw new Error('创建默认看板失败');
-      }
-      return board.id;
-    }
-
-    return boards[0].id;
-  } catch (error) {
-    console.error('获取默认看板ID失败:', error);
-    throw new Error('无法获取默认看板');
-  }
-}
 
 /**
  * 设置MCP服务及其工具
@@ -104,13 +58,16 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
    * 工具1: get_task_schema
    *
    * 获取任务对象的JSON Schema，用于指导LLM生成正确的数据格式。
-   * 重要：包含当前可用的列UUID信息，status字段必须使用这些UUID。
+   * 重要：包含指定看板的列UUID信息，status字段必须使用这些UUID。
    */
-  mcpServer.tool("get_task_schema", "获取任务对象的JSON Schema，用于指导LLM生成正确的数据格式。重要：status字段必须使用返回的列UUID，不能使用列名称。", {},
-    async (_args: any) => {
-      // 获取当前可用的列信息（使用默认看板）
-      const defaultBoardId = await getDefaultBoardId();
-      const columns = await columnService.getColumnsByBoard(defaultBoardId);
+  mcpServer.tool("get_task_schema", "获取任务对象的JSON Schema，用于指导LLM生成正确的数据格式。重要：status字段必须使用返回的列UUID，不能使用列名称。",
+    {
+      boardId: z.string().min(1, '看板ID不能为空')
+    },
+    async (args: any) => {
+      const { boardId } = args;
+      // 获取指定看板的列信息
+      const columns = await columnService.getColumnsByBoard(boardId);
 
       // 创建任务Schema
       const schema = {
@@ -228,9 +185,9 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
    * 提交从PRD解析出的结构化任务数据集，服务器将处理并存储这些任务。
    * 此工具接收LLM解析PRD后生成的任务列表，验证数据格式，将任务存入数据库，
    * 并通过Socket.IO广播tasks_added事件，通知前端有新任务添加。
-   * 重要：status字段必须使用列UUID，请先调用get_task_schema获取可用的列UUID。
+   * 重要：status字段必须使用列UUID，boardId字段指定任务所属看板。
    */
-  mcpServer.tool("submit_task_dataset", "提交从PRD解析出的结构化任务数据集，服务器将处理并存储这些任务。状态字段必须使用列UUID，请先调用get_task_schema工具获取可用的列UUID。",
+  mcpServer.tool("submit_task_dataset", "提交从PRD解析出的结构化任务数据集，服务器将处理并存储这些任务。状态字段必须使用列UUID，boardId字段指定任务所属看板。",
     {
       tasks: z.array(z.object({
         title: z.string(),
@@ -241,6 +198,7 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
         assignee: z.string().nullable().optional(),
         tags: z.array(z.string()).optional(),
         parentId: z.string().nullable().optional(),
+        boardId: z.string().uuid("boardId必须是有效的看板UUID").optional(),
         acceptanceCriteria: z.string().optional(),
         estimatedEffort: z.number().nullable().optional(),
         loggedTime: z.number().nullable().optional()
@@ -254,15 +212,30 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
       try {
         console.log('开始创建任务，任务数量:', tasks.length);
 
-        // 获取可用的列UUID进行验证
-        const defaultBoardId = await getDefaultBoardId();
-        const columns = await columnService.getColumnsByBoard(defaultBoardId);
-        const validColumnIds = new Set(columns.map(col => col.id));
+        // 验证所有任务都有boardId
+        for (const taskData of tasks) {
+          if (!taskData.boardId) {
+            throw new Error('每个任务都必须指定boardId');
+          }
+        }
+
+        // 收集所有涉及的看板ID，用于验证列
+        const boardIds = new Set<string>();
+        for (const task of tasks) {
+          boardIds.add(task.boardId!);
+        }
+
+        // 获取所有相关看板的列，用于验证
+        const allValidColumnIds = new Set<string>();
+        for (const boardId of boardIds) {
+          const columns = await columnService.getColumnsByBoard(boardId);
+          columns.forEach((col: any) => allValidColumnIds.add(col.id));
+        }
 
         // 验证所有任务的状态UUID
         for (const taskData of tasks) {
-          if (!validColumnIds.has(taskData.status)) {
-            throw new Error(`无效的状态UUID: ${taskData.status}。请使用get_task_schema工具获取有效的列UUID。可用列: ${columns.map(col => `${col.name}(${col.id})`).join(', ')}`);
+          if (!allValidColumnIds.has(taskData.status)) {
+            throw new Error(`无效的状态UUID: ${taskData.status}。请确保status对应看板 ${taskData.boardId} 中的有效列UUID。`);
           }
         }
 
@@ -279,6 +252,9 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
               }))
             } : undefined;
 
+            // 使用任务指定的看板ID
+            const boardId = taskData.boardId!;
+
             // 准备任务数据
             const taskCreateData: any = {
               title: taskData.title,
@@ -290,6 +266,7 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
               acceptanceCriteria: taskData.acceptanceCriteria || '',
               estimatedEffort: taskData.estimatedEffort || null,
               loggedTime: taskData.loggedTime || null,
+              boardId: boardId, // 使用传递的看板ID或默认看板ID
               tags: tags,
             };
 
@@ -343,12 +320,13 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
 
   /**
    * 工具3: list_tasks
-   * 
-   * 获取当前任务列表，支持过滤条件。
-   * 此工具允许LLM查询任务数据，可按状态、优先级、负责人和标签等条件进行过滤。
+   *
+   * 获取指定看板的任务列表，支持过滤条件。
+   * 此工具允许LLM查询指定看板的任务数据，可按状态、优先级、负责人和标签等条件进行过滤。
    */
-  mcpServer.tool("list_tasks", "获取当前任务列表，支持过滤条件",
+  mcpServer.tool("list_tasks", "获取指定看板的任务列表，支持过滤条件",
     {
+      boardId: z.string().uuid("看板ID必须是有效的UUID"),
       filter_options: z.object({
         status: z.string().optional(),
         priority: z.string().optional(),
@@ -357,10 +335,15 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
       }).optional()
     },
     async (args) => {
-      const { filter_options } = args;
+      const { boardId, filter_options } = args;
       try {
-        // 构建查询条件
-        const where: any = {};
+        // 使用指定的看板ID
+        const targetBoardId = boardId;
+
+        // 构建查询条件，首先按看板过滤
+        const where: any = {
+          boardId: targetBoardId
+        };
 
         if (filter_options) {
           if (filter_options.status) {
@@ -562,14 +545,19 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
   /**
    * 工具7: get_columns
    *
-   * 获取所有看板列，按order排序。
-   * 此工具允许LLM查询当前的看板列配置。
+   * 获取指定看板的所有列，按order排序。
+   * 此工具允许LLM查询指定看板的列配置。
    */
-  mcpServer.tool("get_columns", "获取所有看板列，按order排序", {},
-    async (_args) => {
+  mcpServer.tool("get_columns", "获取指定看板的所有列，按order排序",
+    {
+      boardId: z.string().uuid("看板ID必须是有效的UUID")
+    },
+    async (args) => {
       try {
-        const defaultBoardId = await getDefaultBoardId();
-        const columns = await columnService.getColumnsByBoard(defaultBoardId);
+        const { boardId } = args;
+
+        // 使用指定的看板ID
+        const columns = await columnService.getColumnsByBoard(boardId);
 
         return {
           content: [
@@ -721,14 +709,14 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
    */
   mcpServer.tool("reorder_columns", "重新排序看板列",
     {
+      boardId: z.string().uuid("看板ID必须是有效的UUID"),
       column_ids: z.array(z.string()).describe('按新顺序排列的列ID数组')
     },
     async (args) => {
-      const { column_ids } = args;
+      const { boardId, column_ids } = args;
       try {
-        // 获取默认看板ID以保持兼容性
-        const defaultBoardId = await getDefaultBoardId();
-        const reorderedColumns = await columnService.reorderColumns(defaultBoardId, column_ids);
+        // 使用指定的看板ID
+        const reorderedColumns = await columnService.reorderColumns(boardId, column_ids);
 
         // 广播列重排序事件
         io.emit('columns_reordered', reorderedColumns);
@@ -757,104 +745,7 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
     }
   );
 
-  /**
-   * 工具12: migrate_task_status
-   *
-   * 数据迁移工具：将任务的status字段从旧的字符串值迁移到新的列UUID
-   */
-  mcpServer.tool("migrate_task_status", "迁移任务状态数据到新的列系统", {},
-    async (_args) => {
-      try {
-        console.log('开始迁移任务状态数据...');
 
-        // 1. 获取所有列
-        const defaultBoardId = await getDefaultBoardId();
-        const columns = await columnService.getColumnsByBoard(defaultBoardId);
-        console.log('找到列:', columns.map(col => `${col.name} (${col.id})`));
-
-        // 2. 创建状态映射
-        const statusMapping: Record<string, string> = {};
-
-        for (const column of columns) {
-          switch (column.name) {
-            case '待办':
-              statusMapping['todo'] = column.id;
-              statusMapping['To Do'] = column.id;
-              statusMapping['待办'] = column.id;
-              break;
-            case '进行中':
-              statusMapping['in-progress'] = column.id;
-              statusMapping['In Progress'] = column.id;
-              statusMapping['进行中'] = column.id;
-              break;
-            case '已完成':
-              statusMapping['done'] = column.id;
-              statusMapping['Done'] = column.id;
-              statusMapping['已完成'] = column.id;
-              break;
-          }
-        }
-
-        console.log('状态映射:', statusMapping);
-
-        // 3. 获取所有需要迁移的任务
-        const tasks = await prisma.task.findMany();
-        console.log(`找到 ${tasks.length} 个任务需要检查`);
-
-        let migratedCount = 0;
-
-        // 4. 更新任务状态
-        for (const task of tasks) {
-          const newStatus = statusMapping[task.status];
-
-          if (newStatus && newStatus !== task.status) {
-            await prisma.task.update({
-              where: { id: task.id },
-              data: { status: newStatus }
-            });
-
-            console.log(`任务 "${task.title}" 状态从 "${task.status}" 更新为 "${newStatus}"`);
-            migratedCount++;
-          } else if (!newStatus) {
-            console.warn(`任务 "${task.title}" 的状态 "${task.status}" 没有找到对应的列`);
-          }
-        }
-
-        const result = {
-          success: true,
-          message: `迁移完成！共更新了 ${migratedCount} 个任务的状态`,
-          migratedCount,
-          totalTasks: tasks.length,
-          statusMapping
-        };
-
-        console.log(result.message);
-
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(result, null, 2)
-            }
-          ]
-        };
-      } catch (error) {
-        console.error('迁移失败:', error);
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({
-                success: false,
-                error: error instanceof Error ? error.message : '迁移失败'
-              })
-            }
-          ],
-          isError: true
-        };
-      }
-    }
-  );
 
   /**
    * 工具13: update_task_color
@@ -1654,10 +1545,24 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
 
                 console.log(`准备创建 ${tasks.length} 个任务`);
 
-                // 获取可用的列UUID进行验证
+                // 收集所有任务的看板ID，用于验证列
+                const boardIds = new Set<string>();
                 const defaultBoardId = await getDefaultBoardId();
-                const columns = await columnService.getColumnsByBoard(defaultBoardId);
-                const validColumnIds = new Set(columns.map((col: any) => col.id));
+
+                for (const task of tasks) {
+                  if (task.boardId) {
+                    boardIds.add(task.boardId);
+                  } else {
+                    boardIds.add(defaultBoardId);
+                  }
+                }
+
+                // 获取所有相关看板的列，用于验证
+                const allValidColumnIds = new Set<string>();
+                for (const boardId of boardIds) {
+                  const columns = await columnService.getColumnsByBoard(boardId);
+                  columns.forEach((col: any) => allValidColumnIds.add(col.id));
+                }
 
                 // 验证所有任务的状态UUID
                 for (const taskData of tasks) {
@@ -1686,12 +1591,12 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
                   }
 
                   // 验证UUID是否对应实际存在的列
-                  if (!validColumnIds.has(taskData.status)) {
+                  if (!allValidColumnIds.has(taskData.status)) {
                     reply.status(400).send({
                       jsonrpc: '2.0',
                       error: {
                         code: -32602,
-                        message: `无效的状态UUID: ${taskData.status}。请使用get_task_schema工具获取有效的列UUID。可用列: ${columns.map((col: any) => `${col.name}(${col.id})`).join(', ')}`,
+                        message: `无效的状态UUID: ${taskData.status}。请使用get_task_schema工具获取有效的列UUID。`,
                       },
                       id: body.id,
                     });
@@ -1726,6 +1631,9 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
                       tagConnections.push({ id: tag.id });
                     }
 
+                    // 确定使用的看板ID
+                    const boardId = taskData.boardId || defaultBoardId;
+
                     // 准备任务数据
                     const taskCreateData: any = {
                       title: taskData.title,
@@ -1737,6 +1645,7 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
                       acceptanceCriteria: taskData.acceptanceCriteria || '',
                       estimatedEffort: taskData.estimatedEffort || null,
                       loggedTime: taskData.loggedTime || null,
+                      boardId: boardId, // 使用传递的看板ID或默认看板ID
                       tags: {
                         connect: tagConnections
                       }
@@ -2215,10 +2124,25 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
               return;
             }
 
-            // 获取默认看板ID和列信息
-            const defaultBoardId = await getDefaultBoardId();
-            const columns = await columnService.getColumnsByBoard(defaultBoardId);
-            const validColumnIds = new Set(columns.map(col => col.id));
+            // 验证所有任务都有boardId
+            for (const task of tasks) {
+              if (!task.boardId) {
+                throw new Error('每个任务都必须指定boardId');
+              }
+            }
+
+            // 收集所有任务的看板ID，用于验证列
+            const boardIds = new Set<string>();
+            for (const task of tasks) {
+              boardIds.add(task.boardId);
+            }
+
+            // 获取所有相关看板的列，用于验证
+            const allValidColumnIds = new Set<string>();
+            for (const boardId of boardIds) {
+              const columns = await columnService.getColumnsByBoard(boardId);
+              columns.forEach((col: any) => allValidColumnIds.add(col.id));
+            }
 
             // 验证所有任务的状态UUID
             for (const taskData of tasks) {
@@ -2233,8 +2157,8 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
               }
 
               // 验证UUID是否对应实际存在的列
-              if (!validColumnIds.has(taskData.status)) {
-                throw new Error(`无效的状态UUID: ${taskData.status}。请使用get_task_schema工具获取有效的列UUID。可用列: ${columns.map(col => `${col.name}(${col.id})`).join(', ')}`);
+              if (!allValidColumnIds.has(taskData.status)) {
+                throw new Error(`无效的状态UUID: ${taskData.status}。请使用get_task_schema工具获取有效的列UUID。`);
               }
             }
 
@@ -2254,6 +2178,9 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
                   }))
                 } : undefined;
 
+                // 确定使用的看板ID
+                const boardId = taskData.boardId || defaultBoardId;
+
                 // 创建任务记录
                 const task = await tx.task.create({
                   data: {
@@ -2267,7 +2194,7 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
                     acceptanceCriteria: taskData.acceptanceCriteria || '',
                     estimatedEffort: taskData.estimatedEffort || null,
                     loggedTime: taskData.loggedTime || null,
-                    boardId: defaultBoardId, // 添加看板ID
+                    boardId: boardId, // 使用传递的看板ID或默认看板ID
                     tags: tags,
                   },
                   include: {
@@ -2579,9 +2506,8 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
         
         case 'get_task_schema': {
           try {
-            // 获取当前可用的列信息
-            const defaultBoardId = await getDefaultBoardId();
-            const columns = await columnService.getColumnsByBoard(defaultBoardId);
+            // 返回通用的任务Schema（不包含具体的列信息）
+            // 如果需要具体的列信息，应该使用MCP工具并提供boardId参数
 
             // 创建任务Schema
             const schema = {
@@ -2666,18 +2592,15 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
 
             const result = {
               schema: schema,
-              availableColumns: columns.map(col => ({
-                id: col.id,
-                name: col.name,
-                order: col.order
-              })),
+              note: "这是通用的任务Schema。要获取具体看板的列信息，请使用MCP工具并提供boardId参数。",
               usage: {
                 note: "创建任务时，status字段必须使用列的UUID（id字段），不能使用列名称",
                 example: {
                   title: "示例任务",
-                  status: columns[0]?.id || "列UUID",
+                  status: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
                   description: "任务描述",
-                  priority: "High"
+                  priority: "High",
+                  boardId: "看板UUID"
                 }
               }
             };
@@ -2710,30 +2633,7 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
           }
           }
 
-        case 'get_columns': {
-          try {
-            const defaultBoardId = await getDefaultBoardId();
-            const columns = await columnService.getColumnsByBoard(defaultBoardId);
 
-            reply.send({
-              jsonrpc: '2.0',
-              result: columns,
-              id: body.id,
-            });
-            return;
-          } catch (error) {
-            console.error('获取列列表失败:', error);
-            reply.status(500).send({
-              jsonrpc: '2.0',
-              error: {
-                code: -32603,
-                message: '获取列列表失败: ' + (error as Error).message,
-              },
-              id: body.id,
-            });
-            return;
-          }
-        }
 
         case 'create_column': {
           try {
@@ -2861,134 +2761,9 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
           }
         }
 
-        case 'reorder_columns': {
-          try {
-            const { column_ids } = body.params || {};
 
-            if (!column_ids || !Array.isArray(column_ids)) {
-              reply.status(400).send({
-                jsonrpc: '2.0',
-                error: {
-                  code: -32602,
-                  message: '无效的参数: column_ids必须是数组',
-                },
-                id: body.id,
-              });
-              return;
-            }
 
-            // 获取默认看板ID以保持兼容性
-            const defaultBoardId = await getDefaultBoardId();
-            const reorderedColumns = await columnService.reorderColumns(defaultBoardId, column_ids);
 
-            // 广播列重排序事件
-            io.emit('columns_reordered', reorderedColumns);
-            console.log(`列已重新排序并广播通知`);
-
-            reply.send({
-              jsonrpc: '2.0',
-              result: reorderedColumns,
-              id: body.id,
-            });
-            return;
-          } catch (error) {
-            console.error('重新排序列失败:', error);
-            reply.status(500).send({
-              jsonrpc: '2.0',
-              error: {
-                code: -32603,
-                message: '重新排序列失败: ' + (error as Error).message,
-              },
-              id: body.id,
-            });
-            return;
-          }
-        }
-
-        case 'migrate_task_status': {
-          try {
-            // 获取所有列
-            const defaultBoardId = await getDefaultBoardId();
-            const columns = await columnService.getColumnsByBoard(defaultBoardId);
-            console.log('找到列:', columns.map(col => `${col.name} (${col.id})`));
-
-            // 创建状态映射
-            const statusMapping: Record<string, string> = {};
-
-            for (const column of columns) {
-              switch (column.name) {
-                case '待办':
-                  statusMapping['todo'] = column.id;
-                  statusMapping['To Do'] = column.id;
-                  statusMapping['待办'] = column.id;
-                  break;
-                case '进行中':
-                  statusMapping['in-progress'] = column.id;
-                  statusMapping['In Progress'] = column.id;
-                  statusMapping['进行中'] = column.id;
-                  break;
-                case '已完成':
-                  statusMapping['done'] = column.id;
-                  statusMapping['Done'] = column.id;
-                  statusMapping['已完成'] = column.id;
-                  break;
-              }
-            }
-
-            console.log('状态映射:', statusMapping);
-
-            // 获取所有需要迁移的任务
-            const tasks = await prisma.task.findMany();
-            console.log(`找到 ${tasks.length} 个任务需要检查`);
-
-            let migratedCount = 0;
-
-            // 更新任务状态
-            for (const task of tasks) {
-              const newStatus = statusMapping[task.status];
-
-              if (newStatus && newStatus !== task.status) {
-                await prisma.task.update({
-                  where: { id: task.id },
-                  data: { status: newStatus }
-                });
-
-                console.log(`任务 "${task.title}" 状态从 "${task.status}" 更新为 "${newStatus}"`);
-                migratedCount++;
-              } else if (!newStatus) {
-                console.warn(`任务 "${task.title}" 的状态 "${task.status}" 没有找到对应的列`);
-              }
-            }
-
-            const result = {
-              success: true,
-              message: `迁移完成！共更新了 ${migratedCount} 个任务的状态`,
-              migratedCount,
-              totalTasks: tasks.length,
-              statusMapping
-            };
-
-            console.log(result.message);
-
-            reply.send({
-              jsonrpc: '2.0',
-              result: result,
-              id: body.id,
-            });
-            return;
-          } catch (error) {
-            console.error('迁移失败:', error);
-            reply.status(500).send({
-              jsonrpc: '2.0',
-              error: {
-                code: -32603,
-                message: '迁移失败: ' + (error as Error).message,
-              },
-              id: body.id,
-            });
-            return;
-          }
-        }
 
         case 'update_task_color': {
           try {
@@ -3118,38 +2893,7 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
           }
         }
 
-        case 'get_columns': {
-          try {
-            const defaultBoardId = await getDefaultBoardId();
-            const columns = await columnService.getColumnsByBoard(defaultBoardId);
-            console.log(`获取到 ${columns.length} 个列`);
 
-            reply.send({
-              jsonrpc: '2.0',
-              result: {
-                content: [
-                  {
-                    type: "text",
-                    text: JSON.stringify(columns, null, 2)
-                  }
-                ]
-              },
-              id: body.id,
-            });
-            return;
-          } catch (error) {
-            console.error('获取列列表失败:', error);
-            reply.status(500).send({
-              jsonrpc: '2.0',
-              error: {
-                code: -32603,
-                message: '获取列列表失败: ' + (error instanceof Error ? error.message : '未知错误'),
-              },
-              id: body.id,
-            });
-            return;
-          }
-        }
 
         case 'create_column': {
           try {

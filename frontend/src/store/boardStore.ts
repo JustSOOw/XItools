@@ -147,14 +147,15 @@ export const useBoardStore = create<BoardState>()(
         const state = get();
         const root = document.documentElement;
 
-        // 无论followTheme状态如何，都更新背景色
-        // 这样确保主题切换时看板背景总是会变化，并且变化会被持久化
-        set({
-          backgroundColor: themeBackground,
-          backgroundColorId: state.followTheme ? themeId : state.backgroundColorId
-        });
-
-        root.style.setProperty('--board-background-color', themeBackground);
+        // 只有在followTheme为true时才更新背景色
+        if (state.followTheme) {
+          set({
+            backgroundColor: themeBackground,
+            backgroundColorId: themeId
+          });
+          root.style.setProperty('--board-background-color', themeBackground);
+        }
+        // 如果followTheme为false，保持用户自定义的背景色不变
       },
     }),
     {
