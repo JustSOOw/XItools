@@ -231,28 +231,13 @@ export const OperationStatus: React.FC<{
  */
 export const TaskStatusIndicator: React.FC<{
   status: string;
+  statusName?: string; // 列的显示名称
   className?: string;
-}> = ({ status, className = '' }) => {
-  const getStatusType = (status: string): StatusType => {
-    switch (status.toLowerCase()) {
-      case 'completed':
-      case '已完成':
-        return 'success';
-      case 'in-progress':
-      case '进行中':
-        return 'info';
-      case 'todo':
-      case '待办':
-        return 'warning';
-      default:
-        return 'idle';
-    }
-  };
-
+}> = ({ status, statusName, className = '' }) => {
   return (
     <StatusIndicator
-      status={getStatusType(status)}
-      message={status}
+      status="idle" // 所有列都使用相同的默认状态
+      message={statusName || status}
       size="sm"
       showIcon={false}
       className={className}

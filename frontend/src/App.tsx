@@ -71,7 +71,7 @@ function App() {
   const [newTask, setNewTask] = useState<PartialTask>({
     title: '',
     description: '',
-    status: 'todo', // 将在列加载后更新为实际的列UUID
+    status: '', // 将在列加载后更新为第一个列的UUID
   });
 
   // 翻译函数
@@ -186,10 +186,10 @@ function App() {
   useEffect(() => {
     if (columns.length > 0) {
       // 检查当前的status是否属于当前看板的列
-      const currentStatusValid = columns.some(col => col.id === newTask.status);
+      const currentStatusValid = newTask.status && columns.some(col => col.id === newTask.status);
 
       // 如果status无效或为空，更新为当前看板第一个列的UUID
-      if (!currentStatusValid || !newTask.status) {
+      if (!currentStatusValid) {
         setNewTask(prev => ({
           ...prev,
           status: columns[0].id
@@ -367,8 +367,8 @@ function App() {
 
     // 确保状态是有效的列UUID
     let statusColumnId = newTask.status;
-    if (typeof statusColumnId === 'string' && statusColumnId === 'todo') {
-      // 如果是默认的'todo'字符串，使用第一个列的ID
+    if (!statusColumnId || !columns.some(col => col.id === statusColumnId)) {
+      // 如果状态为空或无效，使用第一个列的ID
       const firstColumn = columns[0];
       if (firstColumn) {
         statusColumnId = firstColumn.id;
@@ -403,7 +403,7 @@ function App() {
       setNewTask({
         title: '',
         description: '',
-        status: columns[0]?.id || 'todo',
+        status: columns[0]?.id || '',
       });
 
       // 显示成功动画

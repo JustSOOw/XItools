@@ -44,16 +44,7 @@ const QuickActions: React.FC<QuickActionsProps> = ({
     return priorityOptions.find(option => option.value === task.priority) || priorityOptions[3];
   };
 
-  const getStatusColor = (statusId: string) => {
-    // 根据状态ID返回不同的颜色
-    const colorMap: Record<string, string> = {
-      'todo': 'bg-gray-100 text-gray-800 hover:bg-gray-200',
-      'in-progress': 'bg-blue-100 text-blue-800 hover:bg-blue-200',
-      'review': 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200',
-      'done': 'bg-green-100 text-green-800 hover:bg-green-200',
-    };
-    return colorMap[statusId] || 'bg-gray-100 text-gray-800 hover:bg-gray-200';
-  };
+
 
   return (
     <div className={classNames('space-y-4', className)}>
@@ -70,7 +61,7 @@ const QuickActions: React.FC<QuickActionsProps> = ({
                 'px-3 py-2 text-sm rounded-md transition-colors text-left',
                 task.status === column.id
                   ? 'bg-primary text-white cursor-default'
-                  : `${getStatusColor(column.id)} disabled:opacity-50`
+                  : 'bg-gray-100 text-gray-800 hover:bg-gray-200 disabled:opacity-50'
               )}
             >
               {column.name}
