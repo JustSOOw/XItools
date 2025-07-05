@@ -14,18 +14,92 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ================================
+// 用户认证相关模型
+// ================================
+
+// 用户模型 - 用户基本信息
+model User {
+  id           String    @id @default(uuid())
+  username     String    @unique // 用户名，唯一
+  email        String    @unique // 邮箱，唯一
+  passwordHash String    // 加密后的密码
+  avatar       String?   // 头像URL，可选
+  bio          String?   // 个人简介，可选
+  role         String    @default("user") // 用户角色，默认为普通用户
+  isActive     Boolean   @default(true) // 账户是否激活
+  lastLoginAt  DateTime? // 最后登录时间
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // 关联关系
+  sessions   UserSession[] // 用户会话
+  workspaces Workspace[]   // 拥有的工作区
+  projects   Project[]     // 拥有的项目
+  boards     Board[]       // 拥有的看板
+  tasks      Task[]        // 拥有的任务
+  tags       Tag[]         // 拥有的标签
+
+  @@index([email])
+  @@index([username])
+  @@index([isActive])
+  @@index([role])
+}
+
+// 用户会话模型 - 会话管理
+model UserSession {
+  id        String    @id @default(uuid())
+  userId    String    // 关联用户
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique // token哈希值
+  expiresAt DateTime  // 过期时间
+  isRevoked Boolean   @default(false) // 是否已撤销
+  userAgent String?   // 用户代理信息
+  ipAddress String?   // IP地址
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@index([expiresAt])
+  @@index([isRevoked])
+}
+
+// 用户角色模型 - 为团队协作预留
+model UserRole {
+  id          String   @id @default(uuid())
+  name        String   @unique // 角色名称，如 "admin", "member", "viewer"
+  displayName String   // 角色显示名称
+  description String?  // 角色描述
+  permissions String[] // 权限列表，JSON数组格式
+  isSystem    Boolean  @default(false) // 是否为系统角色
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+  @@index([isSystem])
+}
+
 // 工作区模型 - 顶层容器
 model Workspace {
   id          String    @id @default(uuid())
   name        String    // 工作区名称
   description String?   // 工作区描述
   isDefault   Boolean   @default(false) // 是否为默认工作区
+
+  // 用户关联
+  ownerId     String    // 工作区所有者
+  owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // 关联关系
   projects    Project[] // 包含的项目
   boards      Board[]   // 直接在工作区下的看板
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  @@index([ownerId])
   @@index([isDefault])
+  @@index([ownerId, isDefault]) // 复合索引，用于查询用户的默认工作区
 }
 
 // 项目模型 - 项目级容器
@@ -35,18 +109,28 @@ model Project {
   description String?   // 项目描述
   color       String?   // 项目主题色
   icon        String?   // 项目图标
+
+  // 层级关系
   workspaceId String    // 所属工作区
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  // 用户关联
+  ownerId     String    // 项目所有者
+  owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // 关联关系
   boards      Board[]   // 项目下的看板
   order       Int       @default(0) // 在工作区中的排序
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   @@index([workspaceId])
+  @@index([ownerId])
   @@index([order])
+  @@index([ownerId, workspaceId]) // 复合索引，用于查询用户在特定工作区的项目
 }
 
-// 看板模型 - 新增模型
+// 看板模型
 model Board {
   id          String        @id @default(uuid())
   name        String        // 看板名称
@@ -60,6 +144,11 @@ model Board {
   projectId   String?       // 属于项目
   project     Project?      @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
+  // 用户关联
+  ownerId     String        // 看板所有者
+  owner       User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // 关联关系
   columns     BoardColumn[] // 看板列
   tasks       Task[]        // 看板任务
   order       Int           @default(0) // 排序
@@ -68,7 +157,10 @@ model Board {
 
   @@index([workspaceId])
   @@index([projectId])
+  @@index([ownerId])
   @@index([order])
+  @@index([ownerId, workspaceId]) // 复合索引，用于查询用户在特定工作区的看板
+  @@index([ownerId, projectId])   // 复合索引，用于查询用户在特定项目的看板
 }
 
 // 看板列模型 - 更新关联关系
@@ -89,7 +181,7 @@ model BoardColumn {
   @@index([order])
 }
 
-// 任务模型 - 更新关联关系
+// 任务模型
 model Task {
   id                 String   @id @default(uuid())
   title              String
@@ -99,33 +191,54 @@ model Task {
   dueDate            DateTime?
   assignee           String?
   color              String?  // 任务卡片颜色（可选）
-  tags               Tag[]    @relation("TaskToTag")
   parentId           String?
   acceptanceCriteria String   @default("")
   estimatedEffort    Float?
   loggedTime         Float?
   sortOrder          Int      @default(0) // 用于列内排序
+
+  // 层级关系
   boardId            String   // 所属看板
   board              Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @default(now()) @updatedAt
+
+  // 用户关联
+  ownerId            String   // 任务所有者
+  owner              User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // 关联关系
+  tags               Tag[]    @relation("TaskToTag")
 
   // 自引用关系定义 - 父子任务
   parent   Task?  @relation("ParentChild", fields: [parentId], references: [id], onDelete: SetNull)
   subTasks Task[] @relation("ParentChild")
 
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @default(now()) @updatedAt
+
   @@index([status])
   @@index([parentId])
   @@index([boardId])
+  @@index([ownerId])
+  @@index([ownerId, boardId]) // 复合索引，用于查询用户在特定看板的任务
+  @@index([ownerId, status])  // 复合索引，用于查询用户特定状态的任务
 }
 
 // 标签模型
 model Tag {
   id        String   @id @default(uuid())
-  name      String   @unique
+  name      String   // 标签名称（移除unique约束，因为现在按用户分组）
+
+  // 用户关联
+  ownerId   String   // 标签所有者
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // 关联关系
   tasks     Task[]   @relation("TaskToTag")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([ownerId, name]) // 同一用户下标签名称唯一
+  @@index([ownerId])
 }
 
 // MCP会话模型
