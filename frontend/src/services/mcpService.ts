@@ -1,66 +1,21 @@
-import axios from 'axios';
 import { Task, PartialTask, TaskUpdate } from '../types/Task';
+import { apiService, mcpApiService, ApiError } from '../utils/apiClient';
 import { getBackendUrl, getApiTimeout, log } from '../utils/env';
+import { BaseApiService } from './BaseApiService';
+import axios from 'axios';
 
 /**
  * MCP服务客户端
  * 提供调用MCP工具的方法，与后端MCP服务交互
  */
-class McpService {
+class McpService extends BaseApiService {
   private baseUrl: string;
   private requestTimeout: number;
-  private headers: Record<string, string>;
-  
+
   constructor(baseUrl?: string, timeout?: number) {
+    super(mcpApiService);
     this.baseUrl = baseUrl || `${getBackendUrl()}/mcp`;
     this.requestTimeout = timeout || getApiTimeout();
-    this.headers = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json'
-    };
-
-    // 添加请求拦截器
-    axios.interceptors.request.use(
-      config => {
-        log.debug('发送MCP请求:', {
-          url: config.url,
-          method: config.method,
-          headers: config.headers,
-          data: config.data
-        });
-        return config;
-      },
-      error => {
-        log.error('MCP请求错误:', error);
-        return Promise.reject(error);
-      }
-    );
-    
-    // 添加响应拦截器
-    axios.interceptors.response.use(
-      response => {
-        console.log('收到响应:', {
-          status: response.status,
-          statusText: response.statusText,
-          headers: response.headers,
-          data: response.data
-        });
-        return response;
-      },
-      error => {
-        if (error.response) {
-          console.error('响应错误:', {
-            status: error.response.status,
-            statusText: error.response.statusText,
-            headers: error.response.headers,
-            data: error.response.data
-          });
-        } else {
-          console.error('请求失败:', error.message);
-        }
-        return Promise.reject(error);
-      }
-    );
   }
   
   /**
@@ -69,24 +24,21 @@ class McpService {
    */
   async getTaskSchema() {
     try {
-      const response = await axios.post(this.baseUrl, {
+      const response = await mcpApiService.post('', {
         jsonrpc: '2.0',
         method: 'get_task_schema',
         params: {},
         id: this.generateRequestId(),
-      }, {
-        timeout: this.requestTimeout,
-        headers: this.headers
-      });
+      }, { skipErrorHandling: true });
 
-      if (response.data.error) {
-        console.error('MCP工具调用错误:', response.data.error);
-        throw new Error(response.data.error.message);
+      if (response.error) {
+        log.error('MCP工具调用错误:', response.error);
+        throw new Error(response.error.message);
       }
 
-      return response.data.result?.content?.[0]?.text ? JSON.parse(response.data.result.content[0].text) : response.data.result;
+      return response.result?.content?.[0]?.text ? JSON.parse(response.result.content[0].text) : response.result;
     } catch (error) {
-      console.error('获取任务Schema失败:', error);
+      log.error('获取任务Schema失败:', error);
       throw error;
     }
   }
@@ -98,24 +50,21 @@ class McpService {
    */
   async submitTaskDataset(tasks: PartialTask[]): Promise<Task[]> {
     try {
-      const response = await axios.post(this.baseUrl, {
+      const response = await mcpApiService.post('', {
         jsonrpc: '2.0',
         method: 'submit_task_dataset',
         params: { tasks },
         id: this.generateRequestId(),
-      }, {
-        timeout: this.requestTimeout,
-        headers: this.headers
-      });
+      }, { skipErrorHandling: true });
 
-      if (response.data.error) {
-        console.error('MCP工具调用错误:', response.data.error);
+      if (response.error) {
+        log.error('MCP工具调用错误:', response.error);
         return [];
       }
 
-      return response.data.result?.content?.[0]?.text ? JSON.parse(response.data.result.content[0].text) : response.data.result || [];
+      return response.result?.content?.[0]?.text ? JSON.parse(response.result.content[0].text) : response.result || [];
     } catch (error) {
-      console.error('提交任务数据集失败:', error);
+      log.error('提交任务数据集失败:', error);
       // 如果后端服务不可用，返回空数组，不抛出错误
       if (this.isServerUnavailableError(error)) {
         return [];
@@ -131,30 +80,16 @@ class McpService {
    */
   async getTasksByBoard(boardId: string, filterOptions?: Record<string, any>): Promise<Task[]> {
     try {
-      console.log('开始获取看板任务列表:', { boardId, filterOptions });
+      log.debug('开始获取看板任务列表:', { boardId, filterOptions });
 
-      // 构建API URL - 从MCP URL转换为API URL
-      const backendUrl = getBackendUrl();
-      const apiUrl = `${backendUrl}/api/boards/${boardId}/tasks`;
-
-      const response = await axios.get(apiUrl, {
-        timeout: this.requestTimeout,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
+      const tasks = await apiService.get<Task[]>(`/boards/${boardId}/tasks`, {
         params: filterOptions || {}
       });
 
-      if (response.data && response.data.success) {
-        console.log('获取看板任务列表成功:', response.data.data.length);
-        return response.data.data;
-      } else {
-        console.error('获取看板任务列表失败:', response.data);
-        return [];
-      }
+      log.debug('获取看板任务列表成功:', tasks.length);
+      return tasks;
     } catch (error) {
-      console.error('获取看板任务列表失败:', error);
+      log.error('获取看板任务列表失败:', error);
       // 如果后端服务不可用，返回空数组，不抛出错误
       if (this.isServerUnavailableError(error)) {
         return [];

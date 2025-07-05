@@ -137,10 +137,13 @@ const applyThemeToDOM = (theme: ThemeType) => {
   const root = document.documentElement;
 
   // 移除所有主题类
-  root.classList.remove('dark', 'theme-cherry', 'theme-ocean');
+  root.classList.remove('dark', 'theme-light', 'theme-cherry', 'theme-ocean');
 
   // 添加对应的主题类
   switch (theme) {
+    case 'light':
+      root.classList.add('theme-light');
+      break;
     case 'dark':
       root.classList.add('dark');
       break;
@@ -150,9 +153,9 @@ const applyThemeToDOM = (theme: ThemeType) => {
     case 'ocean':
       root.classList.add('theme-ocean');
       break;
-    case 'light':
     default:
-      // 浅色主题不需要额外的类
+      // 默认使用浅色主题
+      root.classList.add('theme-light');
       break;
   }
 

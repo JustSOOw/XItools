@@ -3,12 +3,69 @@
  * 提供完整的类型安全支持
  */
 
-// 导入翻译资源类型
-import type zhCN from './locales/zh-CN';
-import type enUS from './locales/en-US';
-
-// 翻译资源类型
-export type TranslationResources = typeof zhCN;
+// 翻译资源类型（基于实际的资源结构）
+export interface TranslationResources {
+  common: {
+    loading: {
+      text: string;
+    };
+    app: {
+      name: string;
+      title: string;
+    };
+    feedback: {
+      success: string;
+      error: string;
+      warning: string;
+      info: string;
+    };
+    settings: string;
+  };
+  auth: {
+    brand: {
+      title: string;
+      subtitle: string;
+      description: string;
+      feature1: string;
+      feature2: string;
+      feature3: string;
+      highlight1: {
+        title: string;
+        desc: string;
+      };
+      highlight2: {
+        title: string;
+        desc: string;
+      };
+    };
+    login: {
+      title: string;
+      subtitle: string;
+      email: string;
+      password: string;
+      submit: string;
+      forgotPassword: string;
+      noAccount: string;
+      signUp: string;
+      rememberMe: string;
+    };
+    register: {
+      title: string;
+      subtitle: string;
+      username: string;
+      email: string;
+      password: string;
+      confirmPassword: string;
+      submit: string;
+      hasAccount: string;
+      signIn: string;
+      terms: string;
+      privacy: string;
+      agree: string;
+    };
+    [key: string]: any;
+  };
+}
 
 // 命名空间类型
 export type Namespace = keyof TranslationResources;

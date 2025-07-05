@@ -1,58 +1,51 @@
-import axios from 'axios';
 import { BoardColumn } from '../store/taskStore';
-import { getBackendUrl, log } from '../utils/env';
+import { apiService, ApiError } from '../utils/apiClient';
+import { log } from '../utils/env';
 
-const API_BASE_URL = getBackendUrl();
-
-export interface CreateColumnData {
+export interface CreateColumnRequest {
   name: string;
   order: number;
   color?: string;
   isDefault?: boolean;
-  boardId: string; // 添加必需的boardId字段
+  boardId: string;
 }
 
-export interface UpdateColumnData {
+export interface UpdateColumnRequest {
   name?: string;
   order?: number;
   color?: string;
   isDefault?: boolean;
 }
 
+// 保持向后兼容
+export type CreateColumnData = CreateColumnRequest;
+export type UpdateColumnData = UpdateColumnRequest;
+
 /**
  * 前端列管理服务
  */
 class ColumnService {
-  private baseURL = `${API_BASE_URL}/api`;
-
   /**
    * 获取指定看板的所有列
    * @param boardId 看板ID
    */
   async getColumnsByBoard(boardId: string): Promise<BoardColumn[]> {
     try {
-      console.log('开始获取看板列数据:', boardId);
+      log.debug('开始获取看板列数据:', boardId);
 
-      // 使用直接API端点获取指定看板的列
-      const apiUrl = `${this.baseURL}/boards/${boardId}/columns`;
-      const response = await axios.get(apiUrl, {
-        timeout: 10000 // 10秒超时
-      });
+      const columns = await apiService.get<BoardColumn[]>(`/boards/${boardId}/columns`);
 
-      if (response.data && response.data.success) {
-        console.log('获取看板列数据成功:', response.data.data.length);
-        return response.data.data;
-      } else {
-        console.error('获取看板列数据失败:', response.data);
-        return [];
-      }
+      log.debug('获取看板列数据成功:', columns.length);
+      return columns;
     } catch (error) {
-      console.error('获取看板列数据失败:', error);
-      // 如果是网络错误或服务不可用，返回空数组
-      if (axios.isAxiosError(error) && (!error.response || error.response.status >= 500)) {
-        console.warn('后端服务不可用，返回空列数组');
+      log.error('获取看板列数据失败:', error);
+
+      // 如果是服务器错误，返回空数组而不是抛出错误
+      if (error instanceof ApiError && error.status >= 500) {
+        log.warn('后端服务不可用，返回空列数组');
         return [];
       }
+
       throw error;
     }
   }
@@ -62,13 +55,9 @@ class ColumnService {
    */
   async getAllColumns(): Promise<BoardColumn[]> {
     try {
-      const response = await axios.get(`${this.baseURL}/columns`);
-      if (response.data.success) {
-        return response.data.data;
-      }
-      throw new Error(response.data.error || '获取列列表失败');
+      return await apiService.get<BoardColumn[]>('/columns');
     } catch (error) {
-      console.error('获取列列表失败:', error);
+      log.error('获取列列表失败:', error);
       throw error;
     }
   }
@@ -78,58 +67,34 @@ class ColumnService {
    */
   async getColumnById(id: string): Promise<BoardColumn> {
     try {
-      const response = await axios.get(`${this.baseURL}/columns/${id}`);
-      if (response.data.success) {
-        return response.data.data;
-      }
-      throw new Error(response.data.error || '获取列详情失败');
-    } catch (error: any) {
-      console.error('获取列详情失败:', error);
-      // 正确提取axios错误响应中的错误信息
-      if (error.response?.data?.error) {
-        throw new Error(error.response.data.error);
-      }
-      throw new Error(error.message || '获取列详情失败');
+      return await apiService.get<BoardColumn>(`/columns/${id}`);
+    } catch (error) {
+      log.error('获取列详情失败:', error);
+      throw error;
     }
   }
 
   /**
    * 创建新列
    */
-  async createColumn(data: CreateColumnData): Promise<BoardColumn> {
+  async createColumn(data: CreateColumnRequest): Promise<BoardColumn> {
     try {
-      const response = await axios.post(`${this.baseURL}/columns`, data);
-      if (response.data.success) {
-        return response.data.data;
-      }
-      throw new Error(response.data.error || '创建列失败');
-    } catch (error: any) {
-      console.error('创建列失败:', error);
-      // 正确提取axios错误响应中的错误信息
-      if (error.response?.data?.error) {
-        throw new Error(error.response.data.error);
-      }
-      throw new Error(error.message || '创建列失败');
+      return await apiService.post<BoardColumn>('/columns', data);
+    } catch (error) {
+      log.error('创建列失败:', error);
+      throw error;
     }
   }
 
   /**
    * 更新列
    */
-  async updateColumn(id: string, data: UpdateColumnData): Promise<BoardColumn> {
+  async updateColumn(id: string, data: UpdateColumnRequest): Promise<BoardColumn> {
     try {
-      const response = await axios.put(`${this.baseURL}/columns/${id}`, data);
-      if (response.data.success) {
-        return response.data.data;
-      }
-      throw new Error(response.data.error || '更新列失败');
-    } catch (error: any) {
-      console.error('更新列失败:', error);
-      // 正确提取axios错误响应中的错误信息
-      if (error.response?.data?.error) {
-        throw new Error(error.response.data.error);
-      }
-      throw new Error(error.message || '更新列失败');
+      return await apiService.put<BoardColumn>(`/columns/${id}`, data);
+    } catch (error) {
+      log.error('更新列失败:', error);
+      throw error;
     }
   }
 
@@ -138,17 +103,10 @@ class ColumnService {
    */
   async deleteColumn(id: string): Promise<void> {
     try {
-      const response = await axios.delete(`${this.baseURL}/columns/${id}`);
-      if (!response.data.success) {
-        throw new Error(response.data.error || '删除列失败');
-      }
-    } catch (error: any) {
-      console.error('删除列失败:', error);
-      // 正确提取axios错误响应中的错误信息
-      if (error.response?.data?.error) {
-        throw new Error(error.response.data.error);
-      }
-      throw new Error(error.message || '删除列失败');
+      await apiService.delete(`/columns/${id}`);
+    } catch (error) {
+      log.error('删除列失败:', error);
+      throw error;
     }
   }
 
@@ -157,40 +115,22 @@ class ColumnService {
    */
   async reorderColumns(columnIds: string[]): Promise<BoardColumn[]> {
     try {
-      const response = await axios.post(`${this.baseURL}/columns/reorder`, {
-        columnIds
-      });
-      if (response.data.success) {
-        return response.data.data;
-      }
-      throw new Error(response.data.error || '重新排序列失败');
-    } catch (error: any) {
-      console.error('重新排序列失败:', error);
-      // 正确提取axios错误响应中的错误信息
-      if (error.response?.data?.error) {
-        throw new Error(error.response.data.error);
-      }
-      throw new Error(error.message || '重新排序列失败');
+      return await apiService.post<BoardColumn[]>('/columns/reorder', { columnIds });
+    } catch (error) {
+      log.error('重新排序列失败:', error);
+      throw error;
     }
   }
 
   /**
    * 初始化默认列
    */
-  async initializeDefaultColumns(): Promise<BoardColumn[]> {
+  async initializeDefaultColumns(boardId?: string): Promise<BoardColumn[]> {
     try {
-      const response = await axios.post(`${this.baseURL}/columns/initialize`);
-      if (response.data.success) {
-        return response.data.data;
-      }
-      throw new Error(response.data.error || '初始化默认列失败');
-    } catch (error: any) {
-      console.error('初始化默认列失败:', error);
-      // 正确提取axios错误响应中的错误信息
-      if (error.response?.data?.error) {
-        throw new Error(error.response.data.error);
-      }
-      throw new Error(error.message || '初始化默认列失败');
+      return await apiService.post<BoardColumn[]>('/columns/initialize', { boardId });
+    } catch (error) {
+      log.error('初始化默认列失败:', error);
+      throw error;
     }
   }
 }

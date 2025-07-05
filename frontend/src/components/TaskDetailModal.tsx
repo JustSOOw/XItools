@@ -87,9 +87,9 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
           {t('task:detail.notFound')}
         </div>
       ) : (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col max-h-[80vh]">
           {/* 标签页导航 */}
-          <div className="flex border-b border-border mb-4">
+          <div className="flex border-b border-border mb-4 flex-shrink-0">
             {[
               { key: 'details', label: t('task:detail.tabs.details'), icon: '📋' },
               { key: 'timeline', label: t('task:detail.tabs.timeline'), icon: '📅' },
@@ -111,7 +111,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
           </div>
 
           {/* 标签页内容 */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto min-h-0">
             {activeTab === 'details' && (
               <TaskDetailsTab
                 task={task}
@@ -155,7 +155,7 @@ const TaskDetailsTab: React.FC<{
   }, [task.description]);
 
   return (
-    <div className="space-y-6 overflow-y-auto pr-2" style={{ maxHeight: '60vh' }}>
+    <div className="space-y-6 overflow-y-auto pr-2 pb-4">
       {/* 基本信息区域 */}
       <div className="bg-accent/5 rounded-lg p-4">
         <h3 className="text-lg font-semibold text-text-primary mb-4">{t('task:detail.sections.basicInfo')}</h3>
@@ -439,21 +439,23 @@ const ActionsTab: React.FC<{
   };
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mb-4">
+    <div className="h-full overflow-y-auto px-1">
+      <div className="mb-4 flex-shrink-0">
         <h3 className="text-lg font-semibold text-text-primary">{t('task:detail.tabs.actions')}</h3>
         <p className="text-sm text-text-secondary">{t('task:detail.actionsDescription')}</p>
       </div>
-      <QuickActions
-        task={task}
-        columns={columns}
-        onStatusChange={handleStatusChange}
-        onPriorityChange={handlePriorityChange}
-        onAssigneeChange={handleAssigneeChange}
-        onDuplicate={handleDuplicate}
-        onDelete={handleDelete}
-        isLoading={isSaving}
-      />
+      <div className="pb-4">
+        <QuickActions
+          task={task}
+          columns={columns}
+          onStatusChange={handleStatusChange}
+          onPriorityChange={handlePriorityChange}
+          onAssigneeChange={handleAssigneeChange}
+          onDuplicate={handleDuplicate}
+          onDelete={handleDelete}
+          isLoading={isSaving}
+        />
+      </div>
     </div>
   );
 };

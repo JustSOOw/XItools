@@ -47,13 +47,11 @@ export const getBackendUrl = (): string => {
   // 优先使用环境变量中的配置
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
   if (backendUrl) {
-    console.log(`[${env}] 使用配置的后端地址:`, backendUrl);
     return backendUrl;
   }
-  
+
   // 如果没有配置，使用默认值
   const defaultUrl = 'http://localhost:3000';
-  console.log(`[${env}] 使用默认后端地址:`, defaultUrl);
   return defaultUrl;
 };
 
@@ -140,5 +138,5 @@ export const log = {
 // 在开发环境下打印环境配置信息
 if (isDevelopment() || isDebugMode()) {
   const config = getEnvConfig();
-  console.log('🔧 环境配置信息:', config);
+  log.debug('环境配置信息:', config);
 }

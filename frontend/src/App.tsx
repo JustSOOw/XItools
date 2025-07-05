@@ -63,6 +63,9 @@ import columnService from './services/columnService';
 import { Task as TaskType, PartialTask } from './types/Task';
 import { useI18n } from './hooks/useI18n';
 
+// 导入axios配置
+import { setupAxiosInterceptors } from './utils/axiosConfig';
+
 
 function App() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -76,6 +79,14 @@ function App() {
 
   // 翻译函数
   const { t } = useI18n();
+
+  // 用户状态管理（认证状态由AppRouter处理）
+
+  // 初始化axios拦截器（只在组件挂载时执行一次）
+  useEffect(() => {
+    // 设置axios拦截器
+    setupAxiosInterceptors();
+  }, []); // 移除checkAuthStatus，因为AppRouter已经处理了认证状态
 
   // 反馈系统Hooks
   const { showConfirm, hideConfirm, ConfirmDialog } = useConfirmDialog();
@@ -169,7 +180,7 @@ function App() {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, setTasks, setColumns, t]);
+  }, [t]); // 移除setState函数依赖，它们是稳定的
 
   // 监听看板切换，重新加载对应看板的数据
   useEffect(() => {
@@ -261,15 +272,7 @@ function App() {
     });
   }, [addShortcut, reconnect]);
 
-  // 当列数据加载完成后，更新newTask的默认状态
-  useEffect(() => {
-    if (columns.length > 0 && newTask.status === 'todo') {
-      setNewTask(prev => ({
-        ...prev,
-        status: columns[0].id
-      }));
-    }
-  }, [columns, newTask.status]);
+  // 删除重复的useEffect，已在上面的useEffect中处理
 
   // 配置拖拽传感器
   const sensors = useSensors(
@@ -1337,13 +1340,16 @@ function App() {
                 </Button>
               )}
 
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setIsCreateModalOpen(true)}
-              >
-                {t('task:actions.createTask')}
-              </Button>
+              {/* 只有在选中看板时才显示创建任务按钮 */}
+              {currentBoardId && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setIsCreateModalOpen(true)}
+                >
+                  {t('task:actions.createTask')}
+                </Button>
+              )}
 
               <BoardColorPicker />
             </div>

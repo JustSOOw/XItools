@@ -11,6 +11,7 @@ import SidebarItem from './SidebarItem';
 import CreateMenu from './CreateMenu';
 import CreateSelector from './CreateSelector';
 import ThemeToggle from '../ThemeToggle';
+import { UserMenu } from '../auth/UserMenu';
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -404,28 +405,39 @@ const Sidebar: React.FC<SidebarProps> = ({
       
       {/* 底部控制区 */}
       <div className="p-3 border-t border-border/30 mt-2 space-y-2">
-        {/* 设置按钮 */}
-        <button
-          onClick={onOpenSettings}
-          className={classNames(
-            'w-full flex items-center px-3 py-2.5 text-text-secondary hover:text-text-primary hover:bg-surface/50 rounded-lg transition-all duration-200',
-            isCollapsed && 'justify-center'
-          )}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-          </svg>
-          {!isCollapsed && <span className="ml-3">{t('common:navigation.settings')}</span>}
-        </button>
-        
-        {/* 主题切换按钮 */}
-        <div className="w-full">
-          <ThemeToggle
-            showLabel={!isCollapsed}
-            size="md"
-            variant="button"
-            className="w-full"
-          />
+        {/* 用户菜单 */}
+        <UserMenu isCollapsed={isCollapsed} />
+
+        {/* 设置和主题切换按钮行 */}
+        <div className={classNames(
+          'flex gap-2',
+          isCollapsed ? 'flex-col' : 'flex-row'
+        )}>
+          {/* 设置按钮 - 固定宽度，只显示图标和简短文字 */}
+          <button
+            onClick={onOpenSettings}
+            className={classNames(
+              'flex items-center px-3 py-2.5 text-text-secondary hover:text-text-primary hover:bg-surface/50 rounded-lg transition-all duration-200',
+              isCollapsed ? 'w-full justify-center' : 'flex-shrink-0 justify-start'
+            )}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+            </svg>
+            {!isCollapsed && <span className="ml-3">{t('common:navigation.settings')}</span>}
+          </button>
+
+          {/* 主题切换按钮 - 占用剩余空间，确保文字完整显示 */}
+          <div className={classNames(
+            isCollapsed ? 'w-full' : 'flex-1 min-w-0'
+          )}>
+            <ThemeToggle
+              showLabel={!isCollapsed}
+              size="md"
+              variant="button"
+              className="w-full"
+            />
+          </div>
         </div>
       </div>
 
