@@ -15,8 +15,10 @@ declare module 'fastify' {
 
 // 加载配置
 const config = loadConfig();
-const server = fastify({ 
+const server = fastify({
   logger: true,
+  // 移除请求体大小限制，支持任意大小的头像上传
+  bodyLimit: 1024 * 1024 * 1024, // 1GB，实际上相当于无限制
   // 确保正确处理JSON请求
   ajv: {
     customOptions: {

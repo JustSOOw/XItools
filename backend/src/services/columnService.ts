@@ -58,17 +58,21 @@ export class ColumnService {
   /**
    * 创建新列
    */
-  async createColumn(data: z.infer<typeof columnSchema>) {
+  async createColumn(data: z.infer<typeof columnSchema>, userId?: string) {
     // 验证数据
     const validatedData = columnSchema.parse(data);
 
-    // 检查看板是否存在
-    const board = await prisma.board.findUnique({
-      where: { id: validatedData.boardId }
+    // 检查看板是否存在且用户有权限（如果提供了userId）
+    const whereClause = userId
+      ? { id: validatedData.boardId, ownerId: userId }
+      : { id: validatedData.boardId };
+
+    const board = await prisma.board.findFirst({
+      where: whereClause
     });
 
     if (!board) {
-      throw new Error('看板不存在');
+      throw new Error(userId ? '看板不存在或无权限访问' : '看板不存在');
     }
 
     // 检查在同一看板内order是否已存在
@@ -287,6 +291,28 @@ export class ColumnService {
     }
 
     return await this.getAllColumns();
+  }
+
+  /**
+   * 为用户初始化默认列（用于兼容性端点）
+   */
+  async initializeDefaultColumnsForUser(userId: string) {
+    // 获取用户的默认工作区和看板
+    const { workspaceService } = await import('./workspaceService');
+    const { boardService } = await import('./boardService');
+
+    const defaultWorkspace = await workspaceService.getDefaultWorkspaceForUser(userId);
+    if (!defaultWorkspace) {
+      throw new Error('未找到默认工作区');
+    }
+
+    const boards = await boardService.getBoardsByWorkspace(defaultWorkspace.id);
+    if (boards.length === 0) {
+      throw new Error('未找到看板');
+    }
+
+    // 为第一个看板初始化默认列
+    return await this.initializeDefaultColumns(boards[0].id);
   }
 }
 

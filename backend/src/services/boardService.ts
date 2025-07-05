@@ -74,7 +74,7 @@ export class BoardService {
   /**
    * 创建看板
    */
-  async createBoard(data: BoardInput) {
+  async createBoard(data: BoardInput, userId: string) {
     // 验证数据
     const validatedData = boardSchema.parse(data);
     
@@ -111,7 +111,10 @@ export class BoardService {
     }
 
     const newBoard = await prisma.board.create({
-      data: validatedData,
+      data: {
+        ...validatedData,
+        ownerId: userId
+      },
       include: {
         workspace: true,
         project: true
@@ -165,7 +168,7 @@ export class BoardService {
   /**
    * 移动看板
    */
-  async moveBoard(id: string, targetWorkspaceId?: string, targetProjectId?: string) {
+  async moveBoard(id: string, targetWorkspaceId?: string, targetProjectId?: string, userId?: string) {
     // 验证目标容器
     if (targetWorkspaceId && targetProjectId) {
       throw new Error('看板不能同时属于工作区和项目');
@@ -176,20 +179,28 @@ export class BoardService {
     }
 
     if (targetWorkspaceId) {
-      const workspace = await prisma.workspace.findUnique({
-        where: { id: targetWorkspaceId }
+      const whereClause = userId
+        ? { id: targetWorkspaceId, ownerId: userId }
+        : { id: targetWorkspaceId };
+
+      const workspace = await prisma.workspace.findFirst({
+        where: whereClause
       });
       if (!workspace) {
-        throw new Error('目标工作区不存在');
+        throw new Error(userId ? '目标工作区不存在或无权限访问' : '目标工作区不存在');
       }
     }
 
     if (targetProjectId) {
-      const project = await prisma.project.findUnique({
-        where: { id: targetProjectId }
+      const whereClause = userId
+        ? { id: targetProjectId, ownerId: userId }
+        : { id: targetProjectId };
+
+      const project = await prisma.project.findFirst({
+        where: whereClause
       });
       if (!project) {
-        throw new Error('目标项目不存在');
+        throw new Error(userId ? '目标项目不存在或无权限访问' : '目标项目不存在');
       }
     }
 
@@ -255,7 +266,7 @@ export class BoardService {
   /**
    * 复制看板
    */
-  async duplicateBoard(id: string, newName?: string, targetWorkspaceId?: string, targetProjectId?: string) {
+  async duplicateBoard(id: string, userId: string, newName?: string, targetWorkspaceId?: string, targetProjectId?: string) {
     const originalBoard = await this.getBoardById(id);
     
     if (!originalBoard) {
@@ -274,7 +285,7 @@ export class BoardService {
       icon: originalBoard.icon,
       workspaceId: finalWorkspaceId,
       projectId: finalProjectId
-    });
+    }, userId);
 
     // 复制列
     for (const column of originalBoard.columns) {

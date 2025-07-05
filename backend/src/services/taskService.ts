@@ -100,7 +100,7 @@ export class TaskService {
   /**
    * 创建任务
    */
-  async createTask(data: ExtendedTaskInput) {
+  async createTask(data: ExtendedTaskInput, userId: string) {
     // 验证数据
     const validatedData = extendedTaskSchema.parse(data);
     
@@ -153,6 +153,7 @@ export class TaskService {
     return await prisma.task.create({
       data: {
         ...taskData,
+        ownerId: userId,
         tags: tagsConnect
       },
       include: {
@@ -167,7 +168,7 @@ export class TaskService {
   /**
    * 批量创建任务
    */
-  async createTasks(tasks: ExtendedTaskInput[]) {
+  async createTasks(tasks: ExtendedTaskInput[], userId: string) {
     const createdTasks = [];
 
     await prisma.$transaction(async (tx) => {
@@ -224,6 +225,7 @@ export class TaskService {
         const task = await tx.task.create({
           data: {
             ...taskCreateData,
+            ownerId: userId,
             tags: tagsConnect
           },
           include: {

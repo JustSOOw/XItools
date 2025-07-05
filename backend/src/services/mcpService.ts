@@ -14,6 +14,43 @@ import { randomUUID } from 'crypto';
 // 初始化Prisma客户端
 const prisma = new PrismaClient();
 
+/**
+ * 获取默认看板ID
+ * 用于MCP服务的向后兼容性
+ */
+async function getDefaultBoardId(): Promise<string> {
+  // 获取默认工作区
+  const defaultWorkspace = await workspaceService.getDefaultWorkspace();
+  if (!defaultWorkspace) {
+    throw new Error('未找到默认工作区');
+  }
+
+  // 获取默认工作区的第一个看板
+  const boards = await boardService.getBoardsByWorkspace(defaultWorkspace.id);
+  if (boards.length === 0) {
+    throw new Error('默认工作区中没有看板');
+  }
+
+  return boards[0].id;
+}
+
+/**
+ * 获取默认用户ID
+ * 用于MCP服务创建任务时指定所有者
+ */
+async function getDefaultUserId(): Promise<string> {
+  // 获取系统中的第一个用户作为默认用户
+  const firstUser = await prisma.user.findFirst({
+    orderBy: { createdAt: 'asc' }
+  });
+
+  if (!firstUser) {
+    throw new Error('系统中没有用户');
+  }
+
+  return firstUser.id;
+}
+
 
 
 /**
@@ -2165,6 +2202,9 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
             // 创建任务
             const createdTasks: any[] = [];
 
+            // 获取默认用户ID用于创建任务
+            const defaultUserId = await getDefaultUserId();
+
             // 使用事务确保数据一致性
             await prisma.$transaction(async (tx) => {
               for (const taskData of tasks) {
@@ -2173,13 +2213,21 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
                 // 处理标签 - 将标签名称数组转换为Tag关系
                 const tags = taskData.tags ? {
                   connectOrCreate: taskData.tags.map((tagName: any) => ({
-                    where: { name: typeof tagName === 'string' ? tagName : tagName.name },
-                    create: { name: typeof tagName === 'string' ? tagName : tagName.name }
+                    where: {
+                      ownerId_name: {
+                        ownerId: defaultUserId,
+                        name: typeof tagName === 'string' ? tagName : tagName.name
+                      }
+                    },
+                    create: {
+                      name: typeof tagName === 'string' ? tagName : tagName.name,
+                      ownerId: defaultUserId
+                    }
                   }))
                 } : undefined;
 
                 // 确定使用的看板ID
-                const boardId = taskData.boardId || defaultBoardId;
+                const boardId = taskData.boardId;
 
                 // 创建任务记录
                 const task = await tx.task.create({
@@ -2194,7 +2242,8 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
                     acceptanceCriteria: taskData.acceptanceCriteria || '',
                     estimatedEffort: taskData.estimatedEffort || null,
                     loggedTime: taskData.loggedTime || null,
-                    boardId: boardId, // 使用传递的看板ID或默认看板ID
+                    boardId: boardId, // 使用传递的看板ID
+                    ownerId: defaultUserId, // 添加所有者ID
                     tags: tags,
                   },
                   include: {
@@ -3122,7 +3171,8 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
 
   // 初始化默认数据
   try {
-    await workspaceService.initializeDefaultData();
+    const defaultUserId = await getDefaultUserId();
+    await workspaceService.initializeDefaultData(defaultUserId);
     console.log('默认数据初始化完成');
   } catch (error) {
     console.error('初始化默认数据失败:', error);

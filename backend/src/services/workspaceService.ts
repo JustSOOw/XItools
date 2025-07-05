@@ -35,6 +35,32 @@ export class WorkspaceService {
   }
 
   /**
+   * 获取指定用户的所有工作区
+   */
+  async getWorkspacesByUser(userId: string) {
+    return await prisma.workspace.findMany({
+      where: { ownerId: userId },
+      include: {
+        projects: {
+          orderBy: { order: 'asc' },
+          include: {
+            boards: {
+              orderBy: { order: 'asc' }
+            }
+          }
+        },
+        boards: {
+          orderBy: { order: 'asc' }
+        }
+      },
+      orderBy: [
+        { isDefault: 'desc' }, // 默认工作区排在前面
+        { createdAt: 'asc' }
+      ]
+    });
+  }
+
+  /**
    * 根据ID获取工作区
    */
   async getWorkspaceById(id: string) {
@@ -79,22 +105,53 @@ export class WorkspaceService {
   }
 
   /**
+   * 获取指定用户的默认工作区
+   */
+  async getDefaultWorkspaceForUser(userId: string) {
+    return await prisma.workspace.findFirst({
+      where: {
+        ownerId: userId,
+        isDefault: true
+      },
+      include: {
+        projects: {
+          orderBy: { order: 'asc' },
+          include: {
+            boards: {
+              orderBy: { order: 'asc' }
+            }
+          }
+        },
+        boards: {
+          orderBy: { order: 'asc' }
+        }
+      }
+    });
+  }
+
+  /**
    * 创建工作区
    */
-  async createWorkspace(data: WorkspaceInput) {
+  async createWorkspace(data: WorkspaceInput, userId: string) {
     // 验证数据
     const validatedData = workspaceSchema.parse(data);
-    
-    // 如果设置为默认工作区，先取消其他工作区的默认状态
+
+    // 如果设置为默认工作区，先取消该用户其他工作区的默认状态
     if (validatedData.isDefault) {
       await prisma.workspace.updateMany({
-        where: { isDefault: true },
+        where: {
+          ownerId: userId,
+          isDefault: true
+        },
         data: { isDefault: false }
       });
     }
 
     return await prisma.workspace.create({
-      data: validatedData,
+      data: {
+        ...validatedData,
+        ownerId: userId
+      },
       include: {
         projects: true,
         boards: true
@@ -199,30 +256,64 @@ export class WorkspaceService {
   /**
    * 确保存在默认工作区
    */
-  async ensureDefaultWorkspace() {
-    let defaultWorkspace = await prisma.workspace.findFirst({
-      where: { isDefault: true }
-    });
-
-    if (!defaultWorkspace) {
-      defaultWorkspace = await prisma.workspace.create({
-        data: {
-          name: '默认工作区',
-          description: '系统默认工作区',
+  async ensureDefaultWorkspace(userId?: string) {
+    if (userId) {
+      // 为指定用户确保默认工作区
+      let defaultWorkspace = await prisma.workspace.findFirst({
+        where: {
+          ownerId: userId,
           isDefault: true
         }
       });
-    }
 
-    return defaultWorkspace;
+      if (!defaultWorkspace) {
+        defaultWorkspace = await prisma.workspace.create({
+          data: {
+            name: '我的工作区',
+            description: '默认工作区',
+            isDefault: true,
+            ownerId: userId
+          }
+        });
+      }
+
+      return defaultWorkspace;
+    } else {
+      // 系统级默认工作区需要一个默认用户ID
+      // 首先尝试获取系统中的第一个用户作为默认所有者
+      const firstUser = await prisma.user.findFirst({
+        orderBy: { createdAt: 'asc' }
+      });
+
+      if (!firstUser) {
+        throw new Error('系统中没有用户，无法创建默认工作区');
+      }
+
+      let defaultWorkspace = await prisma.workspace.findFirst({
+        where: { isDefault: true }
+      });
+
+      if (!defaultWorkspace) {
+        defaultWorkspace = await prisma.workspace.create({
+          data: {
+            name: '默认工作区',
+            description: '系统默认工作区',
+            isDefault: true,
+            ownerId: firstUser.id
+          }
+        });
+      }
+
+      return defaultWorkspace;
+    }
   }
 
   /**
    * 初始化默认数据
    */
-  async initializeDefaultData() {
-    const defaultWorkspace = await this.ensureDefaultWorkspace();
-    
+  async initializeDefaultData(userId: string) {
+    const defaultWorkspace = await this.ensureDefaultWorkspace(userId);
+
     // 检查是否需要创建默认看板
     const boardCount = await prisma.board.count({
       where: { workspaceId: defaultWorkspace.id }
@@ -232,9 +323,10 @@ export class WorkspaceService {
       // 创建默认看板
       const defaultBoard = await prisma.board.create({
         data: {
-          name: '默认看板',
-          description: '系统默认看板',
+          name: '我的看板',
+          description: '默认看板',
           workspaceId: defaultWorkspace.id,
+          ownerId: userId,
           order: 0
         }
       });

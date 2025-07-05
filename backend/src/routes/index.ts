@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import healthRoutes from './healthRoutes';
+import authRoutes from './authRoutes';
 import columnRoutes from './columnRoutes';
 import workspaceRoutes from './workspaceRoutes';
 import projectRoutes from './projectRoutes';
@@ -13,6 +14,9 @@ const prisma = new PrismaClient();
 export async function setupRoutes(fastify: FastifyInstance): Promise<void> {
   // 注册健康检查路由
   fastify.register(healthRoutes, { prefix: '/health' });
+
+  // 注册认证路由
+  fastify.register(authRoutes, { prefix: '/api' });
 
   // 注册多看板系统路由
   fastify.register(workspaceRoutes, { prefix: '/api' });

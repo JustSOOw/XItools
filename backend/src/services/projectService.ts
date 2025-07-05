@@ -50,17 +50,20 @@ export class ProjectService {
   /**
    * 创建项目
    */
-  async createProject(data: ProjectInput) {
+  async createProject(data: ProjectInput, userId: string) {
     // 验证数据
     const validatedData = projectSchema.parse(data);
-    
-    // 检查工作区是否存在
-    const workspace = await prisma.workspace.findUnique({
-      where: { id: validatedData.workspaceId }
+
+    // 检查工作区是否存在且用户有权限
+    const workspace = await prisma.workspace.findFirst({
+      where: {
+        id: validatedData.workspaceId,
+        ownerId: userId
+      }
     });
 
     if (!workspace) {
-      throw new Error('工作区不存在');
+      throw new Error('工作区不存在或无权限访问');
     }
 
     // 如果没有指定order，设置为最大值+1
@@ -73,7 +76,10 @@ export class ProjectService {
     }
 
     return await prisma.project.create({
-      data: validatedData,
+      data: {
+        ...validatedData,
+        ownerId: userId
+      },
       include: {
         workspace: true,
         boards: true
@@ -150,14 +156,17 @@ export class ProjectService {
   /**
    * 移动项目到其他工作区
    */
-  async moveProject(id: string, targetWorkspaceId: string) {
-    // 检查目标工作区是否存在
-    const targetWorkspace = await prisma.workspace.findUnique({
-      where: { id: targetWorkspaceId }
+  async moveProject(id: string, targetWorkspaceId: string, userId: string) {
+    // 检查目标工作区是否存在且用户有权限
+    const targetWorkspace = await prisma.workspace.findFirst({
+      where: {
+        id: targetWorkspaceId,
+        ownerId: userId
+      }
     });
 
     if (!targetWorkspace) {
-      throw new Error('目标工作区不存在');
+      throw new Error('目标工作区不存在或无权限访问');
     }
 
     // 获取目标工作区中的最大order值
@@ -238,9 +247,9 @@ export class ProjectService {
   /**
    * 复制项目
    */
-  async duplicateProject(id: string, newName?: string) {
+  async duplicateProject(id: string, newName?: string, userId?: string) {
     const originalProject = await this.getProjectById(id);
-    
+
     if (!originalProject) {
       throw new Error('项目不存在');
     }
@@ -252,7 +261,7 @@ export class ProjectService {
       color: originalProject.color,
       icon: originalProject.icon,
       workspaceId: originalProject.workspaceId
-    });
+    }, userId!);
 
     // 复制看板
     for (const board of originalProject.boards) {
@@ -263,6 +272,7 @@ export class ProjectService {
           color: board.color,
           icon: board.icon,
           projectId: newProject.id,
+          ownerId: userId!,
           order: board.order
         }
       });
