@@ -70,3 +70,82 @@ mcpServer.tool("submit_task_dataset", ...);
 // 最后再连接到传输层
 mcpServer.connect(transport);
 ```
+
+## 前端开发问题
+
+### 2. React应用页面卡死问题
+
+#### 2.1 问题现象
+**症状**：
+- 登录页面完全卡死，浏览器无响应
+- 无法右键点击、无法打开F12开发者工具
+- 页面中的任何操作都无效
+- 简单的测试页面正常工作，说明基础React功能没问题
+
+#### 2.2 问题排查过程
+**排查步骤**：
+1. 创建简化版AppRouter测试 - 正常工作
+2. 使用原始AppRouter但不加载App.tsx - 正常工作
+3. 使用原始AppRouter + App.tsx - 卡死
+
+**结论**：问题定位在App.tsx中的复杂逻辑导致的无限循环。
+
+#### 2.3 根本原因分析
+**核心问题**：useCallback的依赖数组包含了不稳定的函数引用，导致无限重新创建和循环调用。
+
+**具体问题代码**：
+```javascript
+const loadBoardData = useCallback(async (boardId: string) => {
+  // ... 异步加载逻辑
+}, [setLoading, setTasks, setColumns, t]); // 问题：包含了setState函数
+
+useEffect(() => {
+  if (currentBoardId) {
+    loadBoardData(currentBoardId); // 触发无限循环
+  }
+}, [currentBoardId, loadBoardData]); // loadBoardData不断重新创建
+```
+
+**循环链条**：
+1. `loadBoardData`依赖`setTasks`、`setColumns`等setState函数
+2. 这些函数在每次渲染时可能重新创建（虽然React通常会保持它们稳定）
+3. 导致`loadBoardData`重新创建
+4. 触发依赖`loadBoardData`的useEffect重新执行
+5. 重新调用`loadBoardData`，形成无限循环
+
+#### 2.4 解决方案
+**修复方法**：
+1. **移除不必要的依赖**：从useCallback依赖数组中移除setState函数
+   ```javascript
+   }, [t]); // 移除setState函数依赖，它们是稳定的
+   ```
+
+2. **简化AppRouter逻辑**：
+   ```javascript
+   useEffect(() => {
+     // 只依赖isInitialized，避免checkAuthStatus引起的循环
+   }, [isInitialized]);
+   ```
+
+3. **禁用React.StrictMode**：在开发阶段移除StrictMode避免双重渲染加剧问题
+
+4. **清理userStore的自动检查**：
+   ```javascript
+   onRehydrateStorage: () => (state) => {
+     // 不执行任何操作，避免与AppRouter的认证初始化冲突
+   }
+   ```
+
+#### 2.5 经验总结
+**最佳实践**：
+1. **useCallback依赖数组要谨慎**：只包含真正会变化的值，setState函数通常是稳定的
+2. **避免复杂的useEffect链**：多个useEffect相互依赖容易形成循环
+3. **认证状态管理要统一**：避免多个组件同时管理认证状态
+4. **使用简化版本逐步排查**：通过逐步简化组件定位问题根源
+5. **开发时关注浏览器性能**：无限循环会导致页面完全卡死
+
+**调试技巧**：
+- 使用简单的测试组件验证基础功能
+- 逐步恢复复杂逻辑，定位问题范围
+- 检查useCallback和useEffect的依赖数组
+- 注意React组件间的状态同步问题

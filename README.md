@@ -2,6 +2,7 @@
 
 XItools是一个基于React和Node.js的智能任务看板应用，集成了MCP（Model Context Protocol）服务，提供智能化的任务管理体验。
 
+
 ## 快速启动
 
 ### 🐳 Docker部署
@@ -50,7 +51,7 @@ npm run docker:logs:dev
 npm run docker:logs:prod
 
 # 停止环境
-npm run docker:stop:dev
+npm run docker:stop:dev 
 npm run docker:stop:prod
 
 # 重启环境
@@ -115,11 +116,13 @@ XItools/
 
 后端基于Node.js + Fastify + TypeScript + Prisma + Socket.IO构建，提供以下功能：
 
+- **用户认证系统**：JWT认证、用户注册/登录、会话管理
 - **多级导航系统**：工作区 → 项目 → 看板的三级组织结构
 - **RESTful API接口**：完整的CRUD操作支持
 - **WebSocket实时通信**：多用户协作和实时同步
 - **MCP服务集成**：提供AI辅助功能
 - **PostgreSQL数据库**：可靠的数据持久化存储
+- **数据隔离**：用户只能访问自己的数据
 - **全局确认对话框**：统一的用户操作确认体验，支持全局弹窗显示
 
 ### 🗂️ 多级导航功能
@@ -134,6 +137,7 @@ XItools 实现了完整的三级导航系统：
 - **智能UI**：悬浮显示操作按钮，避免界面混乱
 - **全局确认对话框**：危险操作使用全局弹窗确认，提供一致的用户体验
 - **智能删除保护**：根据内容自动判断是否可删除，防止误删除有内容的容器
+- **智能工具栏**：创建任务按钮仅在选中看板时显示，避免无效操作
 
 #### 数据结构
 ```
@@ -144,6 +148,14 @@ XItools 实现了完整的三级导航系统：
 ```
 
 #### API端点
+
+**认证相关**：
+- `POST /api/auth/register` - 用户注册
+- `POST /api/auth/login` - 用户登录
+- `GET /api/auth/me` - 获取当前用户信息
+- `POST /api/auth/logout` - 用户登出
+
+**工作区管理**：
 - `GET /api/workspaces` - 获取所有工作区（包含项目和看板）
 - `POST /api/workspaces` - 创建工作区
 - `PUT /api/workspaces/:id` - 更新工作区
@@ -161,6 +173,7 @@ XItools 实现了完整的三级导航系统：
 - **语言**: TypeScript
 - **数据库**: PostgreSQL
 - **ORM**: Prisma
+- **认证**: JWT + bcryptjs
 - **实时通信**: Socket.IO
 - **AI集成**: MCP SDK
 
@@ -603,7 +616,7 @@ XItools实现了完整的多级导航系统，支持工作区、项目、看板�
 - **组件化设计**: 模块化的导航组件，便于维护和扩展
 - **向后兼容**: 保持现有MCP工具和单看板功能不变
 
-### 多语言支持 (i18n) ✅ 新增
+### 多语言支持 (i18n) ✅ 已完成
 
 XItools提供完整的多语言支持，目前支持中文和英文：
 
@@ -613,10 +626,19 @@ XItools提供完整的多语言支持，目前支持中文和英文：
 - **持久化存储**：记住用户的语言选择
 - **类型安全**：完整的TypeScript类型支持
 - **命名空间组织**：按功能模块组织翻译资源
+- **错误处理集成**：统一的多语言错误消息处理
+- **表单验证支持**：表单验证消息的多语言支持
 
 #### 支持的语言
 - **中文 (zh-CN)**：简体中文界面
 - **English (en-US)**：英文界面
+
+#### 覆盖范围
+- **认证系统**：登录、注册、用户资料管理的完整翻译
+- **错误处理**：所有认证和API错误的多语言消息
+- **表单验证**：客户端验证消息的本地化
+- **用户界面**：设置页面、主题选择等界面文本
+- **密码强度**：密码强度指示器的多语言支持
 
 #### 语言切换方式
 - **侧边栏语言选择器**：在左侧边栏底部，支持下拉选择和紧凑模式
@@ -832,6 +854,8 @@ scripts\env-setup.bat development
 - `CORS_ORIGINS`: 允许的跨域来源
 - `LOG_LEVEL`: 日志级别
 - `DEBUG_MODE`: 是否启用调试模式
+- `JWT_SECRET`: JWT签名密钥（生产环境必须更改）
+- `JWT_EXPIRES_IN`: JWT过期时间（默认7天）
 
 ### 后端开发
 
@@ -936,11 +960,19 @@ Backend → PostgreSQL (Docker Network)
 
 ## 📚 文档
 
-- [前端功能设计](./word_md/frontend_features.md) - 前端功能模块详细设计
-- [MCP服务设计](./word_md/mcp_service_design.md) - MCP服务架构和接口设计
+### 产品设计文档
 - [项目PRD](./word_md/PROJECT_PRD.md) - 产品需求文档
+- [前端功能设计](./word_md/frontend_features.md) - 前端功能模块详细设计
+
+### 技术架构文档
+- [MCP服务设计](./word_md/mcp_service_design.md) - MCP服务架构和接口设计
 - [MCP工具规范](./word_md/mcp_tools_specification.md) - MCP工具完整规范文档
 - [MCP快速参考](./word_md/mcp_quick_reference.md) - MCP工具快速参考卡片
+
+### 用户系统文档
+- [用户系统需求分析](./word_md/USER_SYSTEM_REQUIREMENTS.md) - 用户系统功能需求和架构设计
+- [数据库架构迁移计划](./word_md/DATABASE_MIGRATION_PLAN.md) - 数据库架构设计和SQL脚本（技术文档）
+- [用户系统迁移指南](./word_md/USER_SYSTEM_MIGRATION_GUIDE.md) - Docker环境下的迁移操作指南（操作手册）
 
 ## 🔧 MCP工具使用
 
