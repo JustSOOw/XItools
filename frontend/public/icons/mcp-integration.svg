@@ -1,0 +1,49 @@
+<!-- MCP智能集成图标 - 表示AI编辑器与任务管理系统的连接 -->
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景圆形 -->
+  <circle cx="12" cy="12" r="11" fill="url(#mcpGradient)" opacity="0.1"/>
+  
+  <!-- 中央处理器芯片 -->
+  <rect x="8" y="8" width="8" height="8" rx="1.5" fill="currentColor" opacity="0.8"/>
+  <rect x="9" y="9" width="6" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="0.5" opacity="0.6"/>
+  
+  <!-- 芯片内部电路 -->
+  <line x1="10" y1="11" x2="14" y2="11" stroke="currentColor" stroke-width="0.3" opacity="0.7"/>
+  <line x1="10" y1="13" x2="14" y2="13" stroke="currentColor" stroke-width="0.3" opacity="0.7"/>
+  <circle cx="11" cy="12" r="0.5" fill="currentColor" opacity="0.9"/>
+  <circle cx="13" cy="12" r="0.5" fill="currentColor" opacity="0.9"/>
+  
+  <!-- 连接线 - 左侧 (AI编辑器) -->
+  <line x1="2" y1="8" x2="8" y2="8" stroke="currentColor" stroke-width="1.5" opacity="0.8"/>
+  <line x1="2" y1="12" x2="8" y2="12" stroke="currentColor" stroke-width="1.5" opacity="0.8"/>
+  <line x1="2" y1="16" x2="8" y2="16" stroke="currentColor" stroke-width="1.5" opacity="0.8"/>
+  
+  <!-- 连接线 - 右侧 (任务系统) -->
+  <line x1="16" y1="8" x2="22" y2="8" stroke="currentColor" stroke-width="1.5" opacity="0.8"/>
+  <line x1="16" y1="12" x2="22" y2="12" stroke="currentColor" stroke-width="1.5" opacity="0.8"/>
+  <line x1="16" y1="16" x2="22" y2="16" stroke="currentColor" stroke-width="1.5" opacity="0.8"/>
+  
+  <!-- 连接点 -->
+  <circle cx="2" cy="8" r="1" fill="currentColor" opacity="0.9"/>
+  <circle cx="2" cy="12" r="1" fill="currentColor" opacity="0.9"/>
+  <circle cx="2" cy="16" r="1" fill="currentColor" opacity="0.9"/>
+  <circle cx="22" cy="8" r="1" fill="currentColor" opacity="0.9"/>
+  <circle cx="22" cy="12" r="1" fill="currentColor" opacity="0.9"/>
+  <circle cx="22" cy="16" r="1" fill="currentColor" opacity="0.9"/>
+  
+  <!-- 数据流动效果 -->
+  <circle cx="5" cy="12" r="0.8" fill="currentColor" opacity="0.6">
+    <animate attributeName="opacity" values="0.6;1;0.6" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="19" cy="12" r="0.8" fill="currentColor" opacity="0.6">
+    <animate attributeName="opacity" values="0.6;1;0.6" dur="2s" repeatCount="indefinite" begin="1s"/>
+  </circle>
+  
+  <!-- 渐变定义 -->
+  <defs>
+    <linearGradient id="mcpGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:currentColor;stop-opacity:0.2"/>
+      <stop offset="100%" style="stop-color:currentColor;stop-opacity:0.05"/>
+    </linearGradient>
+  </defs>
+</svg>
