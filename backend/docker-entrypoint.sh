@@ -1,36 +1,46 @@
 #!/bin/sh
+###
+ # @Author: JustSOOw 117962858+JustSOOw@users.noreply.github.com
+ # @Date: 2025-06-29 23:48:37
+ # @LastEditors: JustSOOw 117962858+JustSOOw@users.noreply.github.com
+ # @LastEditTime: 2025-06-30 00:51:37
+ # @FilePath: \XItools\backend\docker-entrypoint.sh
+ # @Description: Docker container startup script for XItools backend
+ #
+ # Copyright (c) 2025 by Furdow, All Rights Reserved.
+###
 
-# XItools 后端Docker启动脚本
-# 处理数据库迁移和应用启动
+# XItools backend Docker startup script
+# Handle database migration and application startup
 
 set -e
 
-echo "🚀 启动XItools后端服务..."
+echo "Starting XItools backend service..."
 
-# 等待数据库就绪
-echo "⏳ 等待数据库连接..."
+# Wait for database to be ready
+echo "Waiting for database connection..."
 until npx prisma db push --accept-data-loss 2>/dev/null; do
-  echo "数据库未就绪，等待5秒后重试..."
+  echo "Database not ready, waiting 5 seconds..."
   sleep 5
 done
 
-echo "✅ 数据库连接成功"
+echo "Database connection successful"
 
-# 运行数据库迁移
-echo "🔄 运行数据库迁移..."
-npx prisma migrate deploy || echo "⚠️ 迁移失败或无需迁移"
+# Run database migrations
+echo "Running database migrations..."
+npx prisma migrate deploy || echo "Migration failed or not needed"
 
-# 生成Prisma客户端（确保最新）
-echo "🔧 生成Prisma客户端..."
+# Generate Prisma client (ensure latest)
+echo "Generating Prisma client..."
 npx prisma generate
 
-echo "🎯 启动应用服务器..."
+echo "Starting application server..."
 
-# 根据环境启动不同模式
+# Start different modes based on environment
 if [ "$NODE_ENV" = "development" ]; then
-  echo "🔧 开发模式启动..."
+  echo "Starting in development mode..."
   exec npm run dev
 else
-  echo "🚀 生产模式启动..."
+  echo "Starting in production mode..."
   exec npm start
 fi

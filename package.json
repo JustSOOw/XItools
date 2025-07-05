@@ -15,9 +15,17 @@
     "docker:status:dev": "node scripts/docker-env.cjs status development",
     "docker:status:prod": "node scripts/docker-env.cjs status production",
     "docker:logs:dev": "node scripts/docker-env.cjs logs development",
-    "docker:logs:prod": "node scripts/docker-env.cjs logs production"
+    "docker:logs:prod": "node scripts/docker-env.cjs logs production",
+    "migrate:user-system": "node scripts/migrate-user-system.cjs",
+    "user:init": "docker-compose -f docker-compose.dev.yml exec backend npm run user:init",
+    "user:cleanup": "docker-compose -f docker-compose.dev.yml exec backend npm run user:cleanup"
   },
-  "keywords": ["task-management", "kanban", "docker", "mcp"],
+  "keywords": [
+    "task-management",
+    "kanban",
+    "docker",
+    "mcp"
+  ],
   "author": "XItools Team",
   "license": "MIT",
   "engines": {
@@ -25,6 +33,19 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-org/xitools.git"
-  }
+    "url": "git+https://github.com/your-org/xitools.git"
+  },
+  "dependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/jsonwebtoken": "^9.0.10",
+    "bcrypt": "^6.0.0",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "main": ".eslintrc.js",
+  "devDependencies": {},
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/your-org/xitools/issues"
+  },
+  "homepage": "https://github.com/your-org/xitools#readme"
 }

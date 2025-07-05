@@ -36,7 +36,7 @@ services:
       - PORT=3000
       - HOST=0.0.0.0
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/xitools
-      - CORS_ORIGINS=http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173
+      - CORS_ORIGINS=http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080
       - LOG_LEVEL=debug
       - DEBUG_MODE=true
     ports:
@@ -48,6 +48,11 @@ services:
       # 挂载后端代码用于热重载
       - ./backend/src:/app/src:ro
       - ./backend/.env.development:/app/.env:ro
+      # 挂载Prisma schema和脚本文件
+      - ./backend/prisma:/app/prisma:rw
+      - ./backend/scripts:/app/scripts:ro
+      - ./backend/package.json:/app/package.json:rw
+      - ./backend/package-lock.json:/app/package-lock.json:rw
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s

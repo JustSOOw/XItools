@@ -29,6 +29,13 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5173,
       host: '0.0.0.0', // 允许外部访问
+      strictPort: true, // 端口被占用时不自动尝试下一个端口
+      cors: true, // 启用CORS
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
       watch: {
         usePolling: true, // Docker环境下启用轮询
         interval: 1000,   // 轮询间隔

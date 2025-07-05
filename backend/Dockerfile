@@ -9,6 +9,9 @@ RUN apk add --no-cache \
     curl \
     openssl \
     bash \
+    python3 \
+    make \
+    g++ \
     && rm -rf /var/cache/apk/*
 
 # 设置工作目录
@@ -21,7 +24,11 @@ FROM base AS dependencies
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# 安装所有依赖
+# 清理npm缓存并安装所有依赖
+RUN npm cache clean --force
+# 删除可能存在的node_modules
+RUN rm -rf node_modules
+# 安装依赖
 RUN npm ci
 
 # 阶段3: 开发环境

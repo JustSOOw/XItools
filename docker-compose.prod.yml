@@ -33,10 +33,12 @@ services:
       - PORT=3000
       - HOST=0.0.0.0
       - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/xitools
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://xitools.furdow.com,https://xitools.furdow.com}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://xitools.furdow.com,https://xitools.furdow.com,http://localhost:8080,http://127.0.0.1:8080}
       - LOG_LEVEL=info
       - DEBUG_MODE=false
       - TRUST_PROXY=true
+      - JWT_SECRET=${JWT_SECRET:-xitools-production-secret-key-please-change}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
     depends_on:
       postgres:
         condition: service_healthy
