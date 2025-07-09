@@ -5,8 +5,9 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
-  output   = "../node_modules/.prisma/client"
+  provider      = "prisma-client-js"
+  output        = "../node_modules/.prisma/client"
+  binaryTargets = ["native", "windows", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -34,6 +35,8 @@ model User {
 
   // 关联关系
   sessions   UserSession[] // 用户会话
+  apiKeys    UserApiKey[]  // API密钥
+  mcpLogs    McpUsageLog[] // MCP使用日志
   workspaces Workspace[]   // 拥有的工作区
   projects   Project[]     // 拥有的项目
   boards     Board[]       // 拥有的看板
@@ -63,6 +66,53 @@ model UserSession {
   @@index([tokenHash])
   @@index([expiresAt])
   @@index([isRevoked])
+}
+
+// 用户API密钥模型 - MCP认证
+model UserApiKey {
+  id          String    @id @default(uuid())
+  userId      String    // 关联用户
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String    // 密钥名称，便于用户识别
+  apiKey      String    @unique // API密钥值
+  keyPrefix   String    // 密钥前缀，用于展示
+  permissions String[]  // 权限列表，如["mcp:read", "mcp:write"]
+  lastUsedAt  DateTime? // 最后使用时间
+  lastUsedIp  String?   // 最后使用IP
+  expiresAt   DateTime? // 过期时间，NULL表示永不过期
+  isActive    Boolean   @default(true) // 是否激活
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // 关联关系
+  mcpLogs     McpUsageLog[] // 使用日志
+
+  @@index([userId])
+  @@index([apiKey])
+  @@index([isActive, expiresAt])
+  @@index([keyPrefix])
+}
+
+// MCP使用日志模型 - 审计和监控
+model McpUsageLog {
+  id              String      @id @default(uuid())
+  apiKeyId        String      // 关联API密钥
+  apiKey          UserApiKey  @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  userId          String      // 关联用户
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  toolName        String      // 调用的工具名称
+  requestParams   Json?       // 请求参数（JSON格式）
+  responseStatus  Int?        // HTTP响应状态码
+  errorMessage    String?     // 错误信息
+  ipAddress       String?     // 请求IP地址
+  userAgent       String?     // 用户代理
+  executionTimeMs Int?        // 执行时间（毫秒）
+  createdAt       DateTime    @default(now())
+
+  @@index([userId, createdAt])
+  @@index([apiKeyId, createdAt])
+  @@index([toolName])
+  @@index([responseStatus])
 }
 
 // 用户角色模型 - 为团队协作预留
