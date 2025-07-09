@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run prisma:generate:*)",
+      "Bash(npm run prisma:migrate:dev:*)",
+      "Bash(npm run docker:status:dev:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(pkill:*)"
+    ],
+    "deny": []
+  }
+}
