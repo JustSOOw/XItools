@@ -265,6 +265,41 @@ export abstract class BaseApiService {
       keys: Array.from(this.cache.keys())
     };
   }
+
+  /**
+   * GET请求
+   */
+  protected async get<T = any>(url: string, config?: any): Promise<T> {
+    return this.apiService.get<T>(url, config);
+  }
+
+  /**
+   * POST请求
+   */
+  protected async post<T = any>(url: string, data?: any, config?: any): Promise<T> {
+    return this.apiService.post<T>(url, data, config);
+  }
+
+  /**
+   * PUT请求
+   */
+  protected async put<T = any>(url: string, data?: any, config?: any): Promise<T> {
+    return this.apiService.put<T>(url, data, config);
+  }
+
+  /**
+   * DELETE请求
+   */
+  protected async delete<T = any>(url: string, config?: any): Promise<T> {
+    return this.apiService.delete<T>(url, config);
+  }
+
+  /**
+   * PATCH请求
+   */
+  protected async patch<T = any>(url: string, data?: any, config?: any): Promise<T> {
+    return this.apiService.patch<T>(url, data, config);
+  }
 }
 
 export default BaseApiService;

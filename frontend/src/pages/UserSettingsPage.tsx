@@ -12,6 +12,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UserProfile } from '../components/auth/UserProfile';
+import { ApiKeyManagement } from '../components/settings/ApiKeyManagement';
 import { useUserStore } from '../store/userStore';
 import { useThemeStore } from '../store/themeStore';
 import { useI18n } from '../hooks/useI18n';
@@ -28,7 +29,7 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({
   const { currentTheme, setTheme, themeConfigs } = useThemeStore();
   const { language, changeLanguage, supportedLanguages } = useI18n();
   
-  const [activeTab, setActiveTab] = useState<'profile' | 'appearance' | 'preferences'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'appearance' | 'preferences' | 'api-keys'>('profile');
 
   if (!user) {
     return (
@@ -72,6 +73,13 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({
           >
             <i className="icon-settings"></i>
             <span>{t('settings.tabs.preferences')}</span>
+          </button>
+          <button
+            className={`tab-button ${activeTab === 'api-keys' ? 'active' : ''}`}
+            onClick={() => setActiveTab('api-keys')}
+          >
+            <i className="icon-key"></i>
+            <span>API密钥</span>
           </button>
         </div>
 
@@ -199,6 +207,19 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({
                     </label>
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* API密钥管理标签页 */}
+          {activeTab === 'api-keys' && (
+            <div className="tab-content active">
+              <div className="settings-section">
+                <h2 className="section-title">API密钥管理</h2>
+                <p className="section-description">
+                  管理您的MCP API访问密钥，用于第三方应用和脚本集成。
+                </p>
+                <ApiKeyManagement className="api-key-section" />
               </div>
             </div>
           )}
