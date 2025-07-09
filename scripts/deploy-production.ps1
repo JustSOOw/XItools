@@ -110,23 +110,148 @@ function Setup-ServerEnvironment {
     $dockerCheck = Invoke-SSHCommand "docker --version" -NoError
     if (-not $dockerCheck) {
         Write-ColorOutput "📥 安装Docker..." -Color Yellow
-        Invoke-SSHCommand "curl -fsSL https://get.docker.com -o get-docker.sh"
-        Invoke-SSHCommand "sh get-docker.sh"
+        # 使用阿里云镜像安装Docker
+        Invoke-SSHCommand "curl -fsSL https://get.docker.com | bash -s docker --mirror Aliyun" -NoError
+        
+        # 如果上面失败，尝试使用DaoCloud镜像
+        $dockerVerify = Invoke-SSHCommand "docker --version" -NoError
+        if (-not $dockerVerify) {
+            Invoke-SSHCommand "curl -sSL https://get.daocloud.io/docker | sh" -NoError
+        }
+        
         Invoke-SSHCommand "systemctl enable docker"
         Invoke-SSHCommand "systemctl start docker"
+        
+        # 配置Docker国内镜像源
+        Write-ColorOutput "🔧 配置Docker国内镜像源..." -Color Blue
+        $dockerConfig = @"
+{
+  "registry-mirrors": [
+    "https://docker.1ms.run",
+    "https://docker.xuanyuan.me",
+    "https://dockerhub.icu",
+    "https://docker.chenby.cn",
+    "https://docker.awsl9527.cn"
+  ],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m",
+    "max-file": "3"
+  }
+}
+"@
+        Invoke-SSHCommand "mkdir -p /etc/docker"
+        Invoke-SSHCommand "echo '$dockerConfig' > /etc/docker/daemon.json"
+        Invoke-SSHCommand "systemctl daemon-reload"
+        Invoke-SSHCommand "systemctl restart docker"
+        
+        Write-ColorOutput "✅ Docker已安装并配置国内镜像源" -Color Green
     } else {
         Write-ColorOutput "✅ Docker已安装: $dockerCheck" -Color Green
+        
+        # 检查是否已配置镜像源
+        $mirrorCheck = Invoke-SSHCommand "grep -q 'registry-mirrors' /etc/docker/daemon.json" -NoError
+        if (-not $mirrorCheck) {
+            Write-ColorOutput "🔧 为已安装的Docker配置国内镜像源..." -Color Blue
+            $dockerConfig = @"
+{
+  "registry-mirrors": [
+    "https://docker.1ms.run",
+    "https://docker.xuanyuan.me",
+    "https://dockerhub.icu",
+    "https://docker.chenby.cn",
+    "https://docker.awsl9527.cn"
+  ],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m",
+    "max-file": "3"
+  }
+}
+"@
+            Invoke-SSHCommand "mkdir -p /etc/docker"
+            Invoke-SSHCommand "echo '$dockerConfig' > /etc/docker/daemon.json"
+            Invoke-SSHCommand "systemctl daemon-reload"
+            Invoke-SSHCommand "systemctl restart docker"
+            Write-ColorOutput "✅ Docker镜像源配置完成" -Color Green
+        }
     }
     
     # 检查并安装Docker Compose
     Write-ColorOutput "📦 检查Docker Compose安装..." -Color Blue
-    $composeCheck = Invoke-SSHCommand "docker-compose --version" -NoError
+    $composeCheck = Invoke-SSHCommand "docker compose version" -NoError
     if (-not $composeCheck) {
-        Write-ColorOutput "📥 安装Docker Compose..." -Color Yellow
-        Invoke-SSHCommand "curl -L `"https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-linux-x86_64`" -o /usr/local/bin/docker-compose"
-        Invoke-SSHCommand "chmod +x /usr/local/bin/docker-compose"
+        # 尝试旧版本的docker-compose命令
+        $composeCheckOld = Invoke-SSHCommand "docker-compose --version" -NoError
+        if (-not $composeCheckOld) {
+            Write-ColorOutput "📥 安装Docker Compose..." -Color Yellow
+            
+            # 使用国内镜像源安装
+            try {
+                # 方法1: 使用阿里云镜像通过pip安装
+                Write-ColorOutput "尝试通过pip安装Docker Compose..." -Color Blue
+                Invoke-SSHCommand "apt-get update && apt-get install -y python3-pip" -NoError
+                Invoke-SSHCommand "pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple docker-compose" -NoError
+                
+                # 验证安装
+                $verifyInstall = Invoke-SSHCommand "docker-compose --version" -NoError
+                if ($verifyInstall) {
+                    Write-ColorOutput "✅ Docker Compose已通过pip安装: $verifyInstall" -Color Green
+                } else {
+                    # 方法2: 使用DaoCloud的Docker Compose镜像
+                    Write-ColorOutput "尝试从DaoCloud下载Docker Compose..." -Color Blue
+                    
+                    # 创建目录
+                    Invoke-SSHCommand "mkdir -p /usr/local/bin"
+                    
+                    # 使用国内镜像下载
+                    $downloadCmd = @"
+                        # 尝试多个国内镜像源
+                        COMPOSE_VERSION=2.20.2
+                        
+                        # 方法1: 使用fastgit镜像
+                        echo "尝试从fastgit下载..."
+                        curl -L --fail --connect-timeout 30 --max-time 300 \
+                            "https://download.fastgit.org/docker/compose/releases/download/v\${COMPOSE_VERSION}/docker-compose-linux-x86_64" \
+                            -o /usr/local/bin/docker-compose
+                        
+                        # 如果失败，尝试gitee镜像
+                        if [ ! -f /usr/local/bin/docker-compose ] || [ ! -s /usr/local/bin/docker-compose ]; then
+                            echo "尝试从备用源下载..."
+                            # 使用阿里云OSS或其他国内可靠源
+                            curl -L --fail --connect-timeout 30 --max-time 300 \
+                                "https://get.daocloud.io/docker/compose/releases/download/v\${COMPOSE_VERSION}/docker-compose-linux-x86_64" \
+                                -o /usr/local/bin/docker-compose
+                        fi
+"@
+                    Invoke-SSHCommand $downloadCmd -NoError
+                    
+                    # 设置执行权限
+                    Invoke-SSHCommand "chmod +x /usr/local/bin/docker-compose"
+                    
+                    # 创建软链接
+                    Invoke-SSHCommand "ln -sf /usr/local/bin/docker-compose /usr/bin/docker-compose" -NoError
+                    
+                    # 最终验证
+                    $finalCheck = Invoke-SSHCommand "docker-compose --version" -NoError
+                    if ($finalCheck) {
+                        Write-ColorOutput "✅ Docker Compose已安装: $finalCheck" -Color Green
+                    } else {
+                        Write-ColorOutput "⚠️  Docker Compose安装可能失败，尝试使用docker compose插件..." -Color Yellow
+                        # 最后尝试：使用apt安装docker-compose
+                        Invoke-SSHCommand "apt-get install -y docker-compose" -NoError
+                    }
+                }
+            }
+            catch {
+                Write-ColorOutput "⚠️  Docker Compose安装遇到问题: $_" -Color Yellow
+                Write-ColorOutput "💡 您可以稍后手动安装Docker Compose" -Color Yellow
+            }
+        } else {
+            Write-ColorOutput "✅ Docker Compose已安装: $composeCheckOld" -Color Green
+        }
     } else {
-        Write-ColorOutput "✅ Docker Compose已安装: $composeCheck" -Color Green
+        Write-ColorOutput "✅ Docker Compose V2已安装: $composeCheck" -Color Green
     }
     
     # 创建项目目录
