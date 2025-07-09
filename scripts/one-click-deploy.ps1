@@ -214,20 +214,8 @@ function Main {
                 Write-ColorOutput "📤 推送代码到远程仓库..." -Color Blue
                 $currentBranch = git branch --show-current
                 
-                # 临时切换到HTTPS以避免SSH问题
-                $originalUrl = git remote get-url origin
-                if ($originalUrl -match "^git@github.com:") {
-                    $httpsUrl = $originalUrl -replace "^git@github.com:", "https://github.com/"
-                    git remote set-url origin $httpsUrl
-                    Write-ColorOutput "💡 临时切换到HTTPS推送" -Color Yellow
-                }
-                
+                # 直接使用原始URL推送（通常是SSH）
                 git push origin $currentBranch
-                
-                # 恢复原始URL
-                if ($originalUrl -match "^git@github.com:") {
-                    git remote set-url origin $originalUrl
-                }
                 
                 Write-ColorOutput "✅ 代码推送完成" -Color Green
             } else {
