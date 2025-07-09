@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import healthRoutes from './healthRoutes';
 import authRoutes from './authRoutes';
+import apiKeyRoutes from './apiKeyRoutes';
 import columnRoutes from './columnRoutes';
 import workspaceRoutes from './workspaceRoutes';
 import projectRoutes from './projectRoutes';
@@ -17,6 +18,9 @@ export async function setupRoutes(fastify: FastifyInstance): Promise<void> {
 
   // 注册认证路由
   fastify.register(authRoutes, { prefix: '/api' });
+
+  // 注册API密钥管理路由
+  fastify.register(apiKeyRoutes, { prefix: '/api' });
 
   // 注册多看板系统路由
   fastify.register(workspaceRoutes, { prefix: '/api' });

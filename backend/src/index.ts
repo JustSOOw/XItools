@@ -5,6 +5,8 @@ import { Server } from 'socket.io';
 import { loadConfig } from './config/config';
 import { setupRoutes } from './routes';
 import { setupMCPService } from './services/mcpService';
+import { setupAuthenticatedMCPService } from './services/authenticatedMcpService';
+import { apiKeyExpirationManager } from './services/apiKeyExpirationManager';
 
 // 扩展FastifyInstance类型以包含io属性
 declare module 'fastify' {
@@ -64,6 +66,12 @@ const start = async () => {
 
     // 设置MCP服务
     await setupMCPService(server, io);
+    
+    // 设置带认证的MCP服务
+    await setupAuthenticatedMCPService(server, io);
+    
+    // 启动API密钥过期管理器
+    apiKeyExpirationManager.start();
     
     // 启动HTTP服务器
     const address = await server.listen({ port: config.server.port, host: config.server.host });
