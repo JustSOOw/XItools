@@ -12,6 +12,7 @@ RUN apk add --no-cache \
     python3 \
     make \
     g++ \
+    postgresql-client \
     && rm -rf /var/cache/apk/*
 
 # 设置工作目录

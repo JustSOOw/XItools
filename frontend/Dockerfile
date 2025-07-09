@@ -21,10 +21,10 @@ RUN npm config set fetch-retry-mintimeout 20000 && \
     npm config set fetch-retry-maxtimeout 120000 && \
     npm config set fetch-retries 3
 
-# 安装依赖（使用install而不是ci，因为没有lock文件）
+# 安装依赖
 RUN npm install
 
-# 复制源代码
+# 复制源代码（包括node_modules）
 COPY . .
 
 # 暴露开发服务器端口
@@ -45,10 +45,10 @@ RUN npm config set fetch-retry-mintimeout 20000 && \
     npm config set fetch-retry-maxtimeout 120000 && \
     npm config set fetch-retries 3
 
-# 安装依赖（使用install而不是ci，因为没有lock文件）
+# 安装依赖
 RUN npm install
 
-# 复制源代码
+# 复制源代码（包括node_modules）
 COPY . .
 
 # 构建应用

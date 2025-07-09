@@ -19,7 +19,7 @@ echo "Starting XItools backend service..."
 
 # Wait for database to be ready
 echo "Waiting for database connection..."
-until npx prisma db push --accept-data-loss 2>/dev/null; do
+until pg_isready -h postgres -p 5432 -U postgres 2>/dev/null; do
   echo "Database not ready, waiting 5 seconds..."
   sleep 5
 done
