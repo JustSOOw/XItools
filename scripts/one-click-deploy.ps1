@@ -229,32 +229,19 @@ function Main {
         Write-Host ""
     }
     
-    # 检查操作系统并调整脚本路径
-    $isWindows = if ($PSVersionTable.PSVersion.Major -ge 6) { $IsWindows } else { $true }
-    $scriptPath = "./scripts/deploy-production.sh"
-    
     # 步骤4: 初始化服务器环境
     if ($Action -eq "Full" -or $Action -eq "Deploy") {
         Show-Step "初始化服务器环境"
         Write-ColorOutput "⚙️  正在初始化服务器环境..." -Color Blue
         
         try {
-            # 在Windows上使用bash执行shell脚本
-            if ($isWindows) {
-                $bashPath = (Get-Command bash -ErrorAction SilentlyContinue).Source
-                if ($bashPath) {
-                    & $bashPath -c "$scriptPath -a setup"
-                } else {
-                    # 尝试使用Git Bash
-                    $gitBashPath = "C:\Program Files\Git\bin\bash.exe"
-                    if (Test-Path $gitBashPath) {
-                        & $gitBashPath -c "$scriptPath -a setup"
-                    } else {
-                        throw "找不到bash环境，请安装Git Bash或WSL"
-                    }
-                }
+            # 直接调用PowerShell版本的部署脚本
+            $deployScript = Join-Path $PSScriptRoot "deploy-production.ps1"
+            if (Test-Path $deployScript) {
+                & $deployScript -Action setup -ServerHost $ServerHost -ServerUser $ServerUser
             } else {
-                & $scriptPath -a setup
+                Write-ColorOutput "❌ 找不到部署脚本: $deployScript" -Color Red
+                exit 1
             }
             
             if ($LASTEXITCODE -eq 0) {
@@ -276,22 +263,13 @@ function Main {
         Write-ColorOutput "🚀 正在执行完整部署..." -Color Blue
         
         try {
-            # 在Windows上使用bash执行shell脚本
-            if ($isWindows) {
-                $bashPath = (Get-Command bash -ErrorAction SilentlyContinue).Source
-                if ($bashPath) {
-                    & $bashPath -c "$scriptPath -a deploy"
-                } else {
-                    # 尝试使用Git Bash
-                    $gitBashPath = "C:\Program Files\Git\bin\bash.exe"
-                    if (Test-Path $gitBashPath) {
-                        & $gitBashPath -c "$scriptPath -a deploy"
-                    } else {
-                        throw "找不到bash环境，请安装Git Bash或WSL"
-                    }
-                }
+            # 直接调用PowerShell版本的部署脚本
+            $deployScript = Join-Path $PSScriptRoot "deploy-production.ps1"
+            if (Test-Path $deployScript) {
+                & $deployScript -Action deploy -ServerHost $ServerHost -ServerUser $ServerUser
             } else {
-                & $scriptPath -a deploy
+                Write-ColorOutput "❌ 找不到部署脚本: $deployScript" -Color Red
+                exit 1
             }
             
             if ($LASTEXITCODE -eq 0) {
@@ -318,18 +296,9 @@ function Main {
         
         # 检查服务状态
         Write-ColorOutput "📊 检查服务状态..." -Color Blue
-        if ($isWindows) {
-            $bashPath = (Get-Command bash -ErrorAction SilentlyContinue).Source
-            if ($bashPath) {
-                & $bashPath -c "$scriptPath -a status"
-            } else {
-                $gitBashPath = "C:\Program Files\Git\bin\bash.exe"
-                if (Test-Path $gitBashPath) {
-                    & $gitBashPath -c "$scriptPath -a status"
-                }
-            }
-        } else {
-            & $scriptPath -a status
+        $deployScript = Join-Path $PSScriptRoot "deploy-production.ps1"
+        if (Test-Path $deployScript) {
+            & $deployScript -Action status -ServerHost $ServerHost -ServerUser $ServerUser
         }
         
         # 测试HTTPS访问
