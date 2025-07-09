@@ -1,0 +1,85 @@
+# 设置默认行为，在case没有设置的时候自动标准化行尾符并且在checkout的时候转换为本地的行尾符
+* text=auto
+
+# 明确声明你想要总是被标准化并且在checkout时转换为本地行尾符的文件
+*.c text
+*.h text
+*.js text
+*.ts text
+*.jsx text
+*.tsx text
+*.json text
+*.css text
+*.scss text
+*.sass text
+*.less text
+*.html text
+*.htm text
+*.xml text
+*.md text
+*.txt text
+*.yml text
+*.yaml text
+*.sh text eol=lf
+*.bash text eol=lf
+
+# 明确声明你不想要被标准化的文件
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.gif binary
+*.ico binary
+*.mov binary
+*.mp4 binary
+*.mp3 binary
+*.flv binary
+*.fla binary
+*.swf binary
+*.gz binary
+*.zip binary
+*.7z binary
+*.ttf binary
+*.eot binary
+*.woff binary
+*.woff2 binary
+*.pyc binary
+*.pdf binary
+*.ez binary
+*.bz2 binary
+*.swp binary
+*.image binary
+*.tgz binary
+*.jar binary
+*.war binary
+*.ear binary
+*.class binary
+*.so binary
+*.dll binary
+*.exe binary
+
+# Docker相关文件
+Dockerfile text eol=lf
+*.dockerfile text eol=lf
+docker-compose*.yml text eol=lf
+
+# 配置文件
+.gitignore text eol=lf
+.gitattributes text eol=lf
+.editorconfig text eol=lf
+.eslintrc* text eol=lf
+.prettierrc* text eol=lf
+*.config.js text eol=lf
+*.config.ts text eol=lf
+
+# 包管理文件
+package.json text eol=lf
+package-lock.json text eol=lf
+yarn.lock text eol=lf
+pnpm-lock.yaml text eol=lf
+
+# 环境变量文件
+.env* text eol=lf
+
+# 脚本文件强制使用LF
+*.sh text eol=lf
+*.ps1 text eol=crlf
