@@ -18,7 +18,8 @@
     "docker:logs:prod": "node scripts/docker-env.cjs logs production",
     "migrate:user-system": "node scripts/migrate-user-system.cjs",
     "user:init": "docker-compose -f docker-compose.dev.yml exec backend npm run user:init",
-    "user:cleanup": "docker-compose -f docker-compose.dev.yml exec backend npm run user:cleanup"
+    "user:cleanup": "docker-compose -f docker-compose.dev.yml exec backend npm run user:cleanup",
+    "db:clear": "docker-compose -f docker-compose.dev.yml exec backend npm run db:clear"
   },
   "keywords": [
     "task-management",
