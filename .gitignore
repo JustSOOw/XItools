@@ -164,3 +164,19 @@ dist
 rsync-exclude.txt
 
 .VSCodeCounter/
+
+# 部署相关文件（本地执行，不需要上传到服务器）
+DEPLOYMENT_GUIDE.md
+scripts/deploy-production.sh
+scripts/setup-ssh.sh
+scripts/sync-files.sh
+scripts/quick-upload.sh
+scripts/watch-and-sync.sh
+scripts/test-scripts.sh
+scripts/one-click-deploy.sh
+nginx/README.md
+
+# 临时和测试文件
+*.backup
+*.tmp
+.env.production

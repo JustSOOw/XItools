@@ -82,7 +82,9 @@ XItools/
 │   ├── Dockerfile
 │   └── prisma/        # Prisma ORM & 数据库迁移
 ├── nginx/             # Nginx配置文件
-├── scripts/           # 项目脚本
+│   ├── xitools-docker.conf    # Docker容器内Nginx配置
+│   └── xitools-only.conf      # 系统Nginx配置
+├── scripts/           # 部署和管理脚本
 ├── word_md/           # 项目文档
 ├── docker-compose.dev.yml
 ├── docker-compose.prod.yml
@@ -190,6 +192,96 @@ XItools/
 - **产品与设计**: `PROJECT_PRD.md`, `API_KEY_MANAGEMENT_UI_DESIGN.md`
 - **技术与架构**: `mcp_service_design.md`, `DATABASE_MIGRATION_PLAN.md`
 - **指南与参考**: `USER_SYSTEM_MIGRATION_GUIDE.md`, `mcp_tools_specification.md`
+
+## 🚀 生产环境部署 (WSL Ubuntu)
+
+XItools提供了完整的生产环境部署方案，支持WSL Ubuntu环境。
+
+### 部署架构
+
+```
+Internet → Nginx (系统，443端口) → Docker Nginx (8080端口) → 后端容器 (3000端口)
+                                                        → 前端容器 (5173端口)
+                                                        → PostgreSQL (5432端口)
+```
+
+### 快速部署
+
+```bash
+# 1. 配置SSH免密登录
+./scripts/setup-ssh.sh
+
+# 2. 初始化服务器环境
+./scripts/deploy-production.sh -a setup
+
+# 3. 执行完整部署
+./scripts/deploy-production.sh -a deploy
+
+# 4. 检查服务状态
+./scripts/deploy-production.sh -a status
+```
+
+### 日常维护
+
+```bash
+# 快速更新代码
+./scripts/deploy-production.sh -a update -m "修复bug"
+
+# 重启服务
+./scripts/deploy-production.sh -a restart
+
+# 查看日志
+./scripts/deploy-production.sh -a logs
+```
+
+### 开发工具脚本
+
+项目提供了完整的开发和部署工具链：
+
+#### 文件同步工具
+```bash
+# 同步后端代码
+./scripts/sync-files.sh -t backend
+
+# 同步前端代码
+./scripts/sync-files.sh -t frontend
+
+# 完整项目同步
+./scripts/sync-files.sh -t all
+
+# 预览同步（不实际执行）
+./scripts/sync-files.sh -t backend -d
+```
+
+#### 快速文件上传
+```bash
+# 上传单个文件
+./scripts/quick-upload.sh backend/src/index.ts
+
+# 上传多个文件
+./scripts/quick-upload.sh backend/src/*.ts
+
+# 不备份原文件
+./scripts/quick-upload.sh --no-backup frontend/src/App.tsx
+```
+
+#### 文件监控同步
+```bash
+# 监控后端源码变化
+./scripts/watch-and-sync.sh -w backend/src
+
+# 监控前端并自动重启服务
+./scripts/watch-and-sync.sh -w frontend/src -r
+
+# 监控整个项目
+./scripts/watch-and-sync.sh -w .
+```
+
+### 访问地址
+
+- **主应用**: https://xitools.furdow.com
+- **MCP服务**: https://xitools.furdow.com/mcp
+- **健康检查**: https://xitools.furdow.com/health
 
 ## 🔧 MCP工具使用
 
