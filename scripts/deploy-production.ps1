@@ -261,19 +261,98 @@ function Deploy-Application {
     
     # 复制项目文件
     Write-ColorOutput "📤 上传项目文件..." -Color Blue
-    $filesToCopy = @(
-        "docker-compose.prod.yml",
-        ".env.prod",
-        "backend",
-        "frontend",
-        "nginx"
-    )
     
-    foreach ($file in $filesToCopy) {
-        if (Test-Path $file) {
-            Copy-ToServer $file "/root/xitools/"
+    # 创建临时目录用于过滤复制
+    $tempDir = Join-Path $env:TEMP "xitools-deploy-$(Get-Date -Format 'yyyyMMddHHmmss')"
+    Write-ColorOutput "创建临时目录: $tempDir" -Color Blue
+    
+    try {
+        # 创建临时目录
+        New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+        
+        # 复制需要部署的目录（排除不需要的文件）
+        $directories = @("backend", "frontend", "nginx")
+        
+        foreach ($dir in $directories) {
+            if (Test-Path $dir) {
+                Write-ColorOutput "准备 $dir 目录..." -Color Blue
+                $targetDir = Join-Path $tempDir $dir
+                New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
+                
+                # 使用robocopy进行过滤复制（Windows内置工具）
+                # /E: 复制子目录包括空目录
+                # /XD: 排除目录
+                # /XF: 排除文件
+                # /NFL /NDL /NJH /NJS: 减少输出
+                $excludeDirs = @("node_modules", ".git", "dist", "build", ".next", "coverage", "__tests__", "logs", ".vscode", ".idea")
+                $excludeFiles = @("*.log", "*.tmp", ".env", ".env.local", ".env.development", "*.test.js", "*.test.ts", "*.spec.js", "*.spec.ts")
+                
+                $robocopyCmd = "robocopy `"$dir`" `"$targetDir`" /E"
+                foreach ($excDir in $excludeDirs) {
+                    $robocopyCmd += " /XD `"$excDir`""
+                }
+                foreach ($excFile in $excludeFiles) {
+                    $robocopyCmd += " /XF `"$excFile`""
+                }
+                $robocopyCmd += " /NFL /NDL /NJH /NJS"
+                
+                Write-ColorOutput "执行过滤复制..." -Color Blue
+                Invoke-Expression $robocopyCmd | Out-Null
+                
+                # Robocopy 返回码 0-7 表示成功
+                if ($LASTEXITCODE -gt 7) {
+                    Write-ColorOutput "⚠️  复制 $dir 时出现问题，但继续..." -Color Yellow
+                }
+            }
+        }
+        
+        # 复制配置文件
+        $configFiles = @("docker-compose.prod.yml", ".env.prod")
+        foreach ($file in $configFiles) {
+            if (Test-Path $file) {
+                Write-ColorOutput "复制配置文件: $file" -Color Blue
+                Copy-Item $file -Destination $tempDir -Force
+            }
+        }
+        
+        # 创建压缩包
+        Write-ColorOutput "创建部署压缩包..." -Color Blue
+        $tarFile = "$tempDir.tar.gz"
+        
+        # 进入临时目录并创建压缩包
+        Push-Location $tempDir
+        $tarCmd = "tar -czf `"$tarFile`" *"
+        Invoke-Expression $tarCmd
+        Pop-Location
+        
+        if (Test-Path $tarFile) {
+            $size = [math]::Round((Get-Item $tarFile).Length / 1MB, 2)
+            Write-ColorOutput "✅ 压缩包创建成功: ${size}MB" -Color Green
+            
+            # 上传压缩包到服务器
+            Write-ColorOutput "上传压缩包到服务器..." -Color Blue
+            Copy-ToServer $tarFile "/tmp/xitools-deploy.tar.gz"
+            
+            # 在服务器上解压
+            Write-ColorOutput "在服务器上解压部署文件..." -Color Blue
+            Invoke-SSHCommand "cd /root/xitools && tar -xzf /tmp/xitools-deploy.tar.gz && rm /tmp/xitools-deploy.tar.gz"
+            
+            Write-ColorOutput "✅ 文件部署完成" -Color Green
         } else {
-            Write-ColorOutput "⚠️  文件不存在: $file" -Color Yellow
+            throw "创建压缩包失败"
+        }
+    }
+    catch {
+        Write-ColorOutput "❌ 部署文件时出错: $_" -Color Red
+        throw
+    }
+    finally {
+        # 清理临时文件
+        if (Test-Path $tempDir) {
+            Remove-Item -Path $tempDir -Recurse -Force
+        }
+        if (Test-Path "$tempDir.tar.gz") {
+            Remove-Item -Path "$tempDir.tar.gz" -Force
         }
     }
     
