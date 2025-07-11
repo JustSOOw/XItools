@@ -198,6 +198,29 @@ XItools/
 - **技术与架构**: `docs/design/mcp_service_design.md`, `docs/design/DATABASE_MIGRATION_PLAN.md`
 - **指南与参考**: `docs/design/USER_SYSTEM_MIGRATION_GUIDE.md`, `docs/mcp/mcp_tools_specification.md`
 
+## 🌿 Git Flow 分支模型
+
+XItools 采用简化版 Git Flow 分支模型，在复杂性和实用性之间取得完美平衡：
+
+### 分支架构
+```
+main (生产环境) ← develop (预发布环境) ← feature/* (功能开发)
+```
+
+### 分支说明
+- **main**: 生产就绪代码，触发生产环境部署 (https://xitools.furdow.com)
+- **develop**: 集成分支，触发预发布环境部署 (http://xitools.furdow.com:8081)
+- **feature/***: 功能开发分支，触发 CI 检查，完成后删除
+
+### 工作流程
+1. 从 `develop` 创建 `feature/功能名` 分支
+2. 开发完成后创建 PR 到 `develop`
+3. 代码审查通过后合并，自动部署到预发布环境
+4. 测试通过后创建 PR 从 `develop` 到 `main`
+5. 合并后自动部署到生产环境
+
+📋 **详细规则**: 查看 [Git Flow 规则文档](.augment/rules/gitflow.md)
+
 ## 🚀 企业级 CI/CD 部署
 
 XItools 采用现代化的 CI/CD 部署方案，基于 GitHub Actions 实现自动化构建、测试和部署。
