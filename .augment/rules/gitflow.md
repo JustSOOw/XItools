@@ -1,3 +1,7 @@
+---
+type: "manual"
+---
+
 # XItools 简化版 Git Flow 分支模型规则
 
 ## 🌟 概述
@@ -17,11 +21,6 @@ feature/* (功能开发)
 ### 分支类型详解
 
 #### 1. 🚀 main 分支
-- **用途**: 生产就绪的稳定代码，随时可部署
-- **保护级别**: 最高级别保护
-- **合并方式**: 仅通过 Pull Request 从 develop 分支合并
-- **部署触发**: 每次合并自动触发生产环境部署
-- **访问地址**: https://xitools.furdow.com
 
 **严格规则**:
 - ❌ 禁止直接推送代码
@@ -30,11 +29,6 @@ feature/* (功能开发)
 - ✅ 每次合并都应该对应一个发布版本
 
 #### 2. 🔄 develop 分支
-- **用途**: 集成分支，包含下一版本的所有功能
-- **保护级别**: 中等保护
-- **合并方式**: 通过 Pull Request 从 feature 分支合并
-- **部署触发**: 每次合并自动触发预发布环境部署
-- **访问地址**: http://xitools.furdow.com:8081
 
 **规则**:
 - ❌ 不建议直接在此分支开发
@@ -43,10 +37,6 @@ feature/* (功能开发)
 - ✅ 作为发布前的最终集成测试环境
 
 #### 3. 🛠️ feature/* 分支
-- **用途**: 功能开发、Bug修复、实验性改动
-- **生命周期**: 临时分支，完成后删除
-- **创建来源**: 从 develop 分支创建
-- **合并目标**: 合并回 develop 分支
 
 **命名规范**:
 ```
@@ -153,27 +143,6 @@ git push -u origin hotfix/critical-security-fix
 - `ci`: CI配置
 - `chore`: 其他杂项
 
-### 示例
-```bash
-feat(mcp): 添加新的任务管理MCP工具
-fix(auth): 修复JWT令牌过期问题
-docs(readme): 更新部署文档
-refactor(api): 重构用户认证模块
-```
-
-## 🛡️ 分支保护规则
-
-### main 分支保护
-- ✅ 要求 Pull Request 审查
-- ✅ 要求状态检查通过
-- ✅ 要求分支为最新状态
-- ✅ 限制推送权限
-- ✅ 要求管理员审查
-
-### develop 分支保护
-- ✅ 要求 Pull Request 审查
-- ✅ 要求状态检查通过
-- ✅ 允许强制推送 (仅管理员)
 
 ## 🚀 CI/CD 集成
 
@@ -209,85 +178,6 @@ main → 生产部署 (cd-production.yml)
 - ✅ 编写清晰的提交信息
 - ✅ 及时同步上游分支
 
-## 🔧 常用命令
-
-### 分支管理
-```bash
-# 查看所有分支
-git branch -a
-
-# 切换分支
-git checkout <branch-name>
-
-# 创建并切换分支
-git checkout -b <new-branch>
-
-# 删除本地分支
-git branch -d <branch-name>
-
-# 删除远程分支
-git push origin --delete <branch-name>
-```
-
-### 同步操作
-```bash
-# 同步 develop 分支
-git checkout develop
-git pull origin develop
-
-# 将 develop 合并到当前 feature 分支
-git checkout feature/your-feature
-git merge develop
-
-# 或使用 rebase (推荐)
-git rebase develop
-```
-
-### 清理操作
-```bash
-# 清理已删除的远程分支引用
-git remote prune origin
-
-# 查看已合并的分支
-git branch --merged
-
-# 批量删除已合并的本地分支
-git branch --merged | grep -v "\*\|main\|develop" | xargs -n 1 git branch -d
-```
-
-## 🆘 故障处理
-
-### 常见问题
-
-#### 1. 分支冲突
-```bash
-# 解决合并冲突
-git checkout feature/your-feature
-git merge develop
-# 手动解决冲突
-git add .
-git commit -m "resolve: 解决合并冲突"
-```
-
-#### 2. 误操作恢复
-```bash
-# 撤销最后一次提交 (保留更改)
-git reset --soft HEAD~1
-
-# 撤销最后一次提交 (丢弃更改)
-git reset --hard HEAD~1
-
-# 恢复已删除的分支
-git reflog
-git checkout -b <branch-name> <commit-hash>
-```
-
-#### 3. 强制同步远程分支
-```bash
-# 强制同步远程分支 (谨慎使用)
-git fetch origin
-git reset --hard origin/<branch-name>
-```
 
 ## 📊 分支状态监控
 
@@ -307,5 +197,3 @@ git reset --hard origin/<branch-name>
 
 **记住**: 这个分支模型的核心是保证代码质量和部署安全。当有疑问时，选择更安全的方式，宁可多一步审查，也不要跳过流程。
 
-**最后更新**: 2025-01-11
-**维护者**: XItools 开发团队
