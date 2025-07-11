@@ -187,101 +187,90 @@ XItools/
 
 ## 📚 文档
 
-项目的详细文档位于 `word_md/` 目录，覆盖了产品、设计、架构和开发指南。关键文档包括：
+项目的详细文档位于 `docs/` 目录，覆盖了产品、设计、架构和开发指南。关键文档包括：
 
-- **产品与设计**: `PROJECT_PRD.md`, `API_KEY_MANAGEMENT_UI_DESIGN.md`
-- **技术与架构**: `mcp_service_design.md`, `DATABASE_MIGRATION_PLAN.md`
-- **指南与参考**: `USER_SYSTEM_MIGRATION_GUIDE.md`, `mcp_tools_specification.md`
+### CI/CD 部署文档
+- **[CI/CD 总览](./docs/cicd/README.md)** - 企业级 CI/CD 方案介绍
+- **[设置和使用指南](./docs/cicd/setup-guide.md)** - 完整的配置和使用说明
 
-## 🚀 生产环境部署 (WSL Ubuntu)
+### 产品与技术文档
+- **产品与设计**: `docs/product/PROJECT_PRD.md`, `docs/design/API_KEY_MANAGEMENT_UI_DESIGN.md`
+- **技术与架构**: `docs/design/mcp_service_design.md`, `docs/design/DATABASE_MIGRATION_PLAN.md`
+- **指南与参考**: `docs/design/USER_SYSTEM_MIGRATION_GUIDE.md`, `docs/mcp/mcp_tools_specification.md`
 
-XItools提供了完整的生产环境部署方案，支持WSL Ubuntu环境。
+## 🚀 企业级 CI/CD 部署
+
+XItools 采用现代化的 CI/CD 部署方案，基于 GitHub Actions 实现自动化构建、测试和部署。
 
 ### 部署架构
 
 ```
-Internet → Nginx (系统，443端口) → Docker Nginx (8080端口) → 后端容器 (3000端口)
-                                                        → 前端容器 (5173端口)
-                                                        → PostgreSQL (5432端口)
+GitHub → CI/CD Pipeline → Docker Registry → Production Server
+   ↓           ↓              ↓                    ↓
+代码推送 → 自动构建测试 → 镜像存储 → 自动部署更新
 ```
 
-### 快速部署
+### 部署流程
+
+#### 自动部署
+- **生产环境**: 推送到 `main` 分支自动触发部署
+- **预生产环境**: 推送到 `develop` 分支自动触发部署
+- **代码检查**: 创建 Pull Request 自动触发 CI 检查
+
+#### 手动部署
+1. 进入 GitHub 仓库的 **Actions** 页面
+2. 选择对应的部署工作流
+3. 点击 **Run workflow** 手动触发
+
+### 部署监控
 
 ```bash
-# 1. 配置SSH免密登录
-./scripts/setup-ssh.sh
+# 健康检查
+npm run health-check
 
-# 2. 初始化服务器环境
-./scripts/deploy-production.sh -a setup
+# 查看服务状态
+ssh root@8.140.237.185 "docker-compose -f /opt/xitools/current/docker-compose.prod.yml ps"
 
-# 3. 执行完整部署
-./scripts/deploy-production.sh -a deploy
-
-# 4. 检查服务状态
-./scripts/deploy-production.sh -a status
+# 查看应用日志
+ssh root@8.140.237.185 "docker-compose -f /opt/xitools/current/docker-compose.prod.yml logs -f"
 ```
 
-### 日常维护
+### 回滚操作
 
+#### 自动回滚
+系统在部署失败时会自动回滚到上一个稳定版本
+
+#### 手动回滚
 ```bash
-# 快速更新代码
-./scripts/deploy-production.sh -a update -m "修复bug"
+# 交互式回滚
+npm run rollback
 
-# 重启服务
-./scripts/deploy-production.sh -a restart
+# 快速回滚到上一版本
+npm run rollback:auto
 
-# 查看日志
-./scripts/deploy-production.sh -a logs
+# 回滚到指定版本
+bash scripts/rollback.sh 20250110-143022-abc123
 ```
 
-### 开发工具脚本
+### 备份管理
 
-项目提供了完整的开发和部署工具链：
-
-#### 文件同步工具
 ```bash
-# 同步后端代码
-./scripts/sync-files.sh -t backend
+# 完整备份
+npm run backup
 
-# 同步前端代码
-./scripts/sync-files.sh -t frontend
+# 仅备份数据库
+npm run backup:database
 
-# 完整项目同步
-./scripts/sync-files.sh -t all
-
-# 预览同步（不实际执行）
-./scripts/sync-files.sh -t backend -d
-```
-
-#### 快速文件上传
-```bash
-# 上传单个文件
-./scripts/quick-upload.sh backend/src/index.ts
-
-# 上传多个文件
-./scripts/quick-upload.sh backend/src/*.ts
-
-# 不备份原文件
-./scripts/quick-upload.sh --no-backup frontend/src/App.tsx
-```
-
-#### 文件监控同步
-```bash
-# 监控后端源码变化
-./scripts/watch-and-sync.sh -w backend/src
-
-# 监控前端并自动重启服务
-./scripts/watch-and-sync.sh -w frontend/src -r
-
-# 监控整个项目
-./scripts/watch-and-sync.sh -w .
+# 自定义保留期
+bash scripts/backup.sh -r 7
 ```
 
 ### 访问地址
 
-- **主应用**: https://xitools.furdow.com
-- **MCP服务**: https://xitools.furdow.com/mcp
+- **生产环境**: https://xitools.furdow.com
+- **预生产环境**: http://xitools.furdow.com:8081
 - **健康检查**: https://xitools.furdow.com/health
+- **API文档**: https://xitools.furdow.com/api/documentation
 
 ## 🔧 MCP工具使用
 

@@ -19,7 +19,12 @@
     "migrate:user-system": "node scripts/migrate-user-system.cjs",
     "user:init": "docker-compose -f docker-compose.dev.yml exec backend npm run user:init",
     "user:cleanup": "docker-compose -f docker-compose.dev.yml exec backend npm run user:cleanup",
-    "db:clear": "docker-compose -f docker-compose.dev.yml exec backend npm run db:clear"
+    "db:clear": "docker-compose -f docker-compose.dev.yml exec backend npm run db:clear",
+    "health-check": "bash scripts/health-check.sh",
+    "backup": "bash scripts/backup.sh",
+    "backup:database": "bash scripts/backup.sh -t database",
+    "rollback": "bash scripts/rollback.sh -i",
+    "rollback:auto": "bash scripts/rollback.sh -y"
   },
   "keywords": [
     "task-management",

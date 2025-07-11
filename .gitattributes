@@ -83,3 +83,13 @@ pnpm-lock.yaml text eol=lf
 # 脚本文件强制使用LF
 *.sh text eol=lf
 *.ps1 text eol=crlf
+
+# CI/CD 相关文件
+.github/workflows/* text eol=lf
+monitoring/*.yml text eol=lf
+docs/cicd/*.md text eol=lf
+
+# 运维脚本
+scripts/health-check.sh text eol=lf
+scripts/rollback.sh text eol=lf
+scripts/backup.sh text eol=lf

@@ -1,0 +1,312 @@
+# XItools 生产环境部署工作流
+# 负责生产环境的自动化部署
+
+name: 生产环境部署 (CD)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: '强制部署（跳过某些检查）'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  NODE_VERSION: '20.x'
+  DEPLOYMENT_TIMEOUT: 600
+
+jobs:
+  # 预部署检查
+  pre-deploy-check:
+    name: 预部署检查
+    runs-on: ubuntu-latest
+    environment: production
+    
+    outputs:
+      should_deploy: ${{ steps.check.outputs.should_deploy }}
+      version: ${{ steps.version.outputs.version }}
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: 检查部署条件
+      id: check
+      run: |
+        # 检查是否有新的提交
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || [[ "${{ inputs.force_deploy }}" == "true" ]]; then
+          echo "should_deploy=true" >> $GITHUB_OUTPUT
+          echo "🚀 手动触发部署或强制部署"
+        else
+          # 检查最近的提交是否包含部署相关的更改
+          if git diff --name-only HEAD~1 HEAD | grep -E '\.(js|ts|jsx|tsx|json|yml|yaml|md)$' > /dev/null; then
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+            echo "✅ 检测到代码更改，准备部署"
+          else
+            echo "should_deploy=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ 未检测到需要部署的更改"
+          fi
+        fi
+        
+    - name: 生成版本号
+      id: version
+      run: |
+        VERSION=$(date +%Y%m%d-%H%M%S)-$(git rev-parse --short HEAD)
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "📦 版本号: $VERSION"
+
+  # 构建和推送 Docker 镜像
+  build-and-push:
+    name: 构建 Docker 镜像
+    runs-on: ubuntu-latest
+    needs: [pre-deploy-check]
+    if: needs.pre-deploy-check.outputs.should_deploy == 'true'
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 设置 Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: 登录 GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: 构建并推送前端镜像
+      uses: docker/build-push-action@v5
+      with:
+        context: ./frontend
+        file: ./frontend/Dockerfile
+        target: production
+        push: true
+        tags: |
+          ghcr.io/${{ github.repository }}/frontend:latest
+          ghcr.io/${{ github.repository }}/frontend:${{ needs.pre-deploy-check.outputs.version }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        
+    - name: 构建并推送后端镜像
+      uses: docker/build-push-action@v5
+      with:
+        context: ./backend
+        file: ./backend/Dockerfile
+        target: production
+        push: true
+        tags: |
+          ghcr.io/${{ github.repository }}/backend:latest
+          ghcr.io/${{ github.repository }}/backend:${{ needs.pre-deploy-check.outputs.version }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # 部署到生产环境
+  deploy:
+    name: 部署到生产环境
+    runs-on: ubuntu-latest
+    needs: [pre-deploy-check, build-and-push]
+    environment: production
+    if: needs.pre-deploy-check.outputs.should_deploy == 'true'
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 设置 SSH
+      uses: webfactory/ssh-agent@v0.8.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+        
+    - name: 创建部署目录
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+        mkdir -p /opt/xitools/releases/${{ needs.pre-deploy-check.outputs.version }}
+        mkdir -p /opt/xitools/shared/logs
+        mkdir -p /opt/xitools/shared/data
+        EOF
+        
+    - name: 上传部署文件
+      run: |
+        # 上传 docker-compose 文件
+        scp -o StrictHostKeyChecking=no docker-compose.prod.yml ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools/releases/${{ needs.pre-deploy-check.outputs.version }}/
+        
+        # 上传 nginx 配置
+        scp -o StrictHostKeyChecking=no nginx/xitools-docker.conf ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools/releases/${{ needs.pre-deploy-check.outputs.version }}/
+        
+        # 上传环境配置
+        echo "NODE_ENV=production" > .env.production
+        echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env.production
+        echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env.production
+        echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}" >> .env.production
+        echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env.production
+        echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> .env.production
+        echo "VITE_BACKEND_URL=${{ secrets.VITE_BACKEND_URL }}" >> .env.production
+        
+        scp -o StrictHostKeyChecking=no .env.production ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools/releases/${{ needs.pre-deploy-check.outputs.version }}/
+        
+    - name: 数据库备份
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+        cd /opt/xitools
+        if [ -f current/docker-compose.prod.yml ]; then
+          echo "🗄️ 创建数据库备份..."
+          docker-compose -f current/docker-compose.prod.yml exec -T postgres pg_dump -U ${{ secrets.POSTGRES_USER }} ${{ secrets.POSTGRES_DB }} > shared/backups/backup-$(date +%Y%m%d-%H%M%S).sql
+          echo "✅ 数据库备份完成"
+        fi
+        EOF
+        
+    - name: 执行部署
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+        cd /opt/xitools
+        
+        echo "🚀 开始部署版本 ${{ needs.pre-deploy-check.outputs.version }}"
+        
+        # 停止当前服务
+        if [ -f current/docker-compose.prod.yml ]; then
+          echo "⏹️ 停止当前服务..."
+          docker-compose -f current/docker-compose.prod.yml down
+        fi
+        
+        # 切换到新版本
+        ln -sfn releases/${{ needs.pre-deploy-check.outputs.version }} current
+        
+        # 启动新服务
+        cd current
+        echo "🔄 启动新服务..."
+        docker-compose -f docker-compose.prod.yml pull
+        docker-compose -f docker-compose.prod.yml up -d
+        
+        echo "✅ 服务启动完成"
+        EOF
+        
+    - name: 健康检查
+      run: |
+        echo "🔍 执行健康检查..."
+        
+        # 等待服务启动
+        sleep 30
+        
+        # 检查服务状态
+        for i in {1..10}; do
+          if curl -f -s https://xitools.furdow.com/health > /dev/null; then
+            echo "✅ 健康检查通过"
+            break
+          else
+            echo "⏳ 等待服务启动... ($i/10)"
+            sleep 30
+          fi
+          
+          if [ $i -eq 10 ]; then
+            echo "❌ 健康检查失败，开始回滚"
+            exit 1
+          fi
+        done
+        
+    - name: 部署后验证
+      run: |
+        echo "🧪 执行部署后验证..."
+        
+        # 检查关键接口
+        curl -f -s https://xitools.furdow.com/api/health || exit 1
+        curl -f -s https://xitools.furdow.com/ || exit 1
+        
+        echo "✅ 部署后验证通过"
+        
+    - name: 清理旧版本
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+        cd /opt/xitools/releases
+        
+        # 保留最近5个版本
+        ls -t | tail -n +6 | xargs -r rm -rf
+        
+        # 清理未使用的 Docker 镜像
+        docker image prune -f
+        
+        echo "🧹 清理完成"
+        EOF
+
+  # 部署失败回滚
+  rollback:
+    name: 自动回滚
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: failure() && needs.deploy.result == 'failure'
+    
+    steps:
+    - name: 设置 SSH
+      uses: webfactory/ssh-agent@v0.8.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+        
+    - name: 执行回滚
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+        cd /opt/xitools
+        
+        echo "🔄 开始自动回滚..."
+        
+        # 找到上一个版本
+        PREVIOUS_VERSION=$(ls -t releases | sed -n '2p')
+        
+        if [ -n "$PREVIOUS_VERSION" ]; then
+          echo "📦 回滚到版本: $PREVIOUS_VERSION"
+          
+          # 停止当前服务
+          if [ -f current/docker-compose.prod.yml ]; then
+            docker-compose -f current/docker-compose.prod.yml down
+          fi
+          
+          # 切换到上一个版本
+          ln -sfn releases/$PREVIOUS_VERSION current
+          
+          # 启动服务
+          cd current
+          docker-compose -f docker-compose.prod.yml up -d
+          
+          echo "✅ 回滚完成"
+        else
+          echo "❌ 未找到可回滚的版本"
+          exit 1
+        fi
+        EOF
+
+  # 部署通知
+  notify:
+    name: 部署通知
+    runs-on: ubuntu-latest
+    needs: [pre-deploy-check, deploy]
+    if: always() && needs.pre-deploy-check.outputs.should_deploy == 'true'
+    
+    steps:
+    - name: 发送通知
+      run: |
+        if [[ "${{ needs.deploy.result }}" == "success" ]]; then
+          STATUS="✅ 成功"
+          COLOR="good"
+        else
+          STATUS="❌ 失败"
+          COLOR="danger"
+        fi
+        
+        echo "📢 部署通知"
+        echo "状态: $STATUS"
+        echo "版本: ${{ needs.pre-deploy-check.outputs.version }}"
+        echo "分支: ${{ github.ref_name }}"
+        echo "提交: ${{ github.sha }}"
+        echo "部署时间: $(date)"
+        
+        # 如果配置了 Slack Webhook，发送通知
+        if [[ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]]; then
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"XItools 生产环境部署 $STATUS\n版本: ${{ needs.pre-deploy-check.outputs.version }}\n分支: ${{ github.ref_name }}\"}" \
+            ${{ secrets.SLACK_WEBHOOK_URL }}
+        fi

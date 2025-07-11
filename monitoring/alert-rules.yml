@@ -1,0 +1,274 @@
+# XItools Prometheus 告警规则
+# 定义各种监控指标的告警条件
+
+groups:
+  # 应用服务告警
+  - name: xitools-application
+    rules:
+      # 服务可用性告警
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "服务 {{ $labels.job }} 不可用"
+          description: "服务 {{ $labels.job }} 在实例 {{ $labels.instance }} 上已经停止运行超过1分钟"
+
+      # HTTP 错误率告警
+      - alert: HighErrorRate
+        expr: |
+          (
+            rate(http_requests_total{status=~"5.."}[5m]) /
+            rate(http_requests_total[5m])
+          ) * 100 > 5
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "HTTP 错误率过高"
+          description: "{{ $labels.job }} 的 HTTP 5xx 错误率在过去5分钟内超过5%，当前值: {{ $value }}%"
+
+      # 响应时间告警
+      - alert: HighResponseTime
+        expr: |
+          histogram_quantile(0.95, 
+            rate(http_request_duration_seconds_bucket[5m])
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "响应时间过长"
+          description: "{{ $labels.job }} 的95%响应时间超过2秒，当前值: {{ $value }}s"
+
+      # 数据库连接告警
+      - alert: DatabaseConnectionFailed
+        expr: |
+          database_connections_active / database_connections_max > 0.8
+        for: 2m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "数据库连接使用率过高"
+          description: "数据库连接使用率超过80%，当前值: {{ $value }}%"
+
+  # 系统资源告警
+  - name: xitools-system
+    rules:
+      # CPU 使用率告警
+      - alert: HighCPUUsage
+        expr: |
+          100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: system
+        annotations:
+          summary: "CPU 使用率过高"
+          description: "实例 {{ $labels.instance }} 的 CPU 使用率超过80%，当前值: {{ $value }}%"
+
+      # 内存使用率告警
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          category: system
+        annotations:
+          summary: "内存使用率过高"
+          description: "实例 {{ $labels.instance }} 的内存使用率超过85%，当前值: {{ $value }}%"
+
+      # 磁盘空间告警
+      - alert: HighDiskUsage
+        expr: |
+          (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          category: system
+        annotations:
+          summary: "磁盘空间不足"
+          description: "实例 {{ $labels.instance }} 的磁盘 {{ $labels.mountpoint }} 使用率超过85%，当前值: {{ $value }}%"
+
+      # 磁盘空间严重不足
+      - alert: CriticalDiskUsage
+        expr: |
+          (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 95
+        for: 1m
+        labels:
+          severity: critical
+          category: system
+        annotations:
+          summary: "磁盘空间严重不足"
+          description: "实例 {{ $labels.instance }} 的磁盘 {{ $labels.mountpoint }} 使用率超过95%，当前值: {{ $value }}%"
+
+  # Docker 容器告警
+  - name: xitools-docker
+    rules:
+      # 容器重启告警
+      - alert: ContainerRestarted
+        expr: |
+          increase(container_start_time_seconds[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          category: container
+        annotations:
+          summary: "容器重启"
+          description: "容器 {{ $labels.name }} 在过去5分钟内重启了"
+
+      # 容器内存使用率告警
+      - alert: ContainerHighMemoryUsage
+        expr: |
+          (container_memory_usage_bytes / container_spec_memory_limit_bytes) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: container
+        annotations:
+          summary: "容器内存使用率过高"
+          description: "容器 {{ $labels.name }} 的内存使用率超过80%，当前值: {{ $value }}%"
+
+      # 容器 CPU 使用率告警
+      - alert: ContainerHighCPUUsage
+        expr: |
+          (rate(container_cpu_usage_seconds_total[5m]) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: container
+        annotations:
+          summary: "容器 CPU 使用率过高"
+          description: "容器 {{ $labels.name }} 的 CPU 使用率超过80%，当前值: {{ $value }}%"
+
+  # 数据库告警
+  - name: xitools-database
+    rules:
+      # 数据库连接数告警
+      - alert: PostgreSQLTooManyConnections
+        expr: |
+          sum(pg_stat_activity_count) by (instance) > 80
+        for: 2m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "PostgreSQL 连接数过多"
+          description: "PostgreSQL 实例 {{ $labels.instance }} 的连接数超过80，当前值: {{ $value }}"
+
+      # 数据库慢查询告警
+      - alert: PostgreSQLSlowQueries
+        expr: |
+          rate(pg_stat_activity_max_tx_duration[5m]) > 60
+        for: 2m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "PostgreSQL 存在慢查询"
+          description: "PostgreSQL 实例 {{ $labels.instance }} 存在执行时间超过60秒的查询"
+
+      # 数据库死锁告警
+      - alert: PostgreSQLDeadlocks
+        expr: |
+          rate(pg_stat_database_deadlocks[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "PostgreSQL 发生死锁"
+          description: "PostgreSQL 数据库 {{ $labels.datname }} 发生死锁"
+
+  # 网络和外部服务告警
+  - name: xitools-network
+    rules:
+      # 网站可用性告警
+      - alert: WebsiteDown
+        expr: |
+          probe_success == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "网站不可访问"
+          description: "网站 {{ $labels.instance }} 无法访问，已持续1分钟"
+
+      # SSL 证书即将过期告警
+      - alert: SSLCertificateExpiringSoon
+        expr: |
+          (ssl_cert_not_after - time()) / 86400 < 30
+        for: 1h
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "SSL 证书即将过期"
+          description: "域名 {{ $labels.instance }} 的 SSL 证书将在 {{ $value }} 天后过期"
+
+      # SSL 证书已过期告警
+      - alert: SSLCertificateExpired
+        expr: |
+          ssl_cert_not_after - time() <= 0
+        for: 0m
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: "SSL 证书已过期"
+          description: "域名 {{ $labels.instance }} 的 SSL 证书已过期"
+
+  # 业务指标告警
+  - name: xitools-business
+    rules:
+      # 用户登录失败率告警
+      - alert: HighLoginFailureRate
+        expr: |
+          (
+            rate(user_login_attempts_total{status="failed"}[5m]) /
+            rate(user_login_attempts_total[5m])
+          ) * 100 > 20
+        for: 5m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "用户登录失败率过高"
+          description: "用户登录失败率在过去5分钟内超过20%，当前值: {{ $value }}%"
+
+      # API 调用量异常告警
+      - alert: UnusualAPICallVolume
+        expr: |
+          (
+            rate(http_requests_total[5m]) > 
+            (avg_over_time(rate(http_requests_total[5m])[1h:5m]) * 2)
+          ) or (
+            rate(http_requests_total[5m]) < 
+            (avg_over_time(rate(http_requests_total[5m])[1h:5m]) * 0.5)
+          )
+        for: 10m
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: "API 调用量异常"
+          description: "API 调用量与过去1小时的平均值相比异常，当前值: {{ $value }}"
+
+      # MCP 服务错误率告警
+      - alert: MCPServiceErrors
+        expr: |
+          rate(mcp_requests_total{status="error"}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          category: mcp
+        annotations:
+          summary: "MCP 服务错误率过高"
+          description: "MCP 服务错误率超过阈值，当前值: {{ $value }} 错误/秒"
