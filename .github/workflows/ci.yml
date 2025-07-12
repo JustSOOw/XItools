@@ -35,11 +35,11 @@ jobs:
           
     - name: 安装前端依赖
       working-directory: ./frontend
-      run: npm ci
-      
+      run: npm install
+
     - name: 安装后端依赖
       working-directory: ./backend
-      run: npm ci
+      run: npm install
       
     - name: 前端代码检查
       working-directory: ./frontend
