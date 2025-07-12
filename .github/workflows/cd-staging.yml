@@ -91,8 +91,8 @@ jobs:
           
     - name: 安装依赖
       run: |
-        cd frontend && npm ci
-        cd ../backend && npm ci
+        cd frontend && npm install
+        cd ../backend && npm install
         
     - name: 快速代码检查
       run: |

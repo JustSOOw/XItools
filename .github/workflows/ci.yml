@@ -71,9 +71,12 @@ jobs:
       uses: github/codeql-action/init@v3
       with:
         languages: javascript, typescript
-        
+        config-file: ./.github/codeql/codeql-config.yml
+
     - name: 执行 CodeQL 分析
       uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:javascript"
       
     - name: 依赖漏洞扫描
       run: |
@@ -116,8 +119,8 @@ jobs:
           
     - name: 安装依赖
       run: |
-        cd frontend && npm ci
-        cd ../backend && npm ci
+        cd frontend && npm install
+        cd ../backend && npm install
         
     - name: 设置测试环境变量
       run: |
@@ -228,7 +231,7 @@ jobs:
     - name: 安装 Playwright
       working-directory: ./frontend
       run: |
-        npm ci
+        npm install
         npx playwright install --with-deps
         
     - name: 启动测试环境
@@ -262,15 +265,13 @@ jobs:
     steps:
     - name: 检查 CI 状态
       run: |
-        if [[ "${{ needs.code-quality.result }}" == "success" && 
-              "${{ needs.security-scan.result }}" == "success" && 
-              "${{ needs.build-test.result }}" == "success" && 
+        if [[ "${{ needs.code-quality.result }}" == "success" &&
+              "${{ needs.security-scan.result }}" == "success" &&
+              "${{ needs.build-test.result }}" == "success" &&
               "${{ needs.docker-build.result }}" == "success" ]]; then
           echo "✅ 所有 CI 检查通过"
-          echo "CI_STATUS=success" >> $GITHUB_ENV
         else
           echo "❌ CI 检查失败"
-          echo "CI_STATUS=failure" >> $GITHUB_ENV
           exit 1
         fi
         
@@ -278,6 +279,5 @@ jobs:
       if: always()
       run: |
         echo "CI 流水线完成"
-        echo "状态: ${{ env.CI_STATUS }}"
         echo "分支: ${{ github.ref_name }}"
         echo "提交: ${{ github.sha }}"

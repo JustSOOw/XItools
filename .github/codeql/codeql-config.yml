@@ -1,0 +1,37 @@
+# CodeQL 配置文件
+# 用于优化代码安全扫描
+
+name: "XItools CodeQL Config"
+
+# 禁用默认查询，使用自定义查询集
+disable-default-queries: false
+
+# 查询配置
+queries:
+  - uses: security-and-quality
+
+# 路径过滤器
+paths-ignore:
+  - "node_modules/**"
+  - "dist/**"
+  - "build/**"
+  - "coverage/**"
+  - "*.min.js"
+  - "*.bundle.js"
+  - "frontend/public/**"
+  - "backend/prisma/migrations/**"
+  - "**/*.test.js"
+  - "**/*.test.ts"
+  - "**/*.spec.js"
+  - "**/*.spec.ts"
+
+# 包含的路径
+paths:
+  - "frontend/src/**"
+  - "backend/src/**"
+  - "frontend/electron/**"
+
+# 语言特定配置
+languages:
+  - javascript
+  - typescript
