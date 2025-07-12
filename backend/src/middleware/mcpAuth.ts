@@ -6,6 +6,7 @@
 
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { PrismaClient } from '@prisma/client';
+import { Permission } from '../types/userTypes';
 
 const prisma = new PrismaClient();
 
@@ -127,24 +128,27 @@ function extractApiKey(authorization?: string): string | null {
  */
 async function logApiUsage(
   apiKeyId: string,
-  endpoint: string,
-  method: string,
-  statusCode: number,
-  responseTime: number,
+  userId: string,
+  toolName: string,
+  responseStatus: number,
+  executionTimeMs: number,
   userAgent?: string,
   ipAddress?: string,
+  errorMessage?: string,
+  requestParams?: any,
 ): Promise<void> {
   try {
     await prisma.mcpUsageLog.create({
       data: {
         apiKeyId,
-        endpoint,
-        method,
-        statusCode,
-        responseTime,
+        userId,
+        toolName,
+        requestParams,
+        responseStatus,
+        errorMessage,
         userAgent: userAgent || 'Unknown',
         ipAddress: ipAddress || 'Unknown',
-        timestamp: new Date(),
+        executionTimeMs,
       },
     });
   } catch (error) {
@@ -332,14 +336,14 @@ export async function mcpAuthMiddleware(
       username: userApiKey.user.username,
       email: userApiKey.user.email,
       sessionId: userApiKey.id,
-      permissions: userApiKey.permissions,
+      permissions: userApiKey.permissions as Permission[],
       isActive: userApiKey.user.isActive,
     };
 
     request.apiKey = {
       id: userApiKey.id,
       name: userApiKey.name,
-      permissions: userApiKey.permissions,
+      permissions: userApiKey.permissions as Permission[],
       keyPrefix: userApiKey.keyPrefix,
     };
 
@@ -360,29 +364,31 @@ export async function mcpAuthMiddleware(
 
 /**
  * 记录MCP请求的中间件（在响应后执行）
+ * 注意：这个函数需要在路由的onResponse钩子中使用，而不是作为中间件
  */
-export async function mcpLoggingMiddleware(
+export async function logMcpRequest(
   request: FastifyRequest,
   reply: FastifyReply,
+  toolName: string,
+  requestParams?: any,
 ): Promise<void> {
-  // 在响应发送后记录使用情况
-  reply.addHook('onSend', async () => {
-    if (request.apiKey && request.requestStartTime) {
-      const responseTime = Date.now() - request.requestStartTime;
-      const userAgent = request.headers['user-agent'];
-      const ipAddress = request.ip || (request.headers['x-forwarded-for'] as string) || 'unknown';
+  if (request.apiKey && request.requestStartTime) {
+    const responseTime = Date.now() - request.requestStartTime;
+    const userAgent = request.headers['user-agent'];
+    const ipAddress = request.ip || (request.headers['x-forwarded-for'] as string) || 'unknown';
 
-      await logApiUsage(
-        request.apiKey.id,
-        request.url,
-        request.method,
-        reply.statusCode,
-        responseTime,
-        userAgent,
-        ipAddress,
-      );
-    }
-  });
+    await logApiUsage(
+      request.apiKey.id,
+      request.user?.userId || 'unknown',
+      toolName,
+      reply.statusCode,
+      responseTime,
+      userAgent,
+      ipAddress,
+      reply.statusCode >= 400 ? `HTTP ${reply.statusCode}` : undefined,
+      requestParams,
+    );
+  }
 }
 
 /**
@@ -435,13 +441,13 @@ declare module 'fastify' {
       username: string;
       email: string;
       sessionId: string;
-      permissions: string[];
+      permissions: Permission[];
       isActive: boolean;
     };
     apiKey?: {
       id: string;
       name: string;
-      permissions: string[];
+      permissions: Permission[];
       keyPrefix: string;
     };
     requestStartTime?: number;
@@ -450,7 +456,7 @@ declare module 'fastify' {
 
 export default {
   mcpAuthMiddleware,
-  mcpLoggingMiddleware,
+  logMcpRequest,
   getRateLimitConfig,
   getApiKeyRateLimit,
   resetApiKeyRateLimit,

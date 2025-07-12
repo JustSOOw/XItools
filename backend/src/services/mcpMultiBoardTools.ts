@@ -129,7 +129,8 @@ export function registerMultiBoardMCPTools(mcpServer: McpServer) {
           name: projectName,
           description: projectDescription,
           workspaceId: targetWorkspaceId,
-        });
+          order: 0,
+        }, 'default-user'); // TODO: 需要从上下文获取实际用户ID
 
         // 创建看板 - 每个看板都使用标准的默认列结构
         const createdBoards = [];
@@ -140,7 +141,7 @@ export function registerMultiBoardMCPTools(mcpServer: McpServer) {
             description: boardData.description,
             projectId: project.id,
             order: i,
-          });
+          }, 'default-user'); // TODO: 需要从上下文获取实际用户ID
 
           // 使用标准的默认列结构（待办、进行中、已完成）
           // boardService.createBoard 已经自动创建了默认列

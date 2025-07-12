@@ -336,22 +336,4 @@ export class AuthError extends Error {
 // 导出所有类型
 // ================================
 
-export type {
-  User,
-  UserSession,
-  UserRole,
-  UserRegisterRequest,
-  UserLoginRequest,
-  UserUpdateRequest,
-  PasswordChangeRequest,
-  AuthResponse,
-  AuthErrorResponse,
-  UserInfoResponse,
-  JWTPayload,
-  JWTConfig,
-  UserContext,
-  AuthMiddlewareOptions,
-  UserQueryFilter,
-  PaginationParams,
-  PaginatedResult,
-};
+// 所有类型已经通过 export interface 和 export type 定义导出，无需重复导出

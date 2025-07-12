@@ -592,7 +592,7 @@ export default async function apiKeyRoutes(
           prisma.mcpUsageLog.count({
             where: {
               apiKeyId: { in: keyIds },
-              timestamp: { gte: oneDayAgo },
+              createdAt: { gte: oneDayAgo },
             },
           }),
 
@@ -600,7 +600,7 @@ export default async function apiKeyRoutes(
           prisma.mcpUsageLog.count({
             where: {
               apiKeyId: { in: keyIds },
-              timestamp: { gte: oneWeekAgo },
+              createdAt: { gte: oneWeekAgo },
             },
           }),
 
@@ -608,8 +608,8 @@ export default async function apiKeyRoutes(
           prisma.mcpUsageLog.count({
             where: {
               apiKeyId: { in: keyIds },
-              timestamp: { gte: oneDayAgo },
-              statusCode: { gte: 400 },
+              createdAt: { gte: oneDayAgo },
+              responseStatus: { gte: 400 },
             },
           }),
 
@@ -618,7 +618,7 @@ export default async function apiKeyRoutes(
             where: {
               apiKeyId: { in: keyIds },
             },
-            orderBy: { timestamp: 'desc' },
+            orderBy: { createdAt: 'desc' },
             take: 10,
             include: {
               apiKey: {
@@ -629,10 +629,10 @@ export default async function apiKeyRoutes(
 
           // 热门端点
           prisma.mcpUsageLog.groupBy({
-            by: ['endpoint'],
+            by: ['toolName'],
             where: {
               apiKeyId: { in: keyIds },
-              timestamp: { gte: oneWeekAgo },
+              createdAt: { gte: oneWeekAgo },
             },
             _count: { id: true },
             orderBy: { _count: { id: 'desc' } },
@@ -669,14 +669,14 @@ export default async function apiKeyRoutes(
             ),
           })),
           recentActivity: recentActivity.map((log) => ({
-            timestamp: log.timestamp,
-            endpoint: log.endpoint,
-            statusCode: log.statusCode,
+            timestamp: log.createdAt,
+            endpoint: log.toolName,
+            statusCode: log.responseStatus || 0,
             keyName: log.apiKey?.name || 'Unknown',
-            responseTime: log.responseTime,
+            responseTime: log.executionTimeMs || 0,
           })),
           topEndpoints: topEndpoints.map((stat) => ({
-            endpoint: stat.endpoint,
+            endpoint: stat.toolName,
             count: stat._count.id,
           })),
         },
@@ -722,7 +722,7 @@ export default async function apiKeyRoutes(
         prisma.mcpUsageLog.count({
           where: {
             apiKeyId: keyId,
-            timestamp: { gte: oneHourAgo },
+            createdAt: { gte: oneHourAgo },
           },
         }),
 
@@ -730,8 +730,8 @@ export default async function apiKeyRoutes(
         prisma.mcpUsageLog.count({
           where: {
             apiKeyId: keyId,
-            timestamp: { gte: oneHourAgo },
-            statusCode: { gte: 400 },
+            createdAt: { gte: oneHourAgo },
+            responseStatus: { gte: 400 },
           },
         }),
 
@@ -739,16 +739,16 @@ export default async function apiKeyRoutes(
         prisma.mcpUsageLog.aggregate({
           where: {
             apiKeyId: keyId,
-            timestamp: { gte: oneDayAgo },
+            createdAt: { gte: oneDayAgo },
           },
-          _avg: { responseTime: true },
+          _avg: { executionTimeMs: true },
         }),
 
         // 最近24小时唯一IP数
         prisma.mcpUsageLog.findMany({
           where: {
             apiKeyId: keyId,
-            timestamp: { gte: oneDayAgo },
+            createdAt: { gte: oneDayAgo },
           },
           select: { ipAddress: true },
           distinct: ['ipAddress'],
@@ -773,7 +773,7 @@ export default async function apiKeyRoutes(
       }
 
       // 响应时间检查
-      const avgTime = avgResponseTime._avg.responseTime || 0;
+      const avgTime = avgResponseTime._avg.executionTimeMs || 0;
       if (avgTime > 5000) {
         healthScore -= 20;
         issues.push(`响应时间过长: ${avgTime.toFixed(0)}ms`);

@@ -204,30 +204,21 @@ async function registerMCPTools(server: McpServer): Promise<void> {
 
         await prisma.$transaction(async (tx) => {
           for (const taskData of tasks) {
-            const tags = taskData.tags
-              ? {
-                  connectOrCreate: taskData.tags.map((tagName: any) => ({
-                    where: { name: typeof tagName === 'string' ? tagName : tagName.name },
-                    create: { name: typeof tagName === 'string' ? tagName : tagName.name },
-                  })),
-                }
-              : undefined;
+            // 暂时移除tag处理，因为tag需要用户上下文
+            // TODO: 在有用户上下文后恢复tag功能
+            const tags = undefined;
 
+            const { tags: tagNames, dueDate, ...taskCreateData } = taskData;
+            
+            // 使用简单的数据对象，包含所有必需的字段
+            const createData: any = {
+              ...taskCreateData,
+              dueDate: dueDate ? new Date(dueDate) : null,
+              ownerId: 'default-user', // TODO: 需要从上下文获取实际用户ID
+            };
+            
             const task = await tx.task.create({
-              data: {
-                title: taskData.title,
-                description: taskData.description || '',
-                status: taskData.status,
-                priority: taskData.priority || null,
-                dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
-                assignee: taskData.assignee || null,
-                parentId: taskData.parentId || null,
-                acceptanceCriteria: taskData.acceptanceCriteria || '',
-                estimatedEffort: taskData.estimatedEffort || null,
-                loggedTime: taskData.loggedTime || null,
-                boardId: taskData.boardId, // 使用传入的看板ID
-                tags: tags,
-              },
+              data: createData,
               include: {
                 tags: true,
               },

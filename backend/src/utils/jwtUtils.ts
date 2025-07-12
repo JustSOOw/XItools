@@ -23,6 +23,8 @@ export interface JWTRefreshPayload {
   exp?: number;
 }
 
+export { JWTPayload };
+
 /**
  * 生成访问token
  */
@@ -33,7 +35,7 @@ export function generateJWT(payload: {
   sessionId?: string;
 }): string {
   return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN,
+    expiresIn: JWT_EXPIRES_IN as any,
     issuer: 'xitools',
     audience: 'xitools-users',
   });
@@ -44,7 +46,7 @@ export function generateJWT(payload: {
  */
 export function generateRefreshToken(payload: Omit<JWTRefreshPayload, 'iat' | 'exp'>): string {
   return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: JWT_REFRESH_EXPIRES_IN,
+    expiresIn: JWT_REFRESH_EXPIRES_IN as any,
     issuer: 'xitools',
     audience: 'xitools-refresh',
   });

@@ -150,7 +150,7 @@ export default async function taskRoutes(fastify: FastifyInstance) {
       try {
         const { id } = request.params as { id: string };
         const updateData = extendedTaskUpdateSchema.parse(request.body);
-        const task = await taskService.updateTask(id, updateData);
+        const task = await taskService.updateTask(id, updateData, request.user!.userId);
 
         // 广播任务更新事件
         const io = fastify.io;

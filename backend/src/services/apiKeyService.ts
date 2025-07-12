@@ -81,7 +81,10 @@ export class ApiKeyService {
         },
       });
 
-      return createdKey;
+      return {
+        ...createdKey,
+        permissions: createdKey.permissions as ApiKeyPermission[],
+      } as UserApiKey;
     });
   }
 

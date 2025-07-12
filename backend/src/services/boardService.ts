@@ -300,14 +300,19 @@ export class BoardService {
     const newBoard = await this.createBoard(
       {
         name: newName || `${originalBoard.name} (副本)`,
-        description: originalBoard.description,
-        color: originalBoard.color,
-        icon: originalBoard.icon,
-        workspaceId: finalWorkspaceId,
-        projectId: finalProjectId,
+        description: originalBoard.description || undefined,
+        color: originalBoard.color || undefined,
+        icon: originalBoard.icon || undefined,
+        workspaceId: finalWorkspaceId || undefined,
+        projectId: finalProjectId || undefined,
+        order: originalBoard.order || 0,
       },
       userId,
     );
+
+    if (!newBoard) {
+      throw new Error('创建看板失败');
+    }
 
     // 复制列
     for (const column of originalBoard.columns) {

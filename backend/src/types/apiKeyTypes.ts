@@ -228,17 +228,4 @@ export interface ApiKeyValidationResult {
 // 导出所有类型
 // ================================
 
-export type {
-  UserApiKey,
-  McpUsageLog,
-  CreateApiKeyRequest,
-  ApiKeyListResponse,
-  ApiKeyInfo,
-  CreateApiKeyResponse,
-  DeleteApiKeyResponse,
-  ApiKeyUsageStats,
-  McpUserContext,
-  McpLogParams,
-  ApiKeyGenerateOptions,
-  ApiKeyValidationResult,
-};
+// 所有类型已经通过 export interface 和 export type 定义导出，无需重复导出

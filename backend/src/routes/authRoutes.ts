@@ -15,7 +15,7 @@ import {
   AuthErrorResponse,
   UserInfoResponse,
 } from '../types/userTypes';
-import { extractBearerToken } from '../utils/jwtUtils';
+import { extractBearerToken, generateJWT } from '../utils/jwtUtils';
 
 /**
  * 注册认证相关路由

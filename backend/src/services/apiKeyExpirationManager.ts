@@ -265,7 +265,7 @@ class ApiKeyExpirationManager {
 
     const deletedLogs = await prisma.mcpUsageLog.deleteMany({
       where: {
-        timestamp: {
+        createdAt: {
           lt: logCleanupDate,
         },
       },
@@ -500,5 +500,4 @@ class ApiKeyExpirationManager {
 // 创建全局实例
 export const apiKeyExpirationManager = new ApiKeyExpirationManager();
 
-// 导出配置接口
-export { ExpirationConfig, ExpirationNotification };
+// 导出配置接口 - 类型已经通过 export interface 导出，无需重复

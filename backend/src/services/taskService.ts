@@ -126,8 +126,16 @@ export class TaskService {
     if (validatedData.tags && validatedData.tags.length > 0) {
       tagsConnect = {
         connectOrCreate: validatedData.tags.map((tagName: string) => ({
-          where: { name: tagName },
-          create: { name: tagName },
+          where: { 
+            ownerId_name: {
+              ownerId: userId,
+              name: tagName
+            }
+          },
+          create: { 
+            name: tagName,
+            ownerId: userId
+          },
         })),
       };
     }
@@ -165,7 +173,7 @@ export class TaskService {
    * 批量创建任务
    */
   async createTasks(tasks: ExtendedTaskInput[], userId: string) {
-    const createdTasks = [];
+    const createdTasks: any[] = [];
 
     await prisma.$transaction(async (tx) => {
       for (const taskData of tasks) {
@@ -198,8 +206,16 @@ export class TaskService {
         if (validatedData.tags && validatedData.tags.length > 0) {
           tagsConnect = {
             connectOrCreate: validatedData.tags.map((tagName: string) => ({
-              where: { name: tagName },
-              create: { name: tagName },
+              where: { 
+                ownerId_name: {
+                  ownerId: userId,
+                  name: tagName
+                }
+              },
+              create: { 
+                name: tagName,
+                ownerId: userId
+              },
             })),
           };
         }
@@ -239,7 +255,7 @@ export class TaskService {
   /**
    * 更新任务
    */
-  async updateTask(id: string, data: ExtendedTaskUpdate) {
+  async updateTask(id: string, data: ExtendedTaskUpdate, userId: string) {
     // 验证数据
     const validatedData = extendedTaskUpdateSchema.parse(data);
 
@@ -284,8 +300,16 @@ export class TaskService {
       tagsUpdate = {
         set: [], // 先清空现有标签
         connectOrCreate: validatedData.tags.map((tagName: string) => ({
-          where: { name: tagName },
-          create: { name: tagName },
+          where: { 
+            ownerId_name: {
+              ownerId: userId,
+              name: tagName
+            }
+          },
+          create: { 
+            name: tagName,
+            ownerId: userId
+          },
         })),
       };
     }

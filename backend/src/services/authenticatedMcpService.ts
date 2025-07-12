@@ -7,7 +7,7 @@
 import { FastifyInstance } from 'fastify';
 import { Server as SocketIOServer } from 'socket.io';
 import { PrismaClient } from '@prisma/client';
-import { mcpAuthMiddleware, mcpLoggingMiddleware } from '../middleware/mcpAuth';
+import { mcpAuthMiddleware, logMcpRequest } from '../middleware/mcpAuth';
 import { requirePermissions, requireMcpAuth } from '../middleware/apiKeyMiddleware';
 import { getApiKeyService } from './apiKeyService';
 import { ApiKeyPermission, McpUserContext } from '../types/apiKeyTypes';
@@ -38,7 +38,6 @@ export async function setupAuthenticatedMCPService(
     {
       preHandler: [
         mcpAuthMiddleware,
-        mcpLoggingMiddleware,
         async (request, reply) => {
           const { toolName } = request.params;
 
@@ -84,7 +83,7 @@ export async function setupAuthenticatedMCPService(
   server.post(
     '/mcp-auth',
     {
-      preHandler: [mcpAuthMiddleware, mcpLoggingMiddleware],
+      preHandler: [mcpAuthMiddleware],
     },
     async (request, reply) => {
       const mcpUser = request.user;
@@ -110,7 +109,7 @@ export async function setupAuthenticatedMCPService(
           if (toolName) {
             // 检查权限
             if (isReadOnlyTool(toolName)) {
-              if (!mcpUser.permissions.includes(ApiKeyPermission.MCP_READ)) {
+              if (!mcpUser.permissions.some(p => (p as any) === ApiKeyPermission.MCP_READ || (p as any) === 'mcp:read')) {
                 return reply.status(403).send({
                   jsonrpc: '2.0',
                   error: {
@@ -121,7 +120,7 @@ export async function setupAuthenticatedMCPService(
                 });
               }
             } else {
-              if (!mcpUser.permissions.includes(ApiKeyPermission.MCP_WRITE)) {
+              if (!mcpUser.permissions.some(p => (p as any) === ApiKeyPermission.MCP_WRITE || (p as any) === 'mcp:write')) {
                 return reply.status(403).send({
                   jsonrpc: '2.0',
                   error: {
@@ -138,7 +137,7 @@ export async function setupAuthenticatedMCPService(
               const mcpUserContext: McpUserContext = {
                 userId: mcpUser.userId,
                 apiKeyId: request.apiKey?.id || '',
-                permissions: mcpUser.permissions,
+                permissions: mcpUser.permissions as unknown as ApiKeyPermission[],
                 ipAddress: request.ip,
                 userAgent: request.headers['user-agent'],
               };

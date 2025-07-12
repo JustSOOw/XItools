@@ -263,10 +263,11 @@ export class ProjectService {
     const newProject = await this.createProject(
       {
         name: newName || `${originalProject.name} (副本)`,
-        description: originalProject.description,
-        color: originalProject.color,
-        icon: originalProject.icon,
+        description: originalProject.description || undefined,
+        color: originalProject.color || undefined,
+        icon: originalProject.icon || undefined,
         workspaceId: originalProject.workspaceId,
+        order: originalProject.order || 0,
       },
       userId!,
     );
