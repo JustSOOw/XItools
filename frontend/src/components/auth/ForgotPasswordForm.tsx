@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-07-01 17:30:00
  * @FilePath: \XItools\frontend\src\components\auth\ForgotPasswordForm.tsx
  * @Description: 忘记密码表单组件
- * 
- * Copyright (c) 2025 by XItools Team, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
 import React, { useState } from 'react';
@@ -28,7 +28,7 @@ interface ForgotPasswordData {
 export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
   onSuccess,
   onBackToLogin,
-  className = ''
+  className = '',
 }) => {
   const { t } = useTranslation('auth');
   const { showSuccess, showError } = useUserFeedback();
@@ -41,16 +41,16 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
     errors: validationErrors,
     updateField,
     validateAll,
-    hasErrors
+    hasErrors,
   } = useFormValidation<ForgotPasswordData>(
     { email: '' },
     {
       email: {
         required: true,
         email: true,
-        message: t('validation.emailRequired')
-      }
-    }
+        message: t('validation.emailRequired'),
+      },
+    },
   );
 
   // 处理输入变化
@@ -62,36 +62,30 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
   // 处理表单提交
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateAll()) {
       return;
     }
-    
+
     setIsLoading(true);
-    
+
     try {
       // 模拟API调用 - 实际项目中需要调用真实的API
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
       // 成功发送重置邮件
       setIsEmailSent(true);
-      showSuccess(
-        t('forgotPassword.emailSent', { email: formData.email }),
-        {
-          title: t('forgotPassword.checkEmail'),
-          duration: 6000
-        }
-      );
-      
+      showSuccess(t('forgotPassword.emailSent', { email: formData.email }), {
+        title: t('forgotPassword.checkEmail'),
+        duration: 6000,
+      });
+
       onSuccess?.();
     } catch (error: any) {
-      showError(
-        error.message || t('forgotPassword.sendFailed'),
-        {
-          title: t('forgotPassword.error'),
-          duration: 5000
-        }
-      );
+      showError(error.message || t('forgotPassword.sendFailed'), {
+        title: t('forgotPassword.error'),
+        duration: 5000,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -100,26 +94,20 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
   // 重新发送邮件
   const handleResendEmail = async () => {
     setIsLoading(true);
-    
+
     try {
       // 模拟API调用
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      showSuccess(
-        t('forgotPassword.emailResent'),
-        {
-          title: t('forgotPassword.emailSent'),
-          duration: 4000
-        }
-      );
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      showSuccess(t('forgotPassword.emailResent'), {
+        title: t('forgotPassword.emailSent'),
+        duration: 4000,
+      });
     } catch (error: any) {
-      showError(
-        error.message || t('forgotPassword.resendFailed'),
-        {
-          title: t('forgotPassword.error'),
-          duration: 5000
-        }
-      );
+      showError(error.message || t('forgotPassword.resendFailed'), {
+        title: t('forgotPassword.error'),
+        duration: 5000,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -165,11 +153,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
               )}
             </button>
 
-            <button
-              type="button"
-              className="back-button"
-              onClick={onBackToLogin}
-            >
+            <button type="button" className="back-button" onClick={onBackToLogin}>
               <i className="icon-arrow-left"></i>
               <span>{t('forgotPassword.backToLogin')}</span>
             </button>
@@ -230,12 +214,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
 
         {/* 返回登录 */}
         <div className="form-footer">
-          <button
-            type="button"
-            className="back-link"
-            onClick={onBackToLogin}
-            disabled={isLoading}
-          >
+          <button type="button" className="back-link" onClick={onBackToLogin} disabled={isLoading}>
             <i className="icon-arrow-left"></i>
             <span>{t('forgotPassword.backToLogin')}</span>
           </button>

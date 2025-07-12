@@ -22,7 +22,7 @@ const Card: React.FC<CardProps> = ({
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const baseClasses = 'rounded-card transition-all duration-200';
-  
+
   // 如果有自定义背景色，不应用默认背景色
   const hasCustomBackground = style?.background || style?.backgroundColor;
 
@@ -31,24 +31,24 @@ const Card: React.FC<CardProps> = ({
     glassmorphic: 'bg-white/20 backdrop-blur-md border border-white/30 shadow-lg',
     outlined: 'border border-border bg-transparent',
   };
-  
+
   const interactiveClasses = isInteractive ? 'cursor-pointer' : '';
   const hoverClasses = isHoverable ? 'hover:shadow-lg hover:translate-y-[-2px]' : '';
   const paddingClasses = noPadding ? '' : 'p-3';
-  
+
   const cardClasses = classNames(
     baseClasses,
     variantClasses[variant],
     interactiveClasses,
     hoverClasses,
     paddingClasses,
-    className
+    className,
   );
-  
+
   // 深色模式适配
   useEffect(() => {
     const isDark = document.documentElement.classList.contains('dark');
-    
+
     if (cardRef.current && variant === 'glassmorphic' && isDark) {
       cardRef.current.classList.remove('bg-white/20', 'border-white/30');
       cardRef.current.classList.add('bg-dark-surface/30', 'border-gray-100/10');
@@ -62,4 +62,4 @@ const Card: React.FC<CardProps> = ({
   );
 };
 
-export default Card; 
+export default Card;

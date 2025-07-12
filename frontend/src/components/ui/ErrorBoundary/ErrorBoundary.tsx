@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-01-27 21:20:00
  * @FilePath: \XItools\frontend\src\components\ui\ErrorBoundary\ErrorBoundary.tsx
  * @Description: 错误边界组件 - 捕获组件级错误并提供优雅降级
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
@@ -86,7 +86,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       if (resetKeys) {
         // 检查resetKeys是否发生变化
         const hasResetKeyChanged = resetKeys.some(
-          (key, index) => key !== prevProps.resetKeys?.[index]
+          (key, index) => key !== prevProps.resetKeys?.[index],
         );
         if (hasResetKeyChanged) {
           this.resetError();
@@ -123,13 +123,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     const { children, fallback: FallbackComponent = ErrorFallback } = this.props;
 
     if (hasError) {
-      return (
-        <FallbackComponent
-          error={error}
-          errorInfo={errorInfo}
-          resetError={this.resetError}
-        />
-      );
+      return <FallbackComponent error={error} errorInfo={errorInfo} resetError={this.resetError} />;
     }
 
     return children;

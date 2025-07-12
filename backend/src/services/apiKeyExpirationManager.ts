@@ -1,6 +1,6 @@
 /**
  * API密钥过期和自动清理服务
- * 
+ *
  * 提供API密钥的自动过期检查、清理和通知功能
  */
 
@@ -34,12 +34,14 @@ class ApiKeyExpirationManager {
   private config: ExpirationConfig;
   private isRunning: boolean = false;
 
-  constructor(config: ExpirationConfig = {
-    checkInterval: '0 9 * * *', // 每天上午9点检查
-    notificationDays: [30, 7, 3, 1], // 过期前30、7、3、1天发送通知
-    autoCleanupAfterDays: 30, // 过期30天后自动删除
-    logRetentionDays: 90 // 保留90天的日志
-  }) {
+  constructor(
+    config: ExpirationConfig = {
+      checkInterval: '0 9 * * *', // 每天上午9点检查
+      notificationDays: [30, 7, 3, 1], // 过期前30、7、3、1天发送通知
+      autoCleanupAfterDays: 30, // 过期30天后自动删除
+      logRetentionDays: 90, // 保留90天的日志
+    },
+  ) {
     this.config = config;
   }
 
@@ -53,7 +55,7 @@ class ApiKeyExpirationManager {
     }
 
     console.log('启动API密钥过期管理服务...');
-    
+
     // 定时检查过期
     cron.schedule(this.config.checkInterval, async () => {
       try {
@@ -97,28 +99,28 @@ class ApiKeyExpirationManager {
     // 检查即将过期的密钥
     for (const days of this.config.notificationDays) {
       const checkDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
-      
+
       const expiringKeys = await prisma.userApiKey.findMany({
         where: {
           expiresAt: {
             gte: now,
-            lte: checkDate
+            lte: checkDate,
           },
-          isActive: true
+          isActive: true,
         },
         include: {
           user: {
             select: {
               email: true,
-              username: true
-            }
-          }
-        }
+              username: true,
+            },
+          },
+        },
       });
 
       for (const key of expiringKeys) {
         const daysUntilExpiry = Math.ceil(
-          (key.expiresAt!.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)
+          (key.expiresAt!.getTime() - now.getTime()) / (24 * 60 * 60 * 1000),
         );
 
         notifications.push({
@@ -128,7 +130,7 @@ class ApiKeyExpirationManager {
           userEmail: key.user.email,
           expiresAt: key.expiresAt!,
           daysUntilExpiry,
-          type: daysUntilExpiry <= 1 ? 'urgent' : 'warning'
+          type: daysUntilExpiry <= 1 ? 'urgent' : 'warning',
         });
       }
     }
@@ -137,18 +139,18 @@ class ApiKeyExpirationManager {
     const expiredKeys = await prisma.userApiKey.findMany({
       where: {
         expiresAt: {
-          lt: now
+          lt: now,
         },
-        isActive: true
+        isActive: true,
       },
       include: {
         user: {
           select: {
             email: true,
-            username: true
-          }
-        }
-      }
+            username: true,
+          },
+        },
+      },
     });
 
     for (const key of expiredKeys) {
@@ -159,7 +161,7 @@ class ApiKeyExpirationManager {
         userEmail: key.user.email,
         expiresAt: key.expiresAt!,
         daysUntilExpiry: 0,
-        type: 'expired'
+        type: 'expired',
       });
 
       // 自动禁用过期的密钥
@@ -181,10 +183,10 @@ class ApiKeyExpirationManager {
     try {
       await prisma.userApiKey.update({
         where: { id: apiKeyId },
-        data: { 
+        data: {
           isActive: false,
-          updatedAt: new Date()
-        }
+          updatedAt: new Date(),
+        },
       });
 
       console.log(`已禁用过期的API密钥: ${apiKeyId}`);
@@ -202,16 +204,14 @@ class ApiKeyExpirationManager {
       // 目前只是记录日志
       console.log(`[通知] ${notification.type.toUpperCase()}: API密钥 "${notification.keyName}" 
         用户: ${notification.userEmail}
-        ${notification.type === 'expired' 
-          ? '已过期' 
-          : `将在${notification.daysUntilExpiry}天后过期`
+        ${
+          notification.type === 'expired' ? '已过期' : `将在${notification.daysUntilExpiry}天后过期`
         }
         过期时间: ${notification.expiresAt.toISOString()}`);
 
       // 可以在这里添加实际的通知逻辑
       // await emailService.sendExpirationEmail(notification);
       // await smsService.sendExpirationSMS(notification);
-      
     } catch (error) {
       console.error('发送过期通知失败:', error);
     }
@@ -226,28 +226,30 @@ class ApiKeyExpirationManager {
     const now = new Date();
 
     // 清理长期过期的API密钥
-    const cleanupDate = new Date(now.getTime() - this.config.autoCleanupAfterDays * 24 * 60 * 60 * 1000);
-    
+    const cleanupDate = new Date(
+      now.getTime() - this.config.autoCleanupAfterDays * 24 * 60 * 60 * 1000,
+    );
+
     const expiredKeysToDelete = await prisma.userApiKey.findMany({
       where: {
         expiresAt: {
-          lt: cleanupDate
+          lt: cleanupDate,
         },
-        isActive: false
+        isActive: false,
       },
-      select: { id: true, name: true }
+      select: { id: true, name: true },
     });
 
     for (const key of expiredKeysToDelete) {
       try {
         // 删除相关的使用日志
         await prisma.mcpUsageLog.deleteMany({
-          where: { apiKeyId: key.id }
+          where: { apiKeyId: key.id },
         });
 
         // 删除API密钥
         await prisma.userApiKey.delete({
-          where: { id: key.id }
+          where: { id: key.id },
         });
 
         console.log(`已删除过期API密钥: ${key.name} (${key.id})`);
@@ -257,17 +259,21 @@ class ApiKeyExpirationManager {
     }
 
     // 清理过期的使用日志
-    const logCleanupDate = new Date(now.getTime() - this.config.logRetentionDays * 24 * 60 * 60 * 1000);
-    
+    const logCleanupDate = new Date(
+      now.getTime() - this.config.logRetentionDays * 24 * 60 * 60 * 1000,
+    );
+
     const deletedLogs = await prisma.mcpUsageLog.deleteMany({
       where: {
         timestamp: {
-          lt: logCleanupDate
-        }
-      }
+          lt: logCleanupDate,
+        },
+      },
     });
 
-    console.log(`清理完成: 删除了${expiredKeysToDelete.length}个过期密钥，${deletedLogs.count}条过期日志`);
+    console.log(
+      `清理完成: 删除了${expiredKeysToDelete.length}个过期密钥，${deletedLogs.count}条过期日志`,
+    );
   }
 
   /**
@@ -281,10 +287,10 @@ class ApiKeyExpirationManager {
   }> {
     const apiKey = await prisma.userApiKey.findUnique({
       where: { id: apiKeyId },
-      select: { 
+      select: {
         expiresAt: true,
-        isActive: true
-      }
+        isActive: true,
+      },
     });
 
     if (!apiKey) {
@@ -296,7 +302,7 @@ class ApiKeyExpirationManager {
         isExpired: false,
         daysUntilExpiry: Infinity,
         expiresAt: null,
-        needsRenewal: false
+        needsRenewal: false,
       };
     }
 
@@ -308,39 +314,41 @@ class ApiKeyExpirationManager {
       isExpired: timeUntilExpiry <= 0,
       daysUntilExpiry: Math.max(0, daysUntilExpiry),
       expiresAt: apiKey.expiresAt,
-      needsRenewal: daysUntilExpiry <= 7 // 7天内需要续期
+      needsRenewal: daysUntilExpiry <= 7, // 7天内需要续期
     };
   }
 
   /**
    * 批量更新API密钥过期时间
    */
-  async batchUpdateExpiration(updates: Array<{
-    apiKeyId: string;
-    newExpiresAt: Date | null;
-  }>): Promise<{
+  async batchUpdateExpiration(
+    updates: Array<{
+      apiKeyId: string;
+      newExpiresAt: Date | null;
+    }>,
+  ): Promise<{
     success: number;
     failed: Array<{ apiKeyId: string; error: string }>;
   }> {
     const results = {
       success: 0,
-      failed: [] as Array<{ apiKeyId: string; error: string }>
+      failed: [] as Array<{ apiKeyId: string; error: string }>,
     };
 
     for (const update of updates) {
       try {
         await prisma.userApiKey.update({
           where: { id: update.apiKeyId },
-          data: { 
+          data: {
             expiresAt: update.newExpiresAt,
-            updatedAt: new Date()
-          }
+            updatedAt: new Date(),
+          },
         });
         results.success++;
       } catch (error) {
         results.failed.push({
           apiKeyId: update.apiKeyId,
-          error: error instanceof Error ? error.message : '未知错误'
+          error: error instanceof Error ? error.message : '未知错误',
         });
       }
     }
@@ -351,15 +359,17 @@ class ApiKeyExpirationManager {
   /**
    * 获取即将过期的API密钥列表
    */
-  async getExpiringApiKeys(daysAhead: number = 30): Promise<Array<{
-    id: string;
-    name: string;
-    userId: string;
-    userEmail: string;
-    expiresAt: Date;
-    daysUntilExpiry: number;
-    lastUsedAt: Date | null;
-  }>> {
+  async getExpiringApiKeys(daysAhead: number = 30): Promise<
+    Array<{
+      id: string;
+      name: string;
+      userId: string;
+      userEmail: string;
+      expiresAt: Date;
+      daysUntilExpiry: number;
+      lastUsedAt: Date | null;
+    }>
+  > {
     const now = new Date();
     const checkDate = new Date(now.getTime() + daysAhead * 24 * 60 * 60 * 1000);
 
@@ -367,32 +377,32 @@ class ApiKeyExpirationManager {
       where: {
         expiresAt: {
           gte: now,
-          lte: checkDate
+          lte: checkDate,
         },
-        isActive: true
+        isActive: true,
       },
       include: {
         user: {
           select: {
-            email: true
-          }
-        }
+            email: true,
+          },
+        },
       },
       orderBy: {
-        expiresAt: 'asc'
-      }
+        expiresAt: 'asc',
+      },
     });
 
-    return expiringKeys.map(key => ({
+    return expiringKeys.map((key) => ({
       id: key.id,
       name: key.name,
       userId: key.userId,
       userEmail: key.user.email,
       expiresAt: key.expiresAt!,
       daysUntilExpiry: Math.ceil(
-        (key.expiresAt!.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)
+        (key.expiresAt!.getTime() - now.getTime()) / (24 * 60 * 60 * 1000),
       ),
-      lastUsedAt: key.lastUsedAt
+      lastUsedAt: key.lastUsedAt,
     }));
   }
 
@@ -423,43 +433,43 @@ class ApiKeyExpirationManager {
       expired,
       neverExpiring,
       expiringDetails,
-      expiredDetails
+      expiredDetails,
     ] = await Promise.all([
       prisma.userApiKey.count({ where: { isActive: true } }),
-      prisma.userApiKey.count({ 
-        where: { 
+      prisma.userApiKey.count({
+        where: {
           isActive: true,
-          expiresAt: { gte: now, lte: in7Days }
-        }
+          expiresAt: { gte: now, lte: in7Days },
+        },
       }),
-      prisma.userApiKey.count({ 
-        where: { 
+      prisma.userApiKey.count({
+        where: {
           isActive: true,
-          expiresAt: { gte: now, lte: in30Days }
-        }
+          expiresAt: { gte: now, lte: in30Days },
+        },
       }),
-      prisma.userApiKey.count({ 
-        where: { 
-          expiresAt: { lt: now }
-        }
+      prisma.userApiKey.count({
+        where: {
+          expiresAt: { lt: now },
+        },
       }),
-      prisma.userApiKey.count({ 
-        where: { 
+      prisma.userApiKey.count({
+        where: {
           isActive: true,
-          expiresAt: null
-        }
+          expiresAt: null,
+        },
       }),
       this.getExpiringApiKeys(30),
       prisma.userApiKey.findMany({
         where: {
-          expiresAt: { lt: now }
+          expiresAt: { lt: now },
         },
         include: {
-          user: { select: { email: true } }
+          user: { select: { email: true } },
         },
         orderBy: { expiresAt: 'desc' },
-        take: 50
-      })
+        take: 50,
+      }),
     ]);
 
     return {
@@ -468,19 +478,21 @@ class ApiKeyExpirationManager {
         expiringIn7Days: expiring7Days,
         expiringIn30Days: expiring30Days,
         expiredKeys: expired,
-        neverExpiringKeys: neverExpiring
+        neverExpiringKeys: neverExpiring,
       },
       details: {
         expiringKeys: expiringDetails,
-        expiredKeys: expiredDetails.map(key => ({
+        expiredKeys: expiredDetails.map((key) => ({
           id: key.id,
           name: key.name,
           userId: key.userId,
           userEmail: key.user.email,
           expiresAt: key.expiresAt,
-          daysExpired: Math.ceil((now.getTime() - key.expiresAt!.getTime()) / (24 * 60 * 60 * 1000))
-        }))
-      }
+          daysExpired: Math.ceil(
+            (now.getTime() - key.expiresAt!.getTime()) / (24 * 60 * 60 * 1000),
+          ),
+        })),
+      },
     };
   }
 }

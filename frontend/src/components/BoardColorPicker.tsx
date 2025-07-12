@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-01-27 16:35:00
  * @FilePath: \XItools\frontend\src\components\BoardColorPicker.tsx
  * @Description: 看板背景颜色选择器组件
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 
 import React, { useState } from 'react';
@@ -33,9 +33,10 @@ const ColorPreview: React.FC<{
     <div
       className={`
         relative cursor-pointer rounded-lg border-2 transition-all duration-200 hover:scale-105
-        ${isSelected
-          ? 'border-primary shadow-lg ring-2 ring-primary/20'
-          : 'border-border hover:border-primary/50'
+        ${
+          isSelected
+            ? 'border-primary shadow-lg ring-2 ring-primary/20'
+            : 'border-border hover:border-primary/50'
         }
       `}
       onClick={onClick}
@@ -47,7 +48,7 @@ const ColorPreview: React.FC<{
           className="w-14 h-14 rounded-md border border-border"
           style={{
             background: option.value,
-            backgroundSize: 'cover'
+            backgroundSize: 'cover',
           }}
         />
 
@@ -74,9 +75,7 @@ const ColorPreview: React.FC<{
 
         {/* 颜色名称 */}
         <div className="mt-2 text-center">
-          <span className="text-xs text-text-secondary">
-            {translatedName}
-          </span>
+          <span className="text-xs text-text-secondary">{translatedName}</span>
         </div>
       </div>
     </div>
@@ -85,7 +84,8 @@ const ColorPreview: React.FC<{
 
 // 看板背景颜色选择器组件
 export const BoardColorPicker: React.FC<BoardColorPickerProps> = ({ className = '' }) => {
-  const { backgroundColorId, followTheme, setBackgroundColor, getColorOption, setFollowTheme } = useBoardStore();
+  const { backgroundColorId, followTheme, setBackgroundColor, getColorOption, setFollowTheme } =
+    useBoardStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { t } = useI18n();
 
@@ -96,7 +96,7 @@ export const BoardColorPicker: React.FC<BoardColorPickerProps> = ({ className = 
   };
 
   const handleReset = () => {
-    const defaultOption = colorOptions.find(option => option.id === 'default-white');
+    const defaultOption = colorOptions.find((option) => option.id === 'default-white');
     if (defaultOption) {
       setBackgroundColor(defaultOption.id, defaultOption.value);
     }
@@ -109,9 +109,9 @@ export const BoardColorPicker: React.FC<BoardColorPickerProps> = ({ className = 
   };
 
   // 按类别分组颜色选项
-  const basicColors = colorOptions.filter(option => option.category === 'basic');
-  const mediumColors = colorOptions.filter(option => option.category === 'medium');
-  const gradientColors = colorOptions.filter(option => option.category === 'gradient');
+  const basicColors = colorOptions.filter((option) => option.category === 'basic');
+  const mediumColors = colorOptions.filter((option) => option.category === 'medium');
+  const gradientColors = colorOptions.filter((option) => option.category === 'gradient');
 
   return (
     <>
@@ -123,12 +123,17 @@ export const BoardColorPicker: React.FC<BoardColorPickerProps> = ({ className = 
         className={className}
         icon={
           <div className="flex items-center space-x-2">
-            <div 
+            <div
               className="w-4 h-4 rounded border border-border"
               style={{ background: currentColorOption?.value || '#FFFFFF' }}
             />
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM7 3H5a2 2 0 00-2 2v12a4 4 0 004 4h2M9 3h6a2 2 0 012 2v12a4 4 0 01-4 4H9" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM7 3H5a2 2 0 00-2 2v12a4 4 0 004 4h2M9 3h6a2 2 0 012 2v12a4 4 0 01-4 4H9"
+              />
             </svg>
           </div>
         }
@@ -148,8 +153,14 @@ export const BoardColorPicker: React.FC<BoardColorPickerProps> = ({ className = 
           <div className="bg-surface rounded-lg p-3">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-medium text-text-primary">{t('board:background.followTheme', { defaultValue: '跟随主题' })}</h3>
-                <p className="text-sm text-text-secondary">{t('board:background.followThemeDesc', { defaultValue: '自动使用当前主题的默认背景色' })}</p>
+                <h3 className="font-medium text-text-primary">
+                  {t('board:background.followTheme', { defaultValue: '跟随主题' })}
+                </h3>
+                <p className="text-sm text-text-secondary">
+                  {t('board:background.followThemeDesc', {
+                    defaultValue: '自动使用当前主题的默认背景色',
+                  })}
+                </p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
@@ -158,12 +169,16 @@ export const BoardColorPicker: React.FC<BoardColorPickerProps> = ({ className = 
                   checked={followTheme}
                   onChange={(e) => setFollowTheme(e.target.checked)}
                 />
-                <div className={`w-11 h-6 rounded-full transition-colors ${
-                  followTheme ? 'bg-primary' : 'bg-gray-300'
-                }`}>
-                  <div className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
-                    followTheme ? 'translate-x-5' : 'translate-x-0.5'
-                  } mt-0.5`} />
+                <div
+                  className={`w-11 h-6 rounded-full transition-colors ${
+                    followTheme ? 'bg-primary' : 'bg-gray-300'
+                  }`}
+                >
+                  <div
+                    className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
+                      followTheme ? 'translate-x-5' : 'translate-x-0.5'
+                    } mt-0.5`}
+                  />
                 </div>
               </label>
             </div>
@@ -171,21 +186,29 @@ export const BoardColorPicker: React.FC<BoardColorPickerProps> = ({ className = 
 
           {/* 当前选择 */}
           <div className="bg-surface rounded-lg p-3">
-            <h3 className="font-medium text-text-primary mb-2">{t('board:background.current', { defaultValue: '当前背景' })}</h3>
+            <h3 className="font-medium text-text-primary mb-2">
+              {t('board:background.current', { defaultValue: '当前背景' })}
+            </h3>
             <div className="flex items-center space-x-3">
               <div
                 className="w-6 h-6 rounded border border-border"
                 style={{ background: currentColorOption?.value || '#FFFFFF' }}
               />
               <span className="text-sm text-text-primary">
-                {followTheme ? t('board:background.followTheme') : (currentColorOption ? getTranslatedColorName(currentColorOption) : t('board:background.defaultWhite', { defaultValue: '默认白' }))}
+                {followTheme
+                  ? t('board:background.followTheme')
+                  : currentColorOption
+                    ? getTranslatedColorName(currentColorOption)
+                    : t('board:background.defaultWhite', { defaultValue: '默认白' })}
               </span>
             </div>
           </div>
 
           {/* 基础色系 */}
           <div className={followTheme ? 'opacity-50 pointer-events-none' : ''}>
-            <h3 className="font-medium text-text-primary mb-3">{t('board:background.basicColors', { defaultValue: '基础色系' })}</h3>
+            <h3 className="font-medium text-text-primary mb-3">
+              {t('board:background.basicColors', { defaultValue: '基础色系' })}
+            </h3>
             <div className="grid grid-cols-4 gap-3 px-2">
               {basicColors.map((option) => (
                 <ColorPreview
@@ -201,7 +224,9 @@ export const BoardColorPicker: React.FC<BoardColorPickerProps> = ({ className = 
 
           {/* 中等饱和度色系 */}
           <div className={followTheme ? 'opacity-50 pointer-events-none' : ''}>
-            <h3 className="font-medium text-text-primary mb-3">{t('board:background.mediumColors', { defaultValue: '中等饱和度色系' })}</h3>
+            <h3 className="font-medium text-text-primary mb-3">
+              {t('board:background.mediumColors', { defaultValue: '中等饱和度色系' })}
+            </h3>
             <div className="grid grid-cols-4 gap-3 px-2">
               {mediumColors.map((option) => (
                 <ColorPreview
@@ -217,7 +242,9 @@ export const BoardColorPicker: React.FC<BoardColorPickerProps> = ({ className = 
 
           {/* 渐变色背景 */}
           <div className={followTheme ? 'opacity-50 pointer-events-none' : ''}>
-            <h3 className="font-medium text-text-primary mb-3">{t('board:background.gradientColors', { defaultValue: '渐变色背景' })}</h3>
+            <h3 className="font-medium text-text-primary mb-3">
+              {t('board:background.gradientColors', { defaultValue: '渐变色背景' })}
+            </h3>
             <div className="grid grid-cols-3 gap-3 px-2">
               {gradientColors.map((option) => (
                 <ColorPreview
@@ -233,26 +260,14 @@ export const BoardColorPicker: React.FC<BoardColorPickerProps> = ({ className = 
 
           {/* 底部按钮 */}
           <div className="flex justify-between pt-3 border-t border-border">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleReset}
-            >
+            <Button variant="ghost" size="sm" onClick={handleReset}>
               {t('board:background.resetToDefault', { defaultValue: '重置为默认' })}
             </Button>
             <div className="space-x-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsModalOpen(false)}
-              >
+              <Button variant="ghost" size="sm" onClick={() => setIsModalOpen(false)}>
                 {t('common:actions.cancel')}
               </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setIsModalOpen(false)}
-              >
+              <Button variant="primary" size="sm" onClick={() => setIsModalOpen(false)}>
                 {t('common:actions.confirm')}
               </Button>
             </div>

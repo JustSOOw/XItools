@@ -15,7 +15,7 @@ interface ColumnInsertIndicatorProps {
 const ColumnInsertIndicator: React.FC<ColumnInsertIndicatorProps> = ({
   isVisible,
   position,
-  className = ''
+  className = '',
 }) => {
   // 完全隐藏插入指示器，不显示任何视觉元素
   return null;

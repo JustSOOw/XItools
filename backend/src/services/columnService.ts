@@ -7,7 +7,10 @@ const prisma = new PrismaClient();
 export const columnSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1, '列名不能为空').max(50, '列名不能超过50个字符'),
-  order: z.number().min(0, '排序值不能为负数').transform(val => Math.round(val)),
+  order: z
+    .number()
+    .min(0, '排序值不能为负数')
+    .transform((val) => Math.round(val)),
   color: z.string().optional(),
   sortOption: z.string().optional().default('manual'),
   isDefault: z.boolean().optional().default(false),
@@ -26,7 +29,7 @@ export class ColumnService {
   async getColumnsByBoard(boardId: string) {
     return await prisma.boardColumn.findMany({
       where: { boardId },
-      orderBy: { order: 'asc' }
+      orderBy: { order: 'asc' },
     });
   }
 
@@ -37,12 +40,9 @@ export class ColumnService {
   async getAllColumns() {
     return await prisma.boardColumn.findMany({
       include: {
-        board: true
+        board: true,
       },
-      orderBy: [
-        { boardId: 'asc' },
-        { order: 'asc' }
-      ]
+      orderBy: [{ boardId: 'asc' }, { order: 'asc' }],
     });
   }
 
@@ -51,7 +51,7 @@ export class ColumnService {
    */
   async getColumnById(id: string) {
     return await prisma.boardColumn.findUnique({
-      where: { id }
+      where: { id },
     });
   }
 
@@ -68,7 +68,7 @@ export class ColumnService {
       : { id: validatedData.boardId };
 
     const board = await prisma.board.findFirst({
-      where: whereClause
+      where: whereClause,
     });
 
     if (!board) {
@@ -79,8 +79,8 @@ export class ColumnService {
     const existingColumn = await prisma.boardColumn.findFirst({
       where: {
         boardId: validatedData.boardId,
-        order: validatedData.order
-      }
+        order: validatedData.order,
+      },
     });
 
     if (existingColumn) {
@@ -88,17 +88,17 @@ export class ColumnService {
       await prisma.boardColumn.updateMany({
         where: {
           boardId: validatedData.boardId,
-          order: { gte: validatedData.order }
+          order: { gte: validatedData.order },
         },
-        data: { order: { increment: 1 } }
+        data: { order: { increment: 1 } },
       });
     }
 
     return await prisma.boardColumn.create({
       data: validatedData,
       include: {
-        board: true
-      }
+        board: true,
+      },
     });
   }
 
@@ -108,20 +108,20 @@ export class ColumnService {
   async updateColumn(id: string, data: z.infer<typeof columnUpdateSchema>) {
     // 验证数据
     const validatedData = columnUpdateSchema.parse(data);
-    
+
     // 如果更新order，需要处理排序冲突
     if (validatedData.order !== undefined) {
       const currentColumn = await prisma.boardColumn.findUnique({
-        where: { id }
+        where: { id },
       });
-      
+
       if (!currentColumn) {
         throw new Error('列不存在');
       }
-      
+
       const newOrder = validatedData.order;
       const oldOrder = currentColumn.order;
-      
+
       if (newOrder !== oldOrder) {
         // 使用事务处理order更新
         await prisma.$transaction(async (tx) => {
@@ -130,35 +130,35 @@ export class ColumnService {
             await tx.boardColumn.updateMany({
               where: {
                 order: { gt: oldOrder, lte: newOrder },
-                id: { not: id }
+                id: { not: id },
               },
-              data: { order: { decrement: 1 } }
+              data: { order: { decrement: 1 } },
             });
           } else {
             // 向前移动：将中间的列向后移动
             await tx.boardColumn.updateMany({
               where: {
                 order: { gte: newOrder, lt: oldOrder },
-                id: { not: id }
+                id: { not: id },
               },
-              data: { order: { increment: 1 } }
+              data: { order: { increment: 1 } },
             });
           }
-          
+
           // 更新目标列
           await tx.boardColumn.update({
             where: { id },
-            data: validatedData
+            data: validatedData,
           });
         });
-        
+
         return await this.getColumnById(id);
       }
     }
-    
+
     return await prisma.boardColumn.update({
       where: { id },
-      data: validatedData
+      data: validatedData,
     });
   }
 
@@ -168,41 +168,41 @@ export class ColumnService {
   async deleteColumn(id: string) {
     // 检查列是否存在
     const column = await prisma.boardColumn.findUnique({
-      where: { id }
+      where: { id },
     });
-    
+
     if (!column) {
       throw new Error('列不存在');
     }
-    
+
     // 检查是否为默认列
     if (column.isDefault) {
       throw new Error('不能删除默认列');
     }
-    
+
     // 检查列中是否有任务
     const tasksInColumn = await prisma.task.count({
-      where: { status: id }
+      where: { status: id },
     });
-    
+
     if (tasksInColumn > 0) {
       throw new Error(`该列中还有 ${tasksInColumn} 个任务，请先移动或删除这些任务`);
     }
-    
+
     // 使用事务删除列并调整其他列的order
     await prisma.$transaction(async (tx) => {
       // 删除列
       await tx.boardColumn.delete({
-        where: { id }
+        where: { id },
       });
-      
+
       // 将后面的列向前移动
       await tx.boardColumn.updateMany({
         where: { order: { gt: column.order } },
-        data: { order: { decrement: 1 } }
+        data: { order: { decrement: 1 } },
       });
     });
-    
+
     return { success: true, message: '列删除成功' };
   }
 
@@ -214,8 +214,8 @@ export class ColumnService {
     const existingColumns = await prisma.boardColumn.findMany({
       where: {
         id: { in: columnIds },
-        boardId
-      }
+        boardId,
+      },
     });
 
     if (existingColumns.length !== columnIds.length) {
@@ -228,7 +228,7 @@ export class ColumnService {
       for (let i = 0; i < columnIds.length; i++) {
         await tx.boardColumn.update({
           where: { id: columnIds[i] },
-          data: { order: -(i + 1000) } // 使用负值避免与现有正值冲突
+          data: { order: -(i + 1000) }, // 使用负值避免与现有正值冲突
         });
       }
 
@@ -236,7 +236,7 @@ export class ColumnService {
       for (let i = 0; i < columnIds.length; i++) {
         await tx.boardColumn.update({
           where: { id: columnIds[i] },
-          data: { order: i }
+          data: { order: i },
         });
       }
     });
@@ -250,7 +250,7 @@ export class ColumnService {
   async initializeDefaultColumns(boardId: string) {
     // 检查看板是否存在
     const board = await prisma.board.findUnique({
-      where: { id: boardId }
+      where: { id: boardId },
     });
 
     if (!board) {
@@ -259,7 +259,7 @@ export class ColumnService {
 
     // 检查看板是否已有列
     const existingColumns = await prisma.boardColumn.count({
-      where: { boardId }
+      where: { boardId },
     });
 
     if (existingColumns === 0) {

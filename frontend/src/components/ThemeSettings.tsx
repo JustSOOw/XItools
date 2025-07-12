@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-01-27 15:35:00
  * @FilePath: \XItools\frontend\src\components\ThemeSettings.tsx
  * @Description: 主题设置组件
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 
 import React from 'react';
@@ -28,9 +28,10 @@ const ThemePreviewCard: React.FC<{
     <div
       className={`
         relative cursor-pointer rounded-lg border-2 transition-all duration-200 hover:scale-105
-        ${isActive 
-          ? 'border-primary shadow-lg ring-2 ring-primary/20' 
-          : 'border-border hover:border-primary/50'
+        ${
+          isActive
+            ? 'border-primary shadow-lg ring-2 ring-primary/20'
+            : 'border-border hover:border-primary/50'
         }
       `}
       onClick={onClick}
@@ -39,35 +40,17 @@ const ThemePreviewCard: React.FC<{
       <div className="p-4">
         {/* 颜色预览条 */}
         <div className="flex h-6 rounded-md overflow-hidden mb-2">
-          <div
-            className="flex-1"
-            style={{ backgroundColor: config.preview.primary }}
-          />
-          <div
-            className="flex-1"
-            style={{ backgroundColor: config.preview.secondary }}
-          />
-          <div
-            className="flex-1"
-            style={{ backgroundColor: config.preview.accent }}
-          />
+          <div className="flex-1" style={{ backgroundColor: config.preview.primary }} />
+          <div className="flex-1" style={{ backgroundColor: config.preview.secondary }} />
+          <div className="flex-1" style={{ backgroundColor: config.preview.accent }} />
         </div>
 
         {/* 模拟界面预览 */}
-        <div
-          className="rounded-md p-2 mb-2"
-          style={{ backgroundColor: config.preview.background }}
-        >
-          <div
-            className="h-1.5 rounded mb-1"
-            style={{ backgroundColor: config.preview.surface }}
-          />
-          <div
-            className="h-1 rounded w-3/4"
-            style={{ backgroundColor: config.preview.surface }}
-          />
+        <div className="rounded-md p-2 mb-2" style={{ backgroundColor: config.preview.background }}>
+          <div className="h-1.5 rounded mb-1" style={{ backgroundColor: config.preview.surface }} />
+          <div className="h-1 rounded w-3/4" style={{ backgroundColor: config.preview.surface }} />
         </div>
-        
+
         {/* 主题信息 */}
         <div>
           <h3 className="font-medium text-text-primary mb-1">
@@ -78,22 +61,22 @@ const ThemePreviewCard: React.FC<{
           </p>
         </div>
       </div>
-      
+
       {/* 选中指示器 */}
       {isActive && (
         <div className="absolute top-2 right-2">
           <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
-            <svg 
-              className="w-4 h-4 text-white" 
-              fill="none" 
-              stroke="currentColor" 
+            <svg
+              className="w-4 h-4 text-white"
+              fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M5 13l4 4L19 7" 
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
               />
             </svg>
           </div>
@@ -106,13 +89,8 @@ const ThemePreviewCard: React.FC<{
 // 主题设置组件
 export const ThemeSettings: React.FC<ThemeSettingsProps> = ({ className = '' }) => {
   const { t } = useI18n();
-  const {
-    currentTheme,
-    followSystemTheme,
-    configs,
-    setTheme,
-    setFollowSystemTheme,
-  } = useThemeStore();
+  const { currentTheme, followSystemTheme, configs, setTheme, setFollowSystemTheme } =
+    useThemeStore();
 
   const handleThemeChange = (theme: ThemeType) => {
     setTheme(theme);
@@ -129,9 +107,7 @@ export const ThemeSettings: React.FC<ThemeSettingsProps> = ({ className = '' }) 
         <h2 className="text-lg font-semibold text-text-primary mb-2">
           {t('settings:theme.title')}
         </h2>
-        <p className="text-sm text-text-secondary">
-          {t('settings:theme.description')}
-        </p>
+        <p className="text-sm text-text-secondary">{t('settings:theme.description')}</p>
       </div>
 
       {/* 系统主题跟随选项 */}
@@ -159,9 +135,7 @@ export const ThemeSettings: React.FC<ThemeSettingsProps> = ({ className = '' }) 
 
       {/* 主题选择 */}
       <div>
-        <h3 className="font-medium text-text-primary mb-3">
-          {t('settings:theme.selectTheme')}
-        </h3>
+        <h3 className="font-medium text-text-primary mb-3">{t('settings:theme.selectTheme')}</h3>
         <div className="grid grid-cols-2 gap-3 p-2">
           {Object.values(configs).map((config) => (
             <ThemePreviewCard
@@ -176,21 +150,19 @@ export const ThemeSettings: React.FC<ThemeSettingsProps> = ({ className = '' }) 
 
       {/* 当前主题信息 */}
       <div className="bg-surface rounded-lg p-4">
-        <h3 className="font-medium text-text-primary mb-2">
-          {t('settings:theme.currentTheme')}
-        </h3>
+        <h3 className="font-medium text-text-primary mb-2">{t('settings:theme.currentTheme')}</h3>
         <div className="flex items-center space-x-3">
           <div className="flex h-6 rounded overflow-hidden">
-            <div 
-              className="w-6" 
+            <div
+              className="w-6"
               style={{ backgroundColor: configs[currentTheme].preview.primary }}
             />
-            <div 
-              className="w-6" 
+            <div
+              className="w-6"
               style={{ backgroundColor: configs[currentTheme].preview.secondary }}
             />
-            <div 
-              className="w-6" 
+            <div
+              className="w-6"
               style={{ backgroundColor: configs[currentTheme].preview.accent }}
             />
           </div>

@@ -121,7 +121,7 @@ const InlineEdit: React.FC<InlineEditProps> = ({
       'w-full px-2 py-1 border border-border rounded bg-background text-text-primary',
       'focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary',
       error && 'border-red-500 focus:ring-red-500/50',
-      editClassName
+      editClassName,
     );
 
     switch (type) {
@@ -215,9 +215,7 @@ const InlineEdit: React.FC<InlineEditProps> = ({
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
           </div>
         )}
-        {error && (
-          <div className="text-red-500 text-xs mt-1">{error}</div>
-        )}
+        {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
         <div className="text-xs text-text-secondary mt-1">
           {multiline ? 'Ctrl+Enter 保存，Esc 取消' : 'Enter 保存，Esc 取消'}
         </div>
@@ -232,14 +230,12 @@ const InlineEdit: React.FC<InlineEditProps> = ({
         'border border-transparent hover:border-border',
         disabled && 'cursor-not-allowed opacity-50',
         displayClassName,
-        className
+        className,
       )}
       onClick={handleStartEdit}
       title={disabled ? '不可编辑' : '点击编辑'}
     >
-      {value || (
-        <span className="text-text-secondary italic">{placeholder}</span>
-      )}
+      {value || <span className="text-text-secondary italic">{placeholder}</span>}
     </div>
   );
 };

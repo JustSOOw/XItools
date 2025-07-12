@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-01-27 21:00:00
  * @FilePath: \XItools\frontend\src\components\ui\Toast\Toast.tsx
  * @Description: Toast通知组件 - 提供轻量级的成功/警告/错误通知
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -27,7 +27,13 @@ export interface ToastProps {
   duration?: number; // 毫秒，0表示不自动关闭
   action?: ToastAction;
   onClose: (id: string) => void;
-  position?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'top-center' | 'bottom-center';
+  position?:
+    | 'top-right'
+    | 'top-left'
+    | 'bottom-right'
+    | 'bottom-left'
+    | 'top-center'
+    | 'bottom-center';
 }
 
 /**
@@ -97,32 +103,22 @@ const Toast: React.FC<ToastProps> = ({
     },
   };
 
-
-
-  const animationClasses = classNames(
-    'transition-all duration-300 ease-out',
-    {
-      'opacity-0 translate-y-2': !isVisible,
-      'opacity-100 translate-y-0': isVisible && !isLeaving,
-      'opacity-0 translate-y-2 scale-95': isLeaving,
-    }
-  );
+  const animationClasses = classNames('transition-all duration-300 ease-out', {
+    'opacity-0 translate-y-2': !isVisible,
+    'opacity-100 translate-y-0': isVisible && !isLeaving,
+    'opacity-0 translate-y-2 scale-95': isLeaving,
+  });
 
   const style = typeStyles[type];
 
   return (
-    <div
-      className={classNames(
-        'max-w-sm w-full',
-        animationClasses
-      )}
-    >
+    <div className={classNames('max-w-sm w-full', animationClasses)}>
       <div
         className={classNames(
           'rounded-lg border shadow-lg p-4',
           style.bg,
           style.border,
-          style.text
+          style.text,
         )}
       >
         <div className="flex items-start">
@@ -133,9 +129,7 @@ const Toast: React.FC<ToastProps> = ({
 
           {/* 内容 */}
           <div className="ml-3 flex-1">
-            {title && (
-              <h4 className="text-sm font-medium mb-1">{title}</h4>
-            )}
+            {title && <h4 className="text-sm font-medium mb-1">{title}</h4>}
             <p className="text-sm">{message}</p>
 
             {/* 操作按钮 */}
@@ -145,7 +139,7 @@ const Toast: React.FC<ToastProps> = ({
                   onClick={action.onClick}
                   className={classNames(
                     'text-sm font-medium underline hover:no-underline focus:outline-none',
-                    style.text
+                    style.text,
                   )}
                 >
                   {action.label}
@@ -160,12 +154,16 @@ const Toast: React.FC<ToastProps> = ({
               onClick={handleClose}
               className={classNames(
                 'inline-flex rounded-md p-1.5 focus:outline-none focus:ring-2 focus:ring-offset-2 hover:bg-black/5 dark:hover:bg-white/5',
-                style.text
+                style.text,
               )}
             >
               <span className="sr-only">{t('common:actions.close')}</span>
               <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                <path
+                  fillRule="evenodd"
+                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
               </svg>
             </button>
           </div>

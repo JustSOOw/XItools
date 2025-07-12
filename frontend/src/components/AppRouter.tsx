@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-06-30 15:30:00
  * @FilePath: \XItools\frontend\src\components\AppRouter.tsx
  * @Description: 应用路由组件 - 管理认证状态和页面切换
- * 
- * Copyright (c) 2025 by XItools Team, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -21,7 +21,7 @@ import i18n from '../i18n';
 export enum PageType {
   LOADING = 'loading',
   AUTH = 'auth',
-  MAIN = 'main'
+  MAIN = 'main',
 }
 
 interface AppRouterProps {
@@ -80,13 +80,13 @@ export const AppRouter: React.FC<AppRouterProps> = ({ className = '' }) => {
           <img src="/logo.svg" alt="XItools" className="logo-image" />
           <h1 className="logo-text">XItools</h1>
         </div>
-        
+
         <div className="loading-spinner">
           <div className="spinner"></div>
         </div>
-        
+
         <p className="loading-text">{t('auth:loading.checking')}</p>
-        
+
         <div className="loading-progress">
           <div className="progress-bar">
             <div className="progress-fill"></div>
@@ -98,11 +98,7 @@ export const AppRouter: React.FC<AppRouterProps> = ({ className = '' }) => {
 
   // 渲染认证页面
   const renderAuthPage = () => (
-    <AuthPage
-      initialMode="login"
-      onAuthSuccess={handleAuthSuccess}
-      className="full-screen"
-    />
+    <AuthPage initialMode="login" onAuthSuccess={handleAuthSuccess} className="full-screen" />
   );
 
   // 渲染主应用
@@ -113,23 +109,19 @@ export const AppRouter: React.FC<AppRouterProps> = ({ className = '' }) => {
     switch (currentPage) {
       case PageType.LOADING:
         return renderLoadingPage();
-      
+
       case PageType.AUTH:
         return renderAuthPage();
-      
+
       case PageType.MAIN:
         return renderMainApp();
-      
+
       default:
         return renderLoadingPage();
     }
   };
 
-  return (
-    <div className={`app-router ${className}`}>
-      {renderCurrentPage()}
-    </div>
-  );
+  return <div className={`app-router ${className}`}>{renderCurrentPage()}</div>;
 };
 
 export default AppRouter;

@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-01-27 22:00:00
  * @FilePath: \XItools\frontend\src\components\feedback\SuccessAnimation.tsx
  * @Description: 成功反馈动画组件 - 提供操作成功的视觉反馈
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 
 import React from 'react';
@@ -61,7 +61,7 @@ const SuccessAnimation: React.FC<SuccessAnimationProps> = ({
       viewBox="0 0 24 24"
       initial={{ pathLength: 0, opacity: 0 }}
       animate={{ pathLength: 1, opacity: 1 }}
-      transition={{ duration: 0.6, ease: "easeInOut" }}
+      transition={{ duration: 0.6, ease: 'easeInOut' }}
     >
       <motion.path
         strokeLinecap="round"
@@ -81,7 +81,7 @@ const SuccessAnimation: React.FC<SuccessAnimationProps> = ({
       className={`${config.icon} relative`}
       initial={{ scale: 0 }}
       animate={{ scale: 1 }}
-      transition={{ duration: 0.3, type: "spring", stiffness: 200 }}
+      transition={{ duration: 0.3, type: 'spring', stiffness: 200 }}
     >
       <span className="text-2xl">🎉</span>
       {/* 粒子效果 */}
@@ -98,7 +98,7 @@ const SuccessAnimation: React.FC<SuccessAnimationProps> = ({
           transition={{
             duration: 1,
             delay: 0.3 + i * 0.1,
-            ease: "easeOut",
+            ease: 'easeOut',
           }}
         />
       ))}
@@ -111,20 +111,10 @@ const SuccessAnimation: React.FC<SuccessAnimationProps> = ({
       className={`${config.icon} bg-success rounded-full flex items-center justify-center`}
       initial={{ scale: 0 }}
       animate={{ scale: 1 }}
-      transition={{ duration: 0.3, type: "spring", stiffness: 200 }}
+      transition={{ duration: 0.3, type: 'spring', stiffness: 200 }}
     >
-      <svg
-        className="w-6 h-6 text-white"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M5 13l4 4L19 7"
-        />
+      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
       </svg>
     </motion.div>
   );
@@ -155,7 +145,7 @@ const SuccessAnimation: React.FC<SuccessAnimationProps> = ({
             initial={{ scale: 0.8, y: 20 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.8, y: 20 }}
-            transition={{ duration: 0.3, type: "spring", stiffness: 200 }}
+            transition={{ duration: 0.3, type: 'spring', stiffness: 200 }}
           >
             {/* 图标容器 */}
             <div className={`${config.container} flex items-center justify-center`}>
@@ -188,9 +178,7 @@ export const useSuccessAnimation = () => {
   const [isVisible, setIsVisible] = React.useState(false);
   const [config, setConfig] = React.useState<Partial<SuccessAnimationProps>>({});
 
-  const showSuccess = React.useCallback((
-    options: Partial<SuccessAnimationProps> = {}
-  ) => {
+  const showSuccess = React.useCallback((options: Partial<SuccessAnimationProps> = {}) => {
     setConfig(options);
     setIsVisible(true);
   }, []);
@@ -199,13 +187,10 @@ export const useSuccessAnimation = () => {
     setIsVisible(false);
   }, []);
 
-  const SuccessAnimationComponent = React.useMemo(() => (
-    <SuccessAnimation
-      {...config}
-      isVisible={isVisible}
-      onComplete={hideSuccess}
-    />
-  ), [config, isVisible, hideSuccess]);
+  const SuccessAnimationComponent = React.useMemo(
+    () => <SuccessAnimation {...config} isVisible={isVisible} onComplete={hideSuccess} />,
+    [config, isVisible, hideSuccess],
+  );
 
   return {
     showSuccess,

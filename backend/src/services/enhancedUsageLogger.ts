@@ -1,6 +1,6 @@
 /**
  * 增强的使用日志记录服务
- * 
+ *
  * 提供详细的API使用统计、异常检测和监控功能
  */
 
@@ -78,7 +78,7 @@ class EnhancedUsageLogger {
     // 响应时间异常阈值 (毫秒)
     responseTimeThreshold: 5000,
     // 不同IP地址数量阈值
-    ipDiversityThreshold: 10
+    ipDiversityThreshold: 10,
   };
 
   /**
@@ -105,9 +105,9 @@ class EnhancedUsageLogger {
             responseSize: log.responseSize,
             sessionId: log.sessionId,
             referer: log.referer,
-            requestId: log.requestId
-          }
-        }
+            requestId: log.requestId,
+          },
+        },
       });
 
       // 异步检查异常模式
@@ -122,59 +122,53 @@ class EnhancedUsageLogger {
    */
   async getUsageStatistics(
     apiKeyId: string,
-    timeRange: { start: Date; end: Date }
+    timeRange: { start: Date; end: Date },
   ): Promise<UsageStatistics> {
-    const [
-      totalStats,
-      endpointStats,
-      errorStats,
-      hourlyStats,
-      userAgentStats,
-      ipStats
-    ] = await Promise.all([
-      // 总体统计
-      prisma.mcpUsageLog.aggregate({
-        where: {
-          apiKeyId,
-          timestamp: {
-            gte: timeRange.start,
-            lte: timeRange.end
-          }
-        },
-        _count: { id: true },
-        _avg: { responseTime: true }
-      }),
+    const [totalStats, endpointStats, errorStats, hourlyStats, userAgentStats, ipStats] =
+      await Promise.all([
+        // 总体统计
+        prisma.mcpUsageLog.aggregate({
+          where: {
+            apiKeyId,
+            timestamp: {
+              gte: timeRange.start,
+              lte: timeRange.end,
+            },
+          },
+          _count: { id: true },
+          _avg: { responseTime: true },
+        }),
 
-      // 端点使用统计
-      prisma.mcpUsageLog.groupBy({
-        by: ['endpoint'],
-        where: {
-          apiKeyId,
-          timestamp: {
-            gte: timeRange.start,
-            lte: timeRange.end
-          }
-        },
-        _count: { id: true },
-        orderBy: { _count: { id: 'desc' } },
-        take: 10
-      }),
+        // 端点使用统计
+        prisma.mcpUsageLog.groupBy({
+          by: ['endpoint'],
+          where: {
+            apiKeyId,
+            timestamp: {
+              gte: timeRange.start,
+              lte: timeRange.end,
+            },
+          },
+          _count: { id: true },
+          orderBy: { _count: { id: 'desc' } },
+          take: 10,
+        }),
 
-      // 错误统计
-      prisma.mcpUsageLog.groupBy({
-        by: ['statusCode'],
-        where: {
-          apiKeyId,
-          timestamp: {
-            gte: timeRange.start,
-            lte: timeRange.end
-          }
-        },
-        _count: { id: true }
-      }),
+        // 错误统计
+        prisma.mcpUsageLog.groupBy({
+          by: ['statusCode'],
+          where: {
+            apiKeyId,
+            timestamp: {
+              gte: timeRange.start,
+              lte: timeRange.end,
+            },
+          },
+          _count: { id: true },
+        }),
 
-      // 小时分布统计
-      prisma.$queryRaw`
+        // 小时分布统计
+        prisma.$queryRaw`
         SELECT 
           EXTRACT(HOUR FROM timestamp) as hour,
           COUNT(*) as requestCount
@@ -186,42 +180,42 @@ class EnhancedUsageLogger {
         ORDER BY hour
       `,
 
-      // User Agent统计
-      prisma.mcpUsageLog.groupBy({
-        by: ['userAgent'],
-        where: {
-          apiKeyId,
-          timestamp: {
-            gte: timeRange.start,
-            lte: timeRange.end
-          }
-        },
-        _count: { id: true },
-        orderBy: { _count: { id: 'desc' } },
-        take: 5
-      }),
+        // User Agent统计
+        prisma.mcpUsageLog.groupBy({
+          by: ['userAgent'],
+          where: {
+            apiKeyId,
+            timestamp: {
+              gte: timeRange.start,
+              lte: timeRange.end,
+            },
+          },
+          _count: { id: true },
+          orderBy: { _count: { id: 'desc' } },
+          take: 5,
+        }),
 
-      // IP地址统计
-      prisma.mcpUsageLog.groupBy({
-        by: ['ipAddress'],
-        where: {
-          apiKeyId,
-          timestamp: {
-            gte: timeRange.start,
-            lte: timeRange.end
-          }
-        },
-        _count: { id: true },
-        _min: { timestamp: true },
-        _max: { timestamp: true },
-        orderBy: { _count: { id: 'desc' } },
-        take: 10
-      })
-    ]);
+        // IP地址统计
+        prisma.mcpUsageLog.groupBy({
+          by: ['ipAddress'],
+          where: {
+            apiKeyId,
+            timestamp: {
+              gte: timeRange.start,
+              lte: timeRange.end,
+            },
+          },
+          _count: { id: true },
+          _min: { timestamp: true },
+          _max: { timestamp: true },
+          orderBy: { _count: { id: 'desc' } },
+          take: 10,
+        }),
+      ]);
 
     const totalRequests = totalStats._count.id || 0;
     const successfulRequests = errorStats
-      .filter(stat => stat.statusCode >= 200 && stat.statusCode < 400)
+      .filter((stat) => stat.statusCode >= 200 && stat.statusCode < 400)
       .reduce((sum, stat) => sum + stat._count.id, 0);
 
     return {
@@ -229,29 +223,29 @@ class EnhancedUsageLogger {
       successfulRequests,
       failedRequests: totalRequests - successfulRequests,
       averageResponseTime: totalStats._avg.responseTime || 0,
-      mostUsedEndpoints: endpointStats.map(stat => ({
+      mostUsedEndpoints: endpointStats.map((stat) => ({
         endpoint: stat.endpoint,
-        count: stat._count.id
+        count: stat._count.id,
       })),
-      errorRates: errorStats.map(stat => ({
+      errorRates: errorStats.map((stat) => ({
         errorCode: stat.statusCode,
         count: stat._count.id,
-        percentage: (stat._count.id / totalRequests) * 100
+        percentage: (stat._count.id / totalRequests) * 100,
       })),
-      hourlyDistribution: (hourlyStats as any[]).map(stat => ({
+      hourlyDistribution: (hourlyStats as any[]).map((stat) => ({
         hour: Number(stat.hour),
-        requestCount: Number(stat.requestCount)
+        requestCount: Number(stat.requestCount),
       })),
-      topUserAgents: userAgentStats.map(stat => ({
+      topUserAgents: userAgentStats.map((stat) => ({
         userAgent: stat.userAgent,
-        count: stat._count.id
+        count: stat._count.id,
       })),
-      ipDistribution: ipStats.map(stat => ({
+      ipDistribution: ipStats.map((stat) => ({
         ip: stat.ipAddress,
         count: stat._count.id,
         firstSeen: stat._min.timestamp!,
-        lastSeen: stat._max.timestamp!
-      }))
+        lastSeen: stat._max.timestamp!,
+      })),
     };
   }
 
@@ -269,9 +263,9 @@ class EnhancedUsageLogger {
       where: {
         apiKeyId: log.apiKeyId,
         timestamp: {
-          gte: oneMinuteAgo
-        }
-      }
+          gte: oneMinuteAgo,
+        },
+      },
     });
 
     if (recentRequests > this.alertThresholds.rateSpikeThreshold) {
@@ -282,7 +276,7 @@ class EnhancedUsageLogger {
         data: { requestCount: recentRequests, timeWindow: '1分钟' },
         timestamp: now,
         apiKeyId: log.apiKeyId,
-        userId: log.userId
+        userId: log.userId,
       });
     }
 
@@ -291,29 +285,32 @@ class EnhancedUsageLogger {
       prisma.mcpUsageLog.count({
         where: {
           apiKeyId: log.apiKeyId,
-          timestamp: { gte: oneHourAgo }
-        }
+          timestamp: { gte: oneHourAgo },
+        },
       }),
       prisma.mcpUsageLog.count({
         where: {
           apiKeyId: log.apiKeyId,
           timestamp: { gte: oneHourAgo },
-          statusCode: { gte: 400 }
-        }
-      })
+          statusCode: { gte: 400 },
+        },
+      }),
     ]);
 
-    if (totalRecentRequests > 10) { // 只有在有足够样本时才检查
+    if (totalRecentRequests > 10) {
+      // 只有在有足够样本时才检查
       const errorRate = (errorRequests / totalRecentRequests) * 100;
       if (errorRate > this.alertThresholds.errorRateThreshold) {
         alerts.push({
           type: 'unusual_error_rate',
           severity: 'medium',
-          message: `API密钥在过去1小时内错误率为${errorRate.toFixed(2)}%，超过阈值${this.alertThresholds.errorRateThreshold}%`,
+          message: `API密钥在过去1小时内错误率为${errorRate.toFixed(2)}%，超过阈值${
+            this.alertThresholds.errorRateThreshold
+          }%`,
           data: { errorRate, totalRequests: totalRecentRequests, errorRequests },
           timestamp: now,
           apiKeyId: log.apiKeyId,
-          userId: log.userId
+          userId: log.userId,
         });
       }
     }
@@ -322,10 +319,10 @@ class EnhancedUsageLogger {
     const uniqueIPs = await prisma.mcpUsageLog.findMany({
       where: {
         apiKeyId: log.apiKeyId,
-        timestamp: { gte: oneHourAgo }
+        timestamp: { gte: oneHourAgo },
       },
       select: { ipAddress: true },
-      distinct: ['ipAddress']
+      distinct: ['ipAddress'],
     });
 
     if (uniqueIPs.length > this.alertThresholds.ipDiversityThreshold) {
@@ -333,10 +330,13 @@ class EnhancedUsageLogger {
         type: 'suspicious_pattern',
         severity: 'medium',
         message: `API密钥在过去1小时内从${uniqueIPs.length}个不同IP地址发起请求，可能存在异常使用`,
-        data: { uniqueIPCount: uniqueIPs.length, threshold: this.alertThresholds.ipDiversityThreshold },
+        data: {
+          uniqueIPCount: uniqueIPs.length,
+          threshold: this.alertThresholds.ipDiversityThreshold,
+        },
         timestamp: now,
         apiKeyId: log.apiKeyId,
-        userId: log.userId
+        userId: log.userId,
       });
     }
 
@@ -349,7 +349,7 @@ class EnhancedUsageLogger {
         data: { responseTime: log.responseTime, endpoint: log.endpoint },
         timestamp: now,
         apiKeyId: log.apiKeyId,
-        userId: log.userId
+        userId: log.userId,
       });
     }
 
@@ -366,7 +366,7 @@ class EnhancedUsageLogger {
     try {
       // 这里可以扩展为发送邮件、短信或其他通知方式
       console.warn(`[异常检测] ${alert.severity.toUpperCase()}: ${alert.message}`, alert.data);
-      
+
       // 可以存储到数据库中用于后续分析
       // await prisma.anomalyAlert.create({ data: alert });
     } catch (error) {
@@ -379,14 +379,14 @@ class EnhancedUsageLogger {
    */
   async generateUsageReport(
     apiKeyId: string,
-    timeRange: { start: Date; end: Date }
+    timeRange: { start: Date; end: Date },
   ): Promise<{
     summary: any;
     statistics: UsageStatistics;
     recommendations: string[];
   }> {
     const statistics = await this.getUsageStatistics(apiKeyId, timeRange);
-    
+
     const recommendations: string[] = [];
 
     // 基于统计数据生成建议
@@ -405,17 +405,18 @@ class EnhancedUsageLogger {
     const summary = {
       timeRange,
       totalRequests: statistics.totalRequests,
-      successRate: ((statistics.successfulRequests / statistics.totalRequests) * 100).toFixed(2) + '%',
+      successRate:
+        ((statistics.successfulRequests / statistics.totalRequests) * 100).toFixed(2) + '%',
       averageResponseTime: statistics.averageResponseTime.toFixed(2) + 'ms',
       mostUsedEndpoint: statistics.mostUsedEndpoints[0]?.endpoint || 'N/A',
       uniqueIPs: statistics.ipDistribution.length,
-      uniqueUserAgents: statistics.topUserAgents.length
+      uniqueUserAgents: statistics.topUserAgents.length,
     };
 
     return {
       summary,
       statistics,
-      recommendations
+      recommendations,
     };
   }
 
@@ -429,9 +430,9 @@ class EnhancedUsageLogger {
     const result = await prisma.mcpUsageLog.deleteMany({
       where: {
         timestamp: {
-          lt: cutoffDate
-        }
-      }
+          lt: cutoffDate,
+        },
+      },
     });
 
     console.log(`清理了${result.count}条过期的使用日志`);
@@ -445,8 +446,8 @@ export function createUsageLoggingMiddleware() {
 
   return async (request: FastifyRequest, reply: any, next: any) => {
     const startTime = Date.now();
-    const requestSize = request.headers['content-length'] 
-      ? parseInt(request.headers['content-length']) 
+    const requestSize = request.headers['content-length']
+      ? parseInt(request.headers['content-length'])
       : 0;
 
     // 监听响应完成
@@ -469,7 +470,7 @@ export function createUsageLoggingMiddleware() {
           timestamp: new Date(),
           sessionId: request.user.sessionId,
           referer: request.headers.referer,
-          requestId: request.id
+          requestId: request.id,
         });
       }
     });

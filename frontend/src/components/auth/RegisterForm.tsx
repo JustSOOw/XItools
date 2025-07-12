@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-06-30 15:00:00
  * @FilePath: \XItools\frontend\src\components\auth\RegisterForm.tsx
  * @Description: 用户注册表单组件
- * 
- * Copyright (c) 2025 by XItools Team, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
 import React, { useState } from 'react';
@@ -27,19 +27,19 @@ interface RegisterFormProps {
 export const RegisterForm: React.FC<RegisterFormProps> = ({
   onSuccess,
   onSwitchToLogin,
-  className = ''
+  className = '',
 }) => {
   const { t } = useTranslation('auth');
   const { register, isLoading, error, clearError } = useUserStore();
   const { handleRegisterError } = useAuthError();
   const { auth: authFeedback } = useUserFeedback();
-  
+
   const [formData, setFormData] = useState<UserRegisterRequest>({
     username: '',
     email: '',
-    password: ''
+    password: '',
   });
-  
+
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -48,7 +48,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   // 表单验证
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
-    
+
     // 用户名验证
     if (!formData.username.trim()) {
       errors.username = t('validation.usernameRequired');
@@ -65,8 +65,6 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
       errors.email = t('validation.emailFormat');
     }
 
-
-
     // 密码验证 - 放宽要求，只要求最小长度
     if (!formData.password) {
       errors.password = t('validation.passwordRequired');
@@ -80,7 +78,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
     } else if (confirmPassword !== formData.password) {
       errors.confirmPassword = t('validation.passwordMismatch');
     }
-    
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -88,24 +86,24 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   // 处理输入变化
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    
+
     if (name === 'confirmPassword') {
       setConfirmPassword(value);
     } else {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        [name]: value
+        [name]: value,
       }));
     }
-    
+
     // 清除对应字段的验证错误
     if (validationErrors[name]) {
-      setValidationErrors(prev => ({
+      setValidationErrors((prev) => ({
         ...prev,
-        [name]: ''
+        [name]: '',
       }));
     }
-    
+
     // 清除全局错误
     if (error) {
       clearError();
@@ -136,8 +134,6 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
       console.error('注册失败:', err);
     }
   };
-
-
 
   return (
     <div className={`register-form ${className}`}>
@@ -203,8 +199,6 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
           )}
         </div>
 
-
-
         {/* 密码输入 */}
         <div className="form-group">
           <label htmlFor="password" className="form-label">
@@ -236,10 +230,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
             <span className="error-message">{validationErrors.password}</span>
           )}
           {/* 密码强度指示器 */}
-          <PasswordStrengthIndicator
-            password={formData.password}
-            showDetails={true}
-          />
+          <PasswordStrengthIndicator password={formData.password} showDetails={true} />
         </div>
 
         {/* 确认密码输入 */}

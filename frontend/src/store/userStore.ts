@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-06-30 15:00:00
  * @FilePath: \XItools\frontend\src\store\userStore.ts
  * @Description: 用户状态管理
- * 
- * Copyright (c) 2025 by XItools Team, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
 import { create } from 'zustand';
@@ -18,7 +18,7 @@ import {
   UserLoginRequest,
   UserUpdateRequest,
   PasswordChangeRequest,
-  LoginStatus
+  LoginStatus,
 } from '../types/User';
 
 // 用户状态接口
@@ -35,7 +35,7 @@ interface UserState {
   rememberMe: boolean;
   // 最后登录时间
   lastLoginTime: string | null;
-  
+
   // 操作方法
   register: (userData: UserRegisterRequest) => Promise<void>;
   login: (loginData: UserLoginRequest) => Promise<void>;
@@ -46,7 +46,7 @@ interface UserState {
   checkAuthStatus: () => Promise<void>;
   clearError: () => void;
   setRememberMe: (remember: boolean) => void;
-  
+
   // 内部方法
   setUser: (user: User | null) => void;
   setLoginStatus: (status: LoginStatus) => void;
@@ -72,18 +72,18 @@ export const useUserStore = create<UserState>()(
       // 用户注册
       register: async (userData: UserRegisterRequest) => {
         set({ isLoading: true, error: null });
-        
+
         try {
           const response = await authService.register(userData);
-          
+
           if (response.success) {
             set({
               user: response.data.user,
               loginStatus: LoginStatus.LOGGED_IN,
               lastLoginTime: new Date().toISOString(),
-              isLoading: false
+              isLoading: false,
             });
-            
+
             // 启动token刷新定时器
             startTokenRefreshTimer();
           }
@@ -91,7 +91,7 @@ export const useUserStore = create<UserState>()(
           set({
             error: error.message || '注册失败',
             loginStatus: LoginStatus.ERROR,
-            isLoading: false
+            isLoading: false,
           });
           throw error;
         }
@@ -100,19 +100,19 @@ export const useUserStore = create<UserState>()(
       // 用户登录
       login: async (loginData: UserLoginRequest) => {
         set({ isLoading: true, error: null, loginStatus: LoginStatus.LOGGING_IN });
-        
+
         try {
           const response = await authService.login(loginData);
-          
+
           if (response.success) {
             set({
               user: response.data.user,
               loginStatus: LoginStatus.LOGGED_IN,
               rememberMe: loginData.rememberMe || false,
               lastLoginTime: new Date().toISOString(),
-              isLoading: false
+              isLoading: false,
             });
-            
+
             // 启动token刷新定时器
             startTokenRefreshTimer();
           }
@@ -120,7 +120,7 @@ export const useUserStore = create<UserState>()(
           set({
             error: error.message || '登录失败',
             loginStatus: LoginStatus.ERROR,
-            isLoading: false
+            isLoading: false,
           });
           throw error;
         }
@@ -149,7 +149,7 @@ export const useUserStore = create<UserState>()(
               isLoading: false,
               error: null,
               rememberMe: false,
-              lastLoginTime: null
+              lastLoginTime: null,
             });
           } catch (storageError) {
             // 如果localStorage存储失败，直接清除localStorage中的用户数据
@@ -163,8 +163,11 @@ export const useUserStore = create<UserState>()(
               // 注意：不清除 xi-remember-me，保持记住我功能
 
               // 清除其他可能的XItools相关数据（但保留记住我功能）
-              Object.keys(localStorage).forEach(key => {
-                if ((key.startsWith('xi-') || key.startsWith('xitools-')) && key !== 'xi-remember-me') {
+              Object.keys(localStorage).forEach((key) => {
+                if (
+                  (key.startsWith('xi-') || key.startsWith('xitools-')) &&
+                  key !== 'xi-remember-me'
+                ) {
                   localStorage.removeItem(key);
                 }
               });
@@ -176,7 +179,7 @@ export const useUserStore = create<UserState>()(
                 isLoading: false,
                 error: null,
                 rememberMe: false,
-                lastLoginTime: null
+                lastLoginTime: null,
               });
 
               console.log('localStorage清理完成，用户状态已重置');
@@ -192,17 +195,17 @@ export const useUserStore = create<UserState>()(
       // 更新用户资料
       updateProfile: async (updateData: UserUpdateRequest) => {
         set({ isLoading: true, error: null });
-        
+
         try {
           const updatedUser = await authService.updateUser(updateData);
           set({
             user: updatedUser,
-            isLoading: false
+            isLoading: false,
           });
         } catch (error: any) {
           set({
             error: error.message || '更新资料失败',
-            isLoading: false
+            isLoading: false,
           });
           throw error;
         }
@@ -211,14 +214,14 @@ export const useUserStore = create<UserState>()(
       // 修改密码
       changePassword: async (passwordData: PasswordChangeRequest) => {
         set({ isLoading: true, error: null });
-        
+
         try {
           await authService.changePassword(passwordData);
           set({ isLoading: false });
         } catch (error: any) {
           set({
             error: error.message || '修改密码失败',
-            isLoading: false
+            isLoading: false,
           });
           throw error;
         }
@@ -234,14 +237,14 @@ export const useUserStore = create<UserState>()(
             // 如果获取用户信息失败，可能是token过期
             set({
               user: null,
-              loginStatus: LoginStatus.TOKEN_EXPIRED
+              loginStatus: LoginStatus.TOKEN_EXPIRED,
             });
           }
         } catch (error) {
           console.error('刷新用户信息失败:', error);
           set({
             user: null,
-            loginStatus: LoginStatus.TOKEN_EXPIRED
+            loginStatus: LoginStatus.TOKEN_EXPIRED,
           });
         }
       },
@@ -259,7 +262,7 @@ export const useUserStore = create<UserState>()(
           }
           set({
             user: null,
-            loginStatus: LoginStatus.LOGGED_OUT
+            loginStatus: LoginStatus.LOGGED_OUT,
           });
           return;
         }
@@ -272,30 +275,37 @@ export const useUserStore = create<UserState>()(
           set({
             user: null,
             loginStatus: LoginStatus.TOKEN_EXPIRED,
-            rememberMe: false // 清除记住我状态
+            rememberMe: false, // 清除记住我状态
           });
           return;
         }
 
         // Token有效，优先使用持久化的用户信息（如果有记住我状态）
-        if (currentState.rememberMe && currentState.user && currentState.loginStatus === LoginStatus.LOGGED_IN) {
+        if (
+          currentState.rememberMe &&
+          currentState.user &&
+          currentState.loginStatus === LoginStatus.LOGGED_IN
+        ) {
           console.log('使用记住的用户状态');
           set({
             user: currentState.user,
-            loginStatus: LoginStatus.LOGGED_IN
+            loginStatus: LoginStatus.LOGGED_IN,
           });
 
           // 启动token刷新定时器
           startTokenRefreshTimer();
 
           // 异步更新用户信息，但不阻塞界面显示
-          authService.getCurrentUser().then(currentUser => {
-            if (currentUser) {
-              set({ user: currentUser });
-            }
-          }).catch(error => {
-            console.warn('异步更新用户信息失败:', error);
-          });
+          authService
+            .getCurrentUser()
+            .then((currentUser) => {
+              if (currentUser) {
+                set({ user: currentUser });
+              }
+            })
+            .catch((error) => {
+              console.warn('异步更新用户信息失败:', error);
+            });
 
           return;
         }
@@ -307,7 +317,7 @@ export const useUserStore = create<UserState>()(
           if (currentUser) {
             set({
               user: currentUser,
-              loginStatus: LoginStatus.LOGGED_IN
+              loginStatus: LoginStatus.LOGGED_IN,
             });
 
             // 启动token刷新定时器
@@ -317,7 +327,7 @@ export const useUserStore = create<UserState>()(
             if (storedUser && storedUser.id) {
               set({
                 user: storedUser,
-                loginStatus: LoginStatus.LOGGED_IN
+                loginStatus: LoginStatus.LOGGED_IN,
               });
 
               // 启动token刷新定时器
@@ -325,7 +335,7 @@ export const useUserStore = create<UserState>()(
             } else {
               set({
                 user: null,
-                loginStatus: LoginStatus.LOGGED_OUT
+                loginStatus: LoginStatus.LOGGED_OUT,
               });
             }
           }
@@ -336,7 +346,7 @@ export const useUserStore = create<UserState>()(
           if (storedUser && storedUser.id) {
             set({
               user: storedUser,
-              loginStatus: LoginStatus.LOGGED_IN
+              loginStatus: LoginStatus.LOGGED_IN,
             });
 
             // 启动token刷新定时器
@@ -344,7 +354,7 @@ export const useUserStore = create<UserState>()(
           } else {
             set({
               user: null,
-              loginStatus: LoginStatus.LOGGED_OUT
+              loginStatus: LoginStatus.LOGGED_OUT,
             });
           }
         }
@@ -425,7 +435,7 @@ export const useUserStore = create<UserState>()(
           } catch (error) {
             console.warn('删除localStorage项目失败:', error);
           }
-        }
+        },
       },
       // 根据rememberMe状态决定持久化内容
       partialize: (state) => {
@@ -450,35 +460,38 @@ export const useUserStore = create<UserState>()(
         // 不执行任何操作，避免与AppRouter的认证初始化冲突
         console.log('Store rehydrated, auth status will be handled by AppRouter');
       },
-    }
-  )
+    },
+  ),
 );
 
 // Token刷新定时器管理
 function startTokenRefreshTimer() {
   // 清除现有定时器
   stopTokenRefreshTimer();
-  
+
   // 每25分钟检查一次token是否需要刷新
-  tokenRefreshTimer = setInterval(async () => {
-    const store = useUserStore.getState();
-    
-    if (store.loginStatus === LoginStatus.LOGGED_IN) {
-      // 检查token是否即将过期
-      if (authService.isTokenExpiringSoon()) {
-        try {
-          const newToken = await authService.refreshToken();
-          if (!newToken) {
-            // 刷新失败，设置为过期状态
+  tokenRefreshTimer = setInterval(
+    async () => {
+      const store = useUserStore.getState();
+
+      if (store.loginStatus === LoginStatus.LOGGED_IN) {
+        // 检查token是否即将过期
+        if (authService.isTokenExpiringSoon()) {
+          try {
+            const newToken = await authService.refreshToken();
+            if (!newToken) {
+              // 刷新失败，设置为过期状态
+              store.setLoginStatus(LoginStatus.TOKEN_EXPIRED);
+            }
+          } catch (error) {
+            console.error('自动刷新token失败:', error);
             store.setLoginStatus(LoginStatus.TOKEN_EXPIRED);
           }
-        } catch (error) {
-          console.error('自动刷新token失败:', error);
-          store.setLoginStatus(LoginStatus.TOKEN_EXPIRED);
         }
       }
-    }
-  }, 25 * 60 * 1000); // 25分钟
+    },
+    25 * 60 * 1000,
+  ); // 25分钟
 }
 
 function stopTokenRefreshTimer() {
@@ -488,8 +501,6 @@ function stopTokenRefreshTimer() {
   }
 }
 
-
-
 // 导出辅助函数
 export const userStoreHelpers = {
   // 检查用户是否已登录
@@ -497,19 +508,19 @@ export const userStoreHelpers = {
     const state = useUserStore.getState();
     return state.loginStatus === LoginStatus.LOGGED_IN && state.user !== null;
   },
-  
+
   // 检查用户是否有特定角色
   hasRole: (role: string) => {
     const state = useUserStore.getState();
     return state.user?.role === role;
   },
-  
+
   // 获取当前用户ID
   getCurrentUserId: () => {
     const state = useUserStore.getState();
     return state.user?.id || null;
   },
-  
+
   // 获取当前用户名
   getCurrentUsername: () => {
     const state = useUserStore.getState();

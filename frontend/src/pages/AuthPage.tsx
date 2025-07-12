@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-06-30 15:30:00
  * @FilePath: \XItools\frontend\src\pages\AuthPage.tsx
  * @Description: 认证页面组件
- * 
- * Copyright (c) 2025 by XItools Team, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
 import React, { useEffect } from 'react';
@@ -25,7 +25,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   initialMode = 'login',
   onAuthSuccess,
   redirectTo = '/',
-  className = ''
+  className = '',
 }) => {
   const { t } = useTranslation();
   const { checkAuthStatus } = useUserStore();
@@ -35,7 +35,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
   const handleAuthSuccess = () => {
     console.log('认证成功');
-    
+
     if (onAuthSuccess) {
       onAuthSuccess();
     } else {
@@ -46,10 +46,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
   return (
     <div className={`auth-page ${className}`}>
-      <AuthLayout
-        initialMode={initialMode}
-        onAuthSuccess={handleAuthSuccess}
-      />
+      <AuthLayout initialMode={initialMode} onAuthSuccess={handleAuthSuccess} />
     </div>
   );
 };

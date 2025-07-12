@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-07-01 11:45:00
  * @FilePath: \XItools\frontend\src\components\ui\index.ts
  * @Description: UI组件导出文件
- * 
- * Copyright (c) 2025 by XItools Team, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
 // 基础组件

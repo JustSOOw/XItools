@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-06-30 15:00:00
  * @FilePath: \XItools\frontend\src\components\auth\index.ts
  * @Description: 认证组件导出文件
- * 
- * Copyright (c) 2025 by XItools Team, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
 // 表单组件
@@ -21,12 +21,7 @@ export { AuthLayout } from './AuthLayout';
 export { UserMenu } from './UserMenu';
 
 // 路由保护组件
-export {
-  ProtectedRoute,
-  withAuth,
-  RoleGuard,
-  useAuthGuard
-} from './ProtectedRoute';
+export { ProtectedRoute, withAuth, RoleGuard, useAuthGuard } from './ProtectedRoute';
 
 // 类型导出
 export type { default as LoginFormProps } from './LoginForm';

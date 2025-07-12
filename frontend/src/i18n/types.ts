@@ -117,11 +117,11 @@ export interface TranslationFunction {
   // 基础翻译
   (key: TranslationKey): string;
   (key: TranslationKey, options?: Record<string, any>): string;
-  
+
   // 带命名空间的翻译
   <NS extends Namespace>(key: `${NS}:${NamespaceKey<NS>}`): string;
   <NS extends Namespace>(key: `${NS}:${NamespaceKey<NS>}`, options?: Record<string, any>): string;
-  
+
   // 复数形式
   (key: TranslationKey, count: number): string;
   (key: TranslationKey, count: number, options?: Record<string, any>): string;
@@ -232,16 +232,17 @@ export interface TranslationValidator {
 export interface TranslationFormatter {
   formatDate: (date: Date, format?: string, language?: SupportedLanguage) => string;
   formatTime: (time: Date, format?: string, language?: SupportedLanguage) => string;
-  formatNumber: (number: number, options?: Intl.NumberFormatOptions, language?: SupportedLanguage) => string;
+  formatNumber: (
+    number: number,
+    options?: Intl.NumberFormatOptions,
+    language?: SupportedLanguage,
+  ) => string;
   formatCurrency: (amount: number, currency?: string, language?: SupportedLanguage) => string;
   formatRelativeTime: (date: Date, language?: SupportedLanguage) => string;
 }
 
 // 导出所有类型
-export type {
-  zhCN as ZhCNTranslations,
-  enUS as EnUSTranslations,
-};
+export type { zhCN as ZhCNTranslations, enUS as EnUSTranslations };
 
 // 默认导出主要类型
 export default TranslationResources;

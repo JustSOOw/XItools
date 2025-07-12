@@ -48,20 +48,20 @@ export const ConfirmDialogProvider: React.FC<ConfirmDialogProviderProps> = ({ ch
   });
 
   // 显示确认对话框
-  const showConfirm = useCallback((
-    config: ConfirmDialogConfig,
-    onConfirm?: () => void | Promise<void>
-  ) => {
-    setDialogState({
-      isOpen: true,
-      config,
-      onConfirm,
-    });
-  }, []);
+  const showConfirm = useCallback(
+    (config: ConfirmDialogConfig, onConfirm?: () => void | Promise<void>) => {
+      setDialogState({
+        isOpen: true,
+        config,
+        onConfirm,
+      });
+    },
+    [],
+  );
 
   // 隐藏确认对话框
   const hideConfirm = useCallback(() => {
-    setDialogState(prev => ({ ...prev, isOpen: false }));
+    setDialogState((prev) => ({ ...prev, isOpen: false }));
   }, []);
 
   // 处理确认操作
@@ -114,19 +114,19 @@ export const useConfirmDialogState = () => {
     config: { message: '' },
   });
 
-  const showConfirm = useCallback((
-    config: ConfirmDialogConfig,
-    onConfirm?: () => void | Promise<void>
-  ) => {
-    setDialogState({
-      isOpen: true,
-      config,
-      onConfirm,
-    });
-  }, []);
+  const showConfirm = useCallback(
+    (config: ConfirmDialogConfig, onConfirm?: () => void | Promise<void>) => {
+      setDialogState({
+        isOpen: true,
+        config,
+        onConfirm,
+      });
+    },
+    [],
+  );
 
   const hideConfirm = useCallback(() => {
-    setDialogState(prev => ({ ...prev, isOpen: false }));
+    setDialogState((prev) => ({ ...prev, isOpen: false }));
   }, []);
 
   const handleConfirm = useCallback(async () => {

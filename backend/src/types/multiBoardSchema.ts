@@ -11,7 +11,7 @@ export const workspaceSchema = z.object({
   description: z.string().max(500, '工作区描述不能超过500个字符').optional(),
   isDefault: z.boolean().optional().default(false),
   createdAt: z.string().datetime().optional(),
-  updatedAt: z.string().datetime().optional()
+  updatedAt: z.string().datetime().optional(),
 });
 
 export const workspaceUpdateSchema = workspaceSchema.partial().omit({ id: true });
@@ -26,7 +26,7 @@ export const projectSchema = z.object({
   workspaceId: z.string().uuid('无效的工作区ID'),
   order: z.number().int().min(0, '排序值不能为负数').optional().default(0),
   createdAt: z.string().datetime().optional(),
-  updatedAt: z.string().datetime().optional()
+  updatedAt: z.string().datetime().optional(),
 });
 
 export const projectUpdateSchema = projectSchema.partial().omit({ id: true, workspaceId: true });
@@ -42,7 +42,7 @@ const baseBoardSchema = z.object({
   projectId: z.string().uuid('无效的项目ID').optional(),
   order: z.number().int().min(0, '排序值不能为负数').optional().default(0),
   createdAt: z.string().datetime().optional(),
-  updatedAt: z.string().datetime().optional()
+  updatedAt: z.string().datetime().optional(),
 });
 
 // 看板Schema（包含验证）
@@ -53,8 +53,8 @@ export const boardSchema = baseBoardSchema.refine(
   },
   {
     message: '看板必须属于工作区或项目，但不能同时属于两者',
-    path: ['workspaceId', 'projectId']
-  }
+    path: ['workspaceId', 'projectId'],
+  },
 );
 
 // 看板更新Schema（基于基础Schema，不包含验证）
@@ -70,10 +70,12 @@ export const extendedBoardColumnSchema = z.object({
   isDefault: z.boolean().optional().default(false),
   boardId: z.string().uuid('无效的看板ID'),
   createdAt: z.string().datetime().optional(),
-  updatedAt: z.string().datetime().optional()
+  updatedAt: z.string().datetime().optional(),
 });
 
-export const extendedBoardColumnUpdateSchema = extendedBoardColumnSchema.partial().omit({ id: true, boardId: true });
+export const extendedBoardColumnUpdateSchema = extendedBoardColumnSchema
+  .partial()
+  .omit({ id: true, boardId: true });
 
 // 扩展的任务Schema（添加boardId）
 export const extendedTaskSchema = z.object({
@@ -93,10 +95,12 @@ export const extendedTaskSchema = z.object({
   sortOrder: z.number().int().optional().default(0),
   boardId: z.string().uuid('无效的看板ID'),
   createdAt: z.string().datetime().optional(),
-  updatedAt: z.string().datetime().optional()
+  updatedAt: z.string().datetime().optional(),
 });
 
-export const extendedTaskUpdateSchema = extendedTaskSchema.partial().omit({ id: true, createdAt: true });
+export const extendedTaskUpdateSchema = extendedTaskSchema
+  .partial()
+  .omit({ id: true, createdAt: true });
 
 // 层级结构查询Schema
 export const hierarchyQuerySchema = z.object({
@@ -104,30 +108,32 @@ export const hierarchyQuerySchema = z.object({
   projectId: z.string().uuid().optional(),
   includeBoards: z.boolean().optional().default(true),
   includeTasks: z.boolean().optional().default(false),
-  includeColumns: z.boolean().optional().default(false)
+  includeColumns: z.boolean().optional().default(false),
 });
 
 // 批量操作Schema
-export const batchMoveSchema = z.object({
-  itemIds: z.array(z.string().uuid()),
-  targetWorkspaceId: z.string().uuid().optional(),
-  targetProjectId: z.string().uuid().optional(),
-  targetBoardId: z.string().uuid().optional()
-}).refine(
-  (data) => {
-    // 至少指定一个目标
-    return data.targetWorkspaceId || data.targetProjectId || data.targetBoardId;
-  },
-  {
-    message: '必须指定至少一个目标位置',
-    path: ['targetWorkspaceId', 'targetProjectId', 'targetBoardId']
-  }
-);
+export const batchMoveSchema = z
+  .object({
+    itemIds: z.array(z.string().uuid()),
+    targetWorkspaceId: z.string().uuid().optional(),
+    targetProjectId: z.string().uuid().optional(),
+    targetBoardId: z.string().uuid().optional(),
+  })
+  .refine(
+    (data) => {
+      // 至少指定一个目标
+      return data.targetWorkspaceId || data.targetProjectId || data.targetBoardId;
+    },
+    {
+      message: '必须指定至少一个目标位置',
+      path: ['targetWorkspaceId', 'targetProjectId', 'targetBoardId'],
+    },
+  );
 
 // 排序Schema
 export const reorderSchema = z.object({
   itemIds: z.array(z.string().uuid()),
-  containerId: z.string().uuid() // 容器ID（工作区、项目或看板）
+  containerId: z.string().uuid(), // 容器ID（工作区、项目或看板）
 });
 
 // TypeScript类型导出

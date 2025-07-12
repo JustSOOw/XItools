@@ -1,6 +1,6 @@
 /**
  * JWT工具函数
- * 
+ *
  * 提供JWT token的生成、验证、刷新等功能
  */
 
@@ -26,11 +26,16 @@ export interface JWTRefreshPayload {
 /**
  * 生成访问token
  */
-export function generateJWT(payload: { userId: string; username: string; email?: string; sessionId?: string }): string {
+export function generateJWT(payload: {
+  userId: string;
+  username: string;
+  email?: string;
+  sessionId?: string;
+}): string {
   return jwt.sign(payload, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
     issuer: 'xitools',
-    audience: 'xitools-users'
+    audience: 'xitools-users',
   });
 }
 
@@ -41,7 +46,7 @@ export function generateRefreshToken(payload: Omit<JWTRefreshPayload, 'iat' | 'e
   return jwt.sign(payload, JWT_SECRET, {
     expiresIn: JWT_REFRESH_EXPIRES_IN,
     issuer: 'xitools',
-    audience: 'xitools-refresh'
+    audience: 'xitools-refresh',
   });
 }
 
@@ -52,9 +57,9 @@ export function verifyJWT(token: string): JWTPayload {
   try {
     const decoded = jwt.verify(token, JWT_SECRET, {
       issuer: 'xitools',
-      audience: 'xitools-users'
+      audience: 'xitools-users',
     }) as JWTPayload;
-    
+
     return decoded;
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
@@ -74,9 +79,9 @@ export function verifyRefreshToken(token: string): JWTRefreshPayload {
   try {
     const decoded = jwt.verify(token, JWT_SECRET, {
       issuer: 'xitools',
-      audience: 'xitools-refresh'
+      audience: 'xitools-refresh',
     }) as JWTRefreshPayload;
-    
+
     return decoded;
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
@@ -160,21 +165,25 @@ export function extractBearerToken(authHeader?: string): string | null {
 /**
  * 生成token对（访问token + 刷新token）
  */
-export function generateTokenPair(userId: string, username: string, sessionId: string): {
+export function generateTokenPair(
+  userId: string,
+  username: string,
+  sessionId: string,
+): {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
 } {
   const accessToken = generateJWT({ userId, username });
   const refreshToken = generateRefreshToken({ userId, tokenId: sessionId });
-  
+
   // 计算访问token的过期时间（秒）
   const expiresIn = getTokenExpirationTime(JWT_EXPIRES_IN);
 
   return {
     accessToken,
     refreshToken,
-    expiresIn
+    expiresIn,
   };
 }
 
@@ -192,10 +201,15 @@ function getTokenExpirationTime(expiresIn: string): number {
   const unit = match[2];
 
   switch (unit) {
-    case 'd': return value * 24 * 60 * 60;
-    case 'h': return value * 60 * 60;
-    case 'm': return value * 60;
-    case 's': return value;
-    default: return 7 * 24 * 60 * 60;
+    case 'd':
+      return value * 24 * 60 * 60;
+    case 'h':
+      return value * 60 * 60;
+    case 'm':
+      return value * 60;
+    case 's':
+      return value;
+    default:
+      return 7 * 24 * 60 * 60;
   }
 }

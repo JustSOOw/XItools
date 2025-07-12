@@ -26,14 +26,14 @@ export const getCurrentEnvironment = (): Environment => {
   const viteEnv = import.meta.env.VITE_NODE_ENV;
   const nodeEnv = import.meta.env.NODE_ENV;
   const mode = import.meta.env.MODE;
-  
+
   if (viteEnv && ['development', 'production', 'local'].includes(viteEnv)) {
     return viteEnv as Environment;
   }
-  
+
   if (nodeEnv === 'production') return 'production';
   if (mode === 'production') return 'production';
-  
+
   return 'development';
 };
 
@@ -43,7 +43,7 @@ export const getCurrentEnvironment = (): Environment => {
  */
 export const getBackendUrl = (): string => {
   const env = getCurrentEnvironment();
-  
+
   // 优先使用环境变量中的配置
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
   if (backendUrl) {
@@ -67,7 +67,7 @@ export const getBackupBackendUrl = (): string | undefined => {
  */
 export const getEnvConfig = (): EnvConfig => {
   const env = getCurrentEnvironment();
-  
+
   return {
     appName: import.meta.env.VITE_APP_NAME || 'XItools',
     appVersion: import.meta.env.VITE_APP_VERSION || '1.0.0',

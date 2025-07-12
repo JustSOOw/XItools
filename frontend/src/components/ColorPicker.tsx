@@ -112,7 +112,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
       className={classNames(
         'absolute z-50 bg-surface border border-border rounded-lg shadow-lg p-4 w-80',
         'animate-in fade-in-0 zoom-in-95 duration-100',
-        placementClasses[placement]
+        placementClasses[placement],
       )}
     >
       {/* 标题和关闭按钮 */}
@@ -123,7 +123,12 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
           className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         </button>
       </div>
@@ -136,7 +141,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
             'px-3 py-1 text-sm font-medium border-b-2 transition-colors',
             activeTab === 'preset'
               ? 'border-primary text-primary'
-              : 'border-transparent text-text-secondary hover:text-text-primary'
+              : 'border-transparent text-text-secondary hover:text-text-primary',
           )}
         >
           预设颜色
@@ -147,7 +152,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
             'px-3 py-1 text-sm font-medium border-b-2 transition-colors',
             activeTab === 'custom'
               ? 'border-primary text-primary'
-              : 'border-transparent text-text-secondary hover:text-text-primary'
+              : 'border-transparent text-text-secondary hover:text-text-primary',
           )}
         >
           自定义
@@ -177,7 +182,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
                   onClick={() => handleColorSelect(color)}
                   className={classNames(
                     'w-6 h-6 rounded border-2 transition-all hover:scale-110',
-                    currentColor === color ? 'border-primary' : 'border-gray-200'
+                    currentColor === color ? 'border-primary' : 'border-gray-200',
                   )}
                   style={{ backgroundColor: color }}
                   title={color}
@@ -196,7 +201,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
                   onClick={() => handleColorSelect(color)}
                   className={classNames(
                     'w-6 h-6 rounded border-2 transition-all hover:scale-110',
-                    currentColor === color ? 'border-primary' : 'border-gray-200'
+                    currentColor === color ? 'border-primary' : 'border-gray-200',
                   )}
                   style={{ backgroundColor: color }}
                   title={color}
@@ -215,7 +220,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
                   onClick={() => handleColorSelect(color)}
                   className={classNames(
                     'w-6 h-6 rounded border-2 transition-all hover:scale-110',
-                    currentColor === color ? 'border-primary' : 'border-gray-200'
+                    currentColor === color ? 'border-primary' : 'border-gray-200',
                   )}
                   style={{ backgroundColor: color }}
                   title={color}
@@ -234,7 +239,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
                   onClick={() => handleColorSelect(gradient)}
                   className={classNames(
                     'w-full h-8 rounded border-2 transition-all hover:scale-105',
-                    currentColor === gradient ? 'border-primary' : 'border-gray-200'
+                    currentColor === gradient ? 'border-primary' : 'border-gray-200',
                   )}
                   style={{ background: gradient }}
                   title={gradient}
@@ -247,9 +252,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
         /* 自定义颜色选择器 */
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-text-secondary mb-2">
-              自定义颜色
-            </label>
+            <label className="block text-xs font-medium text-text-secondary mb-2">自定义颜色</label>
             <div className="flex items-center space-x-2">
               <input
                 type="color"
@@ -267,7 +270,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
               />
             </div>
           </div>
-          
+
           <div className="flex space-x-2">
             <button
               onClick={() => handleColorSelect(customColor)}

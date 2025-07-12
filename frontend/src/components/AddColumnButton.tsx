@@ -8,11 +8,7 @@ interface AddColumnButtonProps {
   maxLength?: number;
 }
 
-const AddColumnButton: React.FC<AddColumnButtonProps> = ({
-  onAdd,
-  className,
-  maxLength = 50,
-}) => {
+const AddColumnButton: React.FC<AddColumnButtonProps> = ({ onAdd, className, maxLength = 50 }) => {
   const { t } = useI18n();
   const [isAdding, setIsAdding] = useState(false);
   const [columnName, setColumnName] = useState('');
@@ -34,7 +30,7 @@ const AddColumnButton: React.FC<AddColumnButtonProps> = ({
 
   const handleSave = () => {
     const trimmedName = columnName.trim();
-    
+
     // 验证输入
     if (!trimmedName) {
       setError(t('board:messages.columnTitleRequired'));
@@ -45,7 +41,7 @@ const AddColumnButton: React.FC<AddColumnButtonProps> = ({
       setError(t('board:messages.columnTitleTooLong', { maxLength }));
       return;
     }
-    
+
     try {
       onAdd(trimmedName);
       setIsAdding(false);
@@ -81,10 +77,12 @@ const AddColumnButton: React.FC<AddColumnButtonProps> = ({
 
   if (isAdding) {
     return (
-      <div className={classNames(
-        'flex flex-col w-72 rounded-lg shadow bg-surface border border-border p-3',
-        className
-      )}>
+      <div
+        className={classNames(
+          'flex flex-col w-72 rounded-lg shadow bg-surface border border-border p-3',
+          className,
+        )}
+      >
         <div className="flex items-center space-x-2 mb-2">
           <input
             ref={inputRef}
@@ -98,13 +96,13 @@ const AddColumnButton: React.FC<AddColumnButtonProps> = ({
               'bg-surface text-text-primary border-border',
               {
                 'border-red-500 focus:ring-red-500': error,
-              }
+              },
             )}
             maxLength={maxLength}
             placeholder={t('board:placeholders.columnTitle')}
           />
         </div>
-        
+
         <div className="flex items-center justify-between">
           <div className="flex space-x-2">
             <button
@@ -113,7 +111,7 @@ const AddColumnButton: React.FC<AddColumnButtonProps> = ({
               className={classNames(
                 'px-3 py-1 text-sm rounded transition-colors',
                 'bg-primary text-white hover:bg-primary/90',
-                'disabled:opacity-50 disabled:cursor-not-allowed'
+                'disabled:opacity-50 disabled:cursor-not-allowed',
               )}
             >
               {t('board:actions.addColumn')}
@@ -125,17 +123,13 @@ const AddColumnButton: React.FC<AddColumnButtonProps> = ({
               {t('common:actions.cancel')}
             </button>
           </div>
-          
+
           <div className="text-xs text-text-secondary">
             {t('board:shortcuts.enterToSave')} • {t('board:shortcuts.escToCancel')}
           </div>
         </div>
-        
-        {error && (
-          <div className="mt-2 text-xs text-red-600">
-            {error}
-          </div>
-        )}
+
+        {error && <div className="mt-2 text-xs text-red-600">{error}</div>}
       </div>
     );
   }
@@ -147,21 +141,16 @@ const AddColumnButton: React.FC<AddColumnButtonProps> = ({
         'flex items-center justify-center w-56 h-28 rounded-lg border-2 border-dashed',
         'border-gray-300 dark:border-gray-600 hover:border-primary hover:bg-primary/5',
         'transition-all duration-200 group',
-        className
+        className,
       )}
     >
       <div className="flex flex-col items-center space-y-2 text-text-secondary group-hover:text-primary">
-        <svg 
-          className="w-8 h-8" 
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-        >
-          <path 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
-            strokeWidth={2} 
-            d="M12 6v6m0 0v6m0-6h6m-6 0H6" 
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
           />
         </svg>
         <span className="text-sm font-medium">{t('board:actions.addColumn')}</span>

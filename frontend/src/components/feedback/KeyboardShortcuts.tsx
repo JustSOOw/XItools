@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-01-27 22:00:00
  * @FilePath: \XItools\frontend\src\components\feedback\KeyboardShortcuts.tsx
  * @Description: 快捷键系统组件 - 提供全局快捷键支持和快捷键帮助
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 
 import React, { useEffect, useCallback } from 'react';
@@ -32,34 +32,38 @@ interface KeyboardShortcutsProps {
  * 快捷键系统组件
  * 提供全局快捷键监听和处理
  */
-const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({
-  shortcuts,
-  disabled = false,
-}) => {
-  const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    if (disabled) return;
+const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ shortcuts, disabled = false }) => {
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      if (disabled) return;
 
-    // 忽略在输入框中的按键
-    const target = event.target as HTMLElement;
-    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.contentEditable === 'true') {
-      return;
-    }
+      // 忽略在输入框中的按键
+      const target = event.target as HTMLElement;
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.contentEditable === 'true'
+      ) {
+        return;
+      }
 
-    // 查找匹配的快捷键
-    const matchedShortcut = shortcuts.find(shortcut => {
-      const keyMatch = shortcut.key.toLowerCase() === event.key.toLowerCase();
-      const ctrlMatch = !!shortcut.ctrlKey === event.ctrlKey;
-      const altMatch = !!shortcut.altKey === event.altKey;
-      const shiftMatch = !!shortcut.shiftKey === event.shiftKey;
+      // 查找匹配的快捷键
+      const matchedShortcut = shortcuts.find((shortcut) => {
+        const keyMatch = shortcut.key.toLowerCase() === event.key.toLowerCase();
+        const ctrlMatch = !!shortcut.ctrlKey === event.ctrlKey;
+        const altMatch = !!shortcut.altKey === event.altKey;
+        const shiftMatch = !!shortcut.shiftKey === event.shiftKey;
 
-      return keyMatch && ctrlMatch && altMatch && shiftMatch;
-    });
+        return keyMatch && ctrlMatch && altMatch && shiftMatch;
+      });
 
-    if (matchedShortcut) {
-      event.preventDefault();
-      matchedShortcut.action();
-    }
-  }, [shortcuts, disabled]);
+      if (matchedShortcut) {
+        event.preventDefault();
+        matchedShortcut.action();
+      }
+    },
+    [shortcuts, disabled],
+  );
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -80,14 +84,17 @@ export const KeyboardShortcutsHelp: React.FC<{
   shortcuts: KeyboardShortcut[];
 }> = ({ isOpen, onClose, shortcuts }) => {
   // 按类别分组快捷键
-  const groupedShortcuts = shortcuts.reduce((groups, shortcut) => {
-    const category = shortcut.category || '通用';
-    if (!groups[category]) {
-      groups[category] = [];
-    }
-    groups[category].push(shortcut);
-    return groups;
-  }, {} as Record<string, KeyboardShortcut[]>);
+  const groupedShortcuts = shortcuts.reduce(
+    (groups, shortcut) => {
+      const category = shortcut.category || '通用';
+      if (!groups[category]) {
+        groups[category] = [];
+      }
+      groups[category].push(shortcut);
+      return groups;
+    },
+    {} as Record<string, KeyboardShortcut[]>,
+  );
 
   // 格式化快捷键显示
   const formatShortcut = (shortcut: KeyboardShortcut) => {
@@ -100,12 +107,7 @@ export const KeyboardShortcutsHelp: React.FC<{
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="快捷键帮助"
-      size="lg"
-    >
+    <Modal isOpen={isOpen} onClose={onClose} title="快捷键帮助" size="lg">
       <div className="space-y-6">
         {Object.entries(groupedShortcuts).map(([category, categoryShortcuts]) => (
           <motion.div
@@ -114,9 +116,7 @@ export const KeyboardShortcutsHelp: React.FC<{
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <h3 className="text-lg font-medium text-text-primary mb-3">
-              {category}
-            </h3>
+            <h3 className="text-lg font-medium text-text-primary mb-3">{category}</h3>
             <div className="space-y-2">
               {categoryShortcuts.map((shortcut, index) => (
                 <motion.div
@@ -126,9 +126,7 @@ export const KeyboardShortcutsHelp: React.FC<{
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.3, delay: index * 0.05 }}
                 >
-                  <span className="text-text-secondary">
-                    {shortcut.description}
-                  </span>
+                  <span className="text-text-secondary">{shortcut.description}</span>
                   <div className="flex items-center space-x-1">
                     {formatShortcut(shortcut).map((key, keyIndex) => (
                       <React.Fragment key={keyIndex}>
@@ -188,9 +186,7 @@ export const KeyboardShortcutHint: React.FC<{
         >
           <div className="bg-background border border-border rounded-lg shadow-lg px-3 py-2 whitespace-nowrap">
             <div className="flex items-center space-x-2">
-              <span className="text-sm text-text-secondary">
-                {shortcut.description}
-              </span>
+              <span className="text-sm text-text-secondary">{shortcut.description}</span>
               <kbd className="px-2 py-1 text-xs font-mono bg-surface text-text-primary rounded border">
                 {formatShortcut(shortcut)}
               </kbd>
@@ -211,11 +207,11 @@ export const useKeyboardShortcuts = () => {
   const [isHelpOpen, setIsHelpOpen] = React.useState(false);
 
   const addShortcut = useCallback((shortcut: KeyboardShortcut) => {
-    setShortcuts(prev => [...prev, shortcut]);
+    setShortcuts((prev) => [...prev, shortcut]);
   }, []);
 
   const removeShortcut = useCallback((key: string) => {
-    setShortcuts(prev => prev.filter(s => s.key !== key));
+    setShortcuts((prev) => prev.filter((s) => s.key !== key));
   }, []);
 
   const showHelp = useCallback(() => {
@@ -234,7 +230,7 @@ export const useKeyboardShortcuts = () => {
       action: showHelp,
       category: '帮助',
     };
-    setShortcuts(prev => [helpShortcut, ...prev]);
+    setShortcuts((prev) => [helpShortcut, ...prev]);
   }, [showHelp]);
 
   return {
@@ -246,11 +242,7 @@ export const useKeyboardShortcuts = () => {
     isHelpOpen,
     KeyboardShortcuts: <KeyboardShortcuts shortcuts={shortcuts} />,
     KeyboardShortcutsHelp: (
-      <KeyboardShortcutsHelp
-        isOpen={isHelpOpen}
-        onClose={hideHelp}
-        shortcuts={shortcuts}
-      />
+      <KeyboardShortcutsHelp isOpen={isHelpOpen} onClose={hideHelp} shortcuts={shortcuts} />
     ),
   };
 };

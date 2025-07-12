@@ -1,6 +1,6 @@
 /**
  * API密钥创建成功显示组件
- * 
+ *
  * 显示新创建的API密钥完整信息，提供复制和配置示例
  */
 
@@ -20,7 +20,7 @@ export const ApiKeySuccessModal: React.FC<ApiKeySuccessModalProps> = ({
   isOpen,
   onClose,
   apiKey,
-  keyName
+  keyName,
 }) => {
   const { t } = useTranslation();
   const [, toastAPI] = useToast();
@@ -118,7 +118,7 @@ new_task = call_mcp_tool('create_task', {
     'boardId': 'your-board-id',
     'title': '新任务',
     'description': '任务描述'
-})`
+})`,
   };
 
   return (
@@ -155,7 +155,7 @@ new_task = call_mcp_tool('create_task', {
               </button>
             </div>
           </div>
-          
+
           {/* 重要提示 */}
           <div className="security-warning">
             <i className="icon-alert-triangle"></i>
@@ -174,7 +174,7 @@ new_task = call_mcp_tool('create_task', {
               {[
                 { key: 'curl', label: 'cURL' },
                 { key: 'javascript', label: 'JavaScript' },
-                { key: 'python', label: 'Python' }
+                { key: 'python', label: 'Python' },
               ].map((tab) => (
                 <button
                   key={tab.key}
@@ -186,7 +186,7 @@ new_task = call_mcp_tool('create_task', {
               ))}
             </div>
           </div>
-          
+
           <div className="example-content">
             <div className="code-header">
               <span className="code-language">{selectedExample.toUpperCase()}</span>
@@ -254,10 +254,7 @@ new_task = call_mcp_tool('create_task', {
 
         {/* 关闭按钮 */}
         <div className="modal-actions">
-          <button
-            className="btn-primary btn-lg"
-            onClick={onClose}
-          >
+          <button className="btn-primary btn-lg" onClick={onClose}>
             我已保存密钥
           </button>
         </div>

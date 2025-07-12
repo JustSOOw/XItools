@@ -14,7 +14,7 @@ const ColumnDropZone: React.FC<ColumnDropZoneProps> = ({
   position,
   columnId,
   isActive,
-  children
+  children,
 }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: id,

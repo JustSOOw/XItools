@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-07-01 11:00:00
  * @FilePath: \XItools\frontend\src\utils\passwordStrength.ts
  * @Description: 密码强度检查工具函数
- * 
- * Copyright (c) 2025 by XItools Team, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
 export type PasswordStrength = 'weak' | 'medium' | 'strong';
@@ -45,8 +45,8 @@ export function checkPasswordStrength(password: string): PasswordStrengthResult 
   let score = 0;
 
   // 长度分数 (0-50分) - 提高长度权重
-  if (password.length >= 6) score += 30;  // 6位就给30分
-  if (password.length >= 8) score += 10;  // 8位再给10分
+  if (password.length >= 6) score += 30; // 6位就给30分
+  if (password.length >= 8) score += 10; // 8位再给10分
   if (password.length >= 12) score += 10; // 12位再给10分
 
   // 字符类型分数 (0-40分) - 降低字符类型要求
@@ -56,22 +56,24 @@ export function checkPasswordStrength(password: string): PasswordStrengthResult 
   if (requirements.special) score += 10;
 
   // 复杂度奖励 (0-10分) - 降低复杂度要求
-  if (satisfiedCount >= 2) score += 5;  // 满足2种类型就给奖励
-  if (satisfiedCount >= 3) score += 5;  // 满足3种类型再给奖励
+  if (satisfiedCount >= 2) score += 5; // 满足2种类型就给奖励
+  if (satisfiedCount >= 3) score += 5; // 满足3种类型再给奖励
 
   // 确保分数在0-100范围内
   score = Math.min(100, Math.max(0, score));
 
   // 确定强度等级 - 更宽松的标准
   let strength: PasswordStrength;
-  if (score < 30) {        // 降低弱密码阈值
+  if (score < 30) {
+    // 降低弱密码阈值
     strength = 'weak';
-  } else if (score < 60) { // 降低中等密码阈值
+  } else if (score < 60) {
+    // 降低中等密码阈值
     strength = 'medium';
   } else {
     strength = 'strong';
   }
-  
+
   // 生成反馈建议 - 更宽松的建议
   const feedback: string[] = [];
 
@@ -93,14 +95,14 @@ export function checkPasswordStrength(password: string): PasswordStrengthResult 
   if (password.length < 8) {
     feedback.push('建议使用8个字符以上的密码');
   }
-  
+
   // 检查常见弱密码模式
   const commonPatterns = [
     /^(.)\1+$/, // 重复字符
     /^(012|123|234|345|456|567|678|789|890|abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz)/i, // 连续字符
     /^(password|123456|qwerty|admin|root|user|guest)/i, // 常见密码
   ];
-  
+
   for (const pattern of commonPatterns) {
     if (pattern.test(password)) {
       feedback.push('避免使用常见的密码模式');
@@ -108,7 +110,7 @@ export function checkPasswordStrength(password: string): PasswordStrengthResult 
       break;
     }
   }
-  
+
   // 重新评估强度（考虑模式检查后的分数）
   if (score < 40) {
     strength = 'weak';
@@ -117,7 +119,7 @@ export function checkPasswordStrength(password: string): PasswordStrengthResult 
   } else {
     strength = 'strong';
   }
-  
+
   return {
     strength,
     score,
@@ -168,19 +170,22 @@ export function getPasswordStrengthText(strength: PasswordStrength): string {
  * @param includeSpecial 是否包含特殊字符 (默认true)
  * @returns 生成的密码
  */
-export function generateSecurePassword(length: number = 12, includeSpecial: boolean = true): string {
+export function generateSecurePassword(
+  length: number = 12,
+  includeSpecial: boolean = true,
+): string {
   const lowercase = 'abcdefghijklmnopqrstuvwxyz';
   const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const numbers = '0123456789';
   const special = '!@#$%^&*()_+-=[]{}|;:,.<>?';
-  
+
   let charset = lowercase + uppercase + numbers;
   if (includeSpecial) {
     charset += special;
   }
-  
+
   let password = '';
-  
+
   // 确保至少包含每种类型的字符
   password += lowercase[Math.floor(Math.random() * lowercase.length)];
   password += uppercase[Math.floor(Math.random() * uppercase.length)];
@@ -188,12 +193,15 @@ export function generateSecurePassword(length: number = 12, includeSpecial: bool
   if (includeSpecial) {
     password += special[Math.floor(Math.random() * special.length)];
   }
-  
+
   // 填充剩余长度
   for (let i = password.length; i < length; i++) {
     password += charset[Math.floor(Math.random() * charset.length)];
   }
-  
+
   // 打乱字符顺序
-  return password.split('').sort(() => Math.random() - 0.5).join('');
+  return password
+    .split('')
+    .sort(() => Math.random() - 0.5)
+    .join('');
 }

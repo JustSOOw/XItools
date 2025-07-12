@@ -31,7 +31,7 @@ export class MigrationService {
     try {
       // 1. 创建默认工作区（如果不存在）
       let defaultWorkspace = await prisma.workspace.findFirst({
-        where: { isDefault: true }
+        where: { isDefault: true },
       });
 
       if (!defaultWorkspace) {
@@ -39,19 +39,19 @@ export class MigrationService {
           data: {
             name: '默认工作区',
             description: '系统默认工作区',
-            isDefault: true
-          }
+            isDefault: true,
+          },
         });
         console.log('✅ 创建默认工作区');
       }
 
       // 2. 检查是否存在没有boardId的任务或列
       const tasksWithoutBoard = await prisma.task.count({
-        where: { boardId: null }
+        where: { boardId: null },
       });
 
       const columnsWithoutBoard = await prisma.boardColumn.count({
-        where: { boardId: null }
+        where: { boardId: null },
       });
 
       if (tasksWithoutBoard > 0 || columnsWithoutBoard > 0) {
@@ -61,8 +61,8 @@ export class MigrationService {
             name: '默认看板',
             description: '从旧版本迁移的默认看板',
             workspaceId: defaultWorkspace.id,
-            order: 0
-          }
+            order: 0,
+          },
         });
         console.log('✅ 创建默认看板');
 
@@ -70,7 +70,7 @@ export class MigrationService {
         if (columnsWithoutBoard > 0) {
           await prisma.boardColumn.updateMany({
             where: { boardId: null },
-            data: { boardId: defaultBoard.id }
+            data: { boardId: defaultBoard.id },
           });
           console.log(`✅ 迁移 ${columnsWithoutBoard} 个列到默认看板`);
         }
@@ -79,7 +79,7 @@ export class MigrationService {
         if (tasksWithoutBoard > 0) {
           await prisma.task.updateMany({
             where: { boardId: null },
-            data: { boardId: defaultBoard.id }
+            data: { boardId: defaultBoard.id },
           });
           console.log(`✅ 迁移 ${tasksWithoutBoard} 个任务到默认看板`);
         }
@@ -99,7 +99,7 @@ export class MigrationService {
     try {
       // 检查是否存在默认工作区
       const defaultWorkspace = await prisma.workspace.findFirst({
-        where: { isDefault: true }
+        where: { isDefault: true },
       });
 
       if (!defaultWorkspace) {
@@ -109,26 +109,25 @@ export class MigrationService {
 
       // 检查是否还有没有boardId的任务或列
       const tasksWithoutBoard = await prisma.task.count({
-        where: { boardId: null }
+        where: { boardId: null },
       });
 
       const columnsWithoutBoard = await prisma.boardColumn.count({
-        where: { boardId: null }
+        where: { boardId: null },
       });
 
       if (tasksWithoutBoard > 0 || columnsWithoutBoard > 0) {
-        console.error(`❌ 验证失败: 还有 ${tasksWithoutBoard} 个任务和 ${columnsWithoutBoard} 个列没有关联到看板`);
+        console.error(
+          `❌ 验证失败: 还有 ${tasksWithoutBoard} 个任务和 ${columnsWithoutBoard} 个列没有关联到看板`,
+        );
         return false;
       }
 
       // 检查所有看板是否都有有效的父级关系
       const boardsWithoutParent = await prisma.board.count({
         where: {
-          AND: [
-            { workspaceId: null },
-            { projectId: null }
-          ]
-        }
+          AND: [{ workspaceId: null }, { projectId: null }],
+        },
       });
 
       if (boardsWithoutParent > 0) {
@@ -159,7 +158,7 @@ export class MigrationService {
       prisma.project.count(),
       prisma.board.count(),
       prisma.task.count(),
-      prisma.boardColumn.count()
+      prisma.boardColumn.count(),
     ]);
 
     return {
@@ -167,7 +166,7 @@ export class MigrationService {
       projects,
       boards,
       tasks,
-      columns
+      columns,
     };
   }
 }

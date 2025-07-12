@@ -1,6 +1,6 @@
 /**
  * API密钥管理路由
- * 
+ *
  * 提供API密钥的CRUD操作接口
  */
 
@@ -17,7 +17,7 @@ import {
   CreateApiKeyResponse,
   DeleteApiKeyResponse,
   ApiKeyError,
-  ApiKeyErrorCode
+  ApiKeyErrorCode,
 } from '../types/apiKeyTypes';
 
 // 初始化服务
@@ -26,7 +26,7 @@ const apiKeyService = getApiKeyService(prisma);
 
 export default async function apiKeyRoutes(
   fastify: FastifyInstance,
-  options: FastifyPluginOptions
+  options: FastifyPluginOptions,
 ) {
   // 所有API密钥路由都需要用户认证
   fastify.addHook('preHandler', authMiddleware);
@@ -37,29 +37,29 @@ export default async function apiKeyRoutes(
   fastify.get<{}>('/user/api-keys', async (request, reply) => {
     try {
       const userId = requireAuth(request);
-      
+
       const apiKeys = await apiKeyService.getUserApiKeys(userId);
-      
+
       const response: ApiKeyListResponse = {
         success: true,
-        data: apiKeys
+        data: apiKeys,
       };
-      
+
       return response;
     } catch (error) {
       console.error('获取API密钥列表失败:', error);
-      
+
       if (error instanceof ApiKeyError) {
         return reply.status(error.statusCode).send({
           success: false,
           error: error.message,
-          code: error.code
+          code: error.code,
         });
       }
-      
+
       return reply.status(500).send({
         success: false,
-        error: '获取API密钥列表失败'
+        error: '获取API密钥列表失败',
       });
     }
   });
@@ -69,112 +69,117 @@ export default async function apiKeyRoutes(
    */
   fastify.post<{
     Body: CreateApiKeyRequest;
-  }>('/user/api-keys', {
-    schema: {
-      body: {
-        type: 'object',
-        required: ['name'],
-        properties: {
-          name: {
-            type: 'string',
-            minLength: 1,
-            maxLength: 100
-          },
-          permissions: {
-            type: 'array',
-            items: {
+  }>(
+    '/user/api-keys',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['name'],
+          properties: {
+            name: {
               type: 'string',
-              enum: ['mcp:read', 'mcp:write', 'mcp:admin']
+              minLength: 1,
+              maxLength: 100,
             },
-            minItems: 1,
-            default: ['mcp:read', 'mcp:write']
+            permissions: {
+              type: 'array',
+              items: {
+                type: 'string',
+                enum: ['mcp:read', 'mcp:write', 'mcp:admin'],
+              },
+              minItems: 1,
+              default: ['mcp:read', 'mcp:write'],
+            },
+            expiresAt: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+            },
           },
-          expiresAt: {
-            type: 'string',
-            format: 'date-time',
-            nullable: true
-          }
-        }
-      }
-    }
-  }, async (request, reply) => {
-    try {
-      const userId = requireAuth(request);
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const userId = requireAuth(request);
 
-      // 使用Zod验证请求体
-      const validationResult = createApiKeySchema.safeParse(request.body);
-      if (!validationResult.success) {
-        return reply.status(400).send({
-          success: false,
-          error: '请求参数验证失败',
-          details: validationResult.error.errors
-        });
-      }
-
-      const createData = validationResult.data;
-      
-      const newApiKey = await apiKeyService.createApiKey(userId, createData);
-      
-      const response: CreateApiKeyResponse = {
-        success: true,
-        data: {
-          id: newApiKey.id,
-          name: newApiKey.name,
-          apiKey: newApiKey.apiKey, // 完整密钥，仅在创建时返回
-          keyPrefix: newApiKey.keyPrefix,
-          permissions: newApiKey.permissions as any,
-          expiresAt: newApiKey.expiresAt,
-          createdAt: newApiKey.createdAt
-        }
-      };
-      
-      return response;
-    } catch (error) {
-      console.error('创建API密钥失败:', error);
-
-      // 处理API密钥特定错误
-      if (error instanceof ApiKeyError) {
-        return reply.status(error.statusCode).send({
-          success: false,
-          error: error.message,
-          code: error.code,
-          details: null
-        });
-      }
-
-      // 处理Zod验证错误
-      if (error && typeof error === 'object' && 'issues' in error) {
-        return reply.status(400).send({
-          success: false,
-          error: '请求参数验证失败',
-          code: 'VALIDATION_ERROR',
-          details: error.issues
-        });
-      }
-
-      // 处理数据库错误
-      if (error && typeof error === 'object' && 'code' in error) {
-        const dbError = error as any;
-        if (dbError.code === 'P2002') { // Prisma unique constraint violation
+        // 使用Zod验证请求体
+        const validationResult = createApiKeySchema.safeParse(request.body);
+        if (!validationResult.success) {
           return reply.status(400).send({
             success: false,
-            error: '该名称的API密钥已存在',
-            code: 'DUPLICATE_API_KEY_NAME',
-            details: null
+            error: '请求参数验证失败',
+            details: validationResult.error.errors,
           });
         }
-      }
 
-      // 处理通用错误
-      const errorMessage = error instanceof Error ? error.message : '创建API密钥失败';
-      return reply.status(500).send({
-        success: false,
-        error: errorMessage,
-        code: 'INTERNAL_SERVER_ERROR',
-        details: null
-      });
-    }
-  });
+        const createData = validationResult.data;
+
+        const newApiKey = await apiKeyService.createApiKey(userId, createData);
+
+        const response: CreateApiKeyResponse = {
+          success: true,
+          data: {
+            id: newApiKey.id,
+            name: newApiKey.name,
+            apiKey: newApiKey.apiKey, // 完整密钥，仅在创建时返回
+            keyPrefix: newApiKey.keyPrefix,
+            permissions: newApiKey.permissions as any,
+            expiresAt: newApiKey.expiresAt,
+            createdAt: newApiKey.createdAt,
+          },
+        };
+
+        return response;
+      } catch (error) {
+        console.error('创建API密钥失败:', error);
+
+        // 处理API密钥特定错误
+        if (error instanceof ApiKeyError) {
+          return reply.status(error.statusCode).send({
+            success: false,
+            error: error.message,
+            code: error.code,
+            details: null,
+          });
+        }
+
+        // 处理Zod验证错误
+        if (error && typeof error === 'object' && 'issues' in error) {
+          return reply.status(400).send({
+            success: false,
+            error: '请求参数验证失败',
+            code: 'VALIDATION_ERROR',
+            details: error.issues,
+          });
+        }
+
+        // 处理数据库错误
+        if (error && typeof error === 'object' && 'code' in error) {
+          const dbError = error as any;
+          if (dbError.code === 'P2002') {
+            // Prisma unique constraint violation
+            return reply.status(400).send({
+              success: false,
+              error: '该名称的API密钥已存在',
+              code: 'DUPLICATE_API_KEY_NAME',
+              details: null,
+            });
+          }
+        }
+
+        // 处理通用错误
+        const errorMessage = error instanceof Error ? error.message : '创建API密钥失败';
+        return reply.status(500).send({
+          success: false,
+          error: errorMessage,
+          code: 'INTERNAL_SERVER_ERROR',
+          details: null,
+        });
+      }
+    },
+  );
 
   /**
    * 删除API密钥
@@ -185,29 +190,29 @@ export default async function apiKeyRoutes(
     try {
       const userId = requireAuth(request);
       const { keyId } = request.params;
-      
+
       await apiKeyService.deleteApiKey(userId, keyId);
-      
+
       const response: DeleteApiKeyResponse = {
         success: true,
-        message: 'API密钥已删除'
+        message: 'API密钥已删除',
       };
-      
+
       return response;
     } catch (error) {
       console.error('删除API密钥失败:', error);
-      
+
       if (error instanceof ApiKeyError) {
         return reply.status(error.statusCode).send({
           success: false,
           error: error.message,
-          code: error.code
+          code: error.code,
         });
       }
-      
+
       return reply.status(500).send({
         success: false,
-        error: '删除API密钥失败'
+        error: '删除API密钥失败',
       });
     }
   });
@@ -221,27 +226,27 @@ export default async function apiKeyRoutes(
     try {
       const userId = requireAuth(request);
       const { keyId } = request.params;
-      
+
       const stats = await apiKeyService.getApiKeyUsageStats(userId, keyId);
-      
+
       return {
         success: true,
-        data: stats
+        data: stats,
       };
     } catch (error) {
       console.error('获取API密钥统计失败:', error);
-      
+
       if (error instanceof ApiKeyError) {
         return reply.status(error.statusCode).send({
           success: false,
           error: error.message,
-          code: error.code
+          code: error.code,
         });
       }
-      
+
       return reply.status(500).send({
         success: false,
-        error: '获取API密钥统计失败'
+        error: '获取API密钥统计失败',
       });
     }
   });
@@ -261,24 +266,24 @@ export default async function apiKeyRoutes(
       const userId = requireAuth(request);
       const { keyId } = request.params;
       const { page = 1, limit = 50, toolName } = request.query;
-      
+
       // 构建查询条件
       const where: any = {
         apiKeyId: keyId,
-        userId
+        userId,
       };
-      
+
       if (toolName) {
         where.toolName = toolName;
       }
-      
+
       // 分页查询
       const skip = (page - 1) * limit;
       const [logs, total] = await Promise.all([
         prisma.mcpUsageLog.findMany({
           where,
           orderBy: {
-            createdAt: 'desc'
+            createdAt: 'desc',
           },
           skip,
           take: limit,
@@ -289,12 +294,12 @@ export default async function apiKeyRoutes(
             errorMessage: true,
             ipAddress: true,
             executionTimeMs: true,
-            createdAt: true
-          }
+            createdAt: true,
+          },
         }),
-        prisma.mcpUsageLog.count({ where })
+        prisma.mcpUsageLog.count({ where }),
       ]);
-      
+
       return {
         success: true,
         data: {
@@ -305,16 +310,16 @@ export default async function apiKeyRoutes(
             total,
             totalPages: Math.ceil(total / limit),
             hasNext: page * limit < total,
-            hasPrev: page > 1
-          }
-        }
+            hasPrev: page > 1,
+          },
+        },
       };
     } catch (error) {
       console.error('获取API密钥日志失败:', error);
-      
+
       return reply.status(500).send({
         success: false,
-        error: '获取API密钥日志失败'
+        error: '获取API密钥日志失败',
       });
     }
   });
@@ -325,32 +330,32 @@ export default async function apiKeyRoutes(
   fastify.post('/admin/api-keys/cleanup', async (request, reply) => {
     try {
       const userId = requireAuth(request);
-      
+
       // 检查用户是否为管理员
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { role: true }
+        select: { role: true },
       });
-      
+
       if (!user || user.role !== 'admin') {
         return reply.status(403).send({
           success: false,
-          error: '权限不足，仅管理员可执行此操作'
+          error: '权限不足，仅管理员可执行此操作',
         });
       }
-      
+
       const cleanedCount = await apiKeyService.cleanupExpiredKeys();
-      
+
       return {
         success: true,
-        message: `已清理 ${cleanedCount} 个过期的API密钥`
+        message: `已清理 ${cleanedCount} 个过期的API密钥`,
       };
     } catch (error) {
       console.error('清理过期API密钥失败:', error);
-      
+
       return reply.status(500).send({
         success: false,
-        error: '清理过期API密钥失败'
+        error: '清理过期API密钥失败',
       });
     }
   });
@@ -361,40 +366,34 @@ export default async function apiKeyRoutes(
   fastify.get('/admin/mcp/overview', async (request, reply) => {
     try {
       const userId = requireAuth(request);
-      
+
       // 检查用户是否为管理员
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { role: true }
+        select: { role: true },
       });
-      
+
       if (!user || user.role !== 'admin') {
         return reply.status(403).send({
           success: false,
-          error: '权限不足，仅管理员可查看此信息'
+          error: '权限不足，仅管理员可查看此信息',
         });
       }
-      
+
       // 获取总体统计
-      const [
-        totalApiKeys,
-        activeApiKeys,
-        totalRequests,
-        toolStats,
-        userStats
-      ] = await Promise.all([
+      const [totalApiKeys, activeApiKeys, totalRequests, toolStats, userStats] = await Promise.all([
         // 总API密钥数
         prisma.userApiKey.count({
-          where: { isActive: true }
+          where: { isActive: true },
         }),
         // 活跃API密钥数（30天内使用过的）
         prisma.userApiKey.count({
           where: {
             isActive: true,
             lastUsedAt: {
-              gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-            }
-          }
+              gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+            },
+          },
         }),
         // 总请求数
         prisma.mcpUsageLog.count(),
@@ -402,52 +401,52 @@ export default async function apiKeyRoutes(
         prisma.mcpUsageLog.groupBy({
           by: ['toolName'],
           _count: {
-            id: true
+            id: true,
           },
           orderBy: {
             _count: {
-              id: 'desc'
-            }
+              id: 'desc',
+            },
           },
-          take: 10
+          take: 10,
         }),
         // 用户使用统计
         prisma.mcpUsageLog.groupBy({
           by: ['userId'],
           _count: {
-            id: true
+            id: true,
           },
           orderBy: {
             _count: {
-              id: 'desc'
-            }
+              id: 'desc',
+            },
           },
-          take: 10
-        })
+          take: 10,
+        }),
       ]);
-      
+
       return {
         success: true,
         data: {
           totalApiKeys,
           activeApiKeys,
           totalRequests,
-          topTools: toolStats.map(stat => ({
+          topTools: toolStats.map((stat) => ({
             toolName: stat.toolName,
-            count: stat._count.id
+            count: stat._count.id,
           })),
-          topUsers: userStats.map(stat => ({
+          topUsers: userStats.map((stat) => ({
             userId: stat.userId,
-            count: stat._count.id
-          }))
-        }
+            count: stat._count.id,
+          })),
+        },
       };
     } catch (error) {
       console.error('获取MCP概览失败:', error);
-      
+
       return reply.status(500).send({
         success: false,
-        error: '获取MCP概览失败'
+        error: '获取MCP概览失败',
       });
     }
   });
@@ -470,13 +469,13 @@ export default async function apiKeyRoutes(
 
       // 验证API密钥所有权
       const apiKey = await prisma.userApiKey.findFirst({
-        where: { id: keyId, userId }
+        where: { id: keyId, userId },
       });
 
       if (!apiKey) {
         return reply.status(404).send({
           success: false,
-          error: 'API密钥不存在'
+          error: 'API密钥不存在',
         });
       }
 
@@ -515,14 +514,14 @@ export default async function apiKeyRoutes(
         data: {
           timeRange: { start, end },
           statistics,
-          report
-        }
+          report,
+        },
       };
     } catch (error) {
       console.error('获取详细统计失败:', error);
       return reply.status(500).send({
         success: false,
-        error: '获取详细统计失败'
+        error: '获取详细统计失败',
       });
     }
   });
@@ -533,38 +532,36 @@ export default async function apiKeyRoutes(
   fastify.get('/user/api-keys/expiration-report', async (request, reply) => {
     try {
       const userId = requireAuth(request);
-      
+
       // 获取用户的过期报告
       const userApiKeys = await prisma.userApiKey.findMany({
         where: { userId },
-        select: { id: true }
+        select: { id: true },
       });
 
       const expirationReport = await apiKeyExpirationManager.generateExpirationReport();
-      
+
       // 过滤只显示当前用户的密钥信息
-      const userKeyIds = new Set(userApiKeys.map(key => key.id));
+      const userKeyIds = new Set(userApiKeys.map((key) => key.id));
       const filteredReport = {
         ...expirationReport,
         details: {
-          expiringKeys: expirationReport.details.expiringKeys.filter(
-            key => userKeyIds.has(key.id)
+          expiringKeys: expirationReport.details.expiringKeys.filter((key) =>
+            userKeyIds.has(key.id),
           ),
-          expiredKeys: expirationReport.details.expiredKeys.filter(
-            key => userKeyIds.has(key.id)
-          )
-        }
+          expiredKeys: expirationReport.details.expiredKeys.filter((key) => userKeyIds.has(key.id)),
+        },
       };
 
       return {
         success: true,
-        data: filteredReport
+        data: filteredReport,
       };
     } catch (error) {
       console.error('获取过期报告失败:', error);
       return reply.status(500).send({
         success: false,
-        error: '获取过期报告失败'
+        error: '获取过期报告失败',
       });
     }
   });
@@ -575,7 +572,7 @@ export default async function apiKeyRoutes(
   fastify.get('/user/api-keys/dashboard', async (request, reply) => {
     try {
       const userId = requireAuth(request);
-      
+
       const now = new Date();
       const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -583,76 +580,71 @@ export default async function apiKeyRoutes(
       // 获取用户的API密钥
       const userApiKeys = await prisma.userApiKey.findMany({
         where: { userId },
-        select: { id: true, name: true, isActive: true, expiresAt: true, lastUsedAt: true }
+        select: { id: true, name: true, isActive: true, expiresAt: true, lastUsedAt: true },
       });
 
-      const keyIds = userApiKeys.map(key => key.id);
+      const keyIds = userApiKeys.map((key) => key.id);
 
       // 获取统计数据
-      const [
-        totalRequests24h,
-        totalRequestsWeek,
-        errorRequests24h,
-        recentActivity,
-        topEndpoints
-      ] = await Promise.all([
-        // 24小时请求数
-        prisma.mcpUsageLog.count({
-          where: {
-            apiKeyId: { in: keyIds },
-            timestamp: { gte: oneDayAgo }
-          }
-        }),
+      const [totalRequests24h, totalRequestsWeek, errorRequests24h, recentActivity, topEndpoints] =
+        await Promise.all([
+          // 24小时请求数
+          prisma.mcpUsageLog.count({
+            where: {
+              apiKeyId: { in: keyIds },
+              timestamp: { gte: oneDayAgo },
+            },
+          }),
 
-        // 一周请求数
-        prisma.mcpUsageLog.count({
-          where: {
-            apiKeyId: { in: keyIds },
-            timestamp: { gte: oneWeekAgo }
-          }
-        }),
+          // 一周请求数
+          prisma.mcpUsageLog.count({
+            where: {
+              apiKeyId: { in: keyIds },
+              timestamp: { gte: oneWeekAgo },
+            },
+          }),
 
-        // 24小时错误数
-        prisma.mcpUsageLog.count({
-          where: {
-            apiKeyId: { in: keyIds },
-            timestamp: { gte: oneDayAgo },
-            statusCode: { gte: 400 }
-          }
-        }),
+          // 24小时错误数
+          prisma.mcpUsageLog.count({
+            where: {
+              apiKeyId: { in: keyIds },
+              timestamp: { gte: oneDayAgo },
+              statusCode: { gte: 400 },
+            },
+          }),
 
-        // 最近活动
-        prisma.mcpUsageLog.findMany({
-          where: {
-            apiKeyId: { in: keyIds }
-          },
-          orderBy: { timestamp: 'desc' },
-          take: 10,
-          include: {
-            apiKey: {
-              select: { name: true }
-            }
-          }
-        }),
+          // 最近活动
+          prisma.mcpUsageLog.findMany({
+            where: {
+              apiKeyId: { in: keyIds },
+            },
+            orderBy: { timestamp: 'desc' },
+            take: 10,
+            include: {
+              apiKey: {
+                select: { name: true },
+              },
+            },
+          }),
 
-        // 热门端点
-        prisma.mcpUsageLog.groupBy({
-          by: ['endpoint'],
-          where: {
-            apiKeyId: { in: keyIds },
-            timestamp: { gte: oneWeekAgo }
-          },
-          _count: { id: true },
-          orderBy: { _count: { id: 'desc' } },
-          take: 5
-        })
-      ]);
+          // 热门端点
+          prisma.mcpUsageLog.groupBy({
+            by: ['endpoint'],
+            where: {
+              apiKeyId: { in: keyIds },
+              timestamp: { gte: oneWeekAgo },
+            },
+            _count: { id: true },
+            orderBy: { _count: { id: 'desc' } },
+            take: 5,
+          }),
+        ]);
 
       // 检查即将过期的密钥
-      const expiringKeys = userApiKeys.filter(key => {
+      const expiringKeys = userApiKeys.filter((key) => {
         if (!key.expiresAt) return false;
         const daysUntilExpiry = Math.ceil(
-          (key.expiresAt.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)
+          (key.expiresAt.getTime() - now.getTime()) / (24 * 60 * 60 * 1000),
         );
         return daysUntilExpiry <= 7 && daysUntilExpiry > 0;
       });
@@ -662,38 +654,38 @@ export default async function apiKeyRoutes(
         data: {
           summary: {
             totalApiKeys: userApiKeys.length,
-            activeApiKeys: userApiKeys.filter(key => key.isActive).length,
+            activeApiKeys: userApiKeys.filter((key) => key.isActive).length,
             requests24h: totalRequests24h,
             requestsWeek: totalRequestsWeek,
-            errorRate24h: totalRequests24h > 0 ? (errorRequests24h / totalRequests24h * 100) : 0,
-            expiringKeysCount: expiringKeys.length
+            errorRate24h: totalRequests24h > 0 ? (errorRequests24h / totalRequests24h) * 100 : 0,
+            expiringKeysCount: expiringKeys.length,
           },
-          expiringKeys: expiringKeys.map(key => ({
+          expiringKeys: expiringKeys.map((key) => ({
             id: key.id,
             name: key.name,
             expiresAt: key.expiresAt,
             daysUntilExpiry: Math.ceil(
-              (key.expiresAt!.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)
-            )
+              (key.expiresAt!.getTime() - now.getTime()) / (24 * 60 * 60 * 1000),
+            ),
           })),
-          recentActivity: recentActivity.map(log => ({
+          recentActivity: recentActivity.map((log) => ({
             timestamp: log.timestamp,
             endpoint: log.endpoint,
             statusCode: log.statusCode,
             keyName: log.apiKey?.name || 'Unknown',
-            responseTime: log.responseTime
+            responseTime: log.responseTime,
           })),
-          topEndpoints: topEndpoints.map(stat => ({
+          topEndpoints: topEndpoints.map((stat) => ({
             endpoint: stat.endpoint,
-            count: stat._count.id
-          }))
-        }
+            count: stat._count.id,
+          })),
+        },
       };
     } catch (error) {
       console.error('获取仪表板数据失败:', error);
       return reply.status(500).send({
         success: false,
-        error: '获取仪表板数据失败'
+        error: '获取仪表板数据失败',
       });
     }
   });
@@ -710,13 +702,13 @@ export default async function apiKeyRoutes(
 
       // 验证API密钥所有权
       const apiKey = await prisma.userApiKey.findFirst({
-        where: { id: keyId, userId }
+        where: { id: keyId, userId },
       });
 
       if (!apiKey) {
         return reply.status(404).send({
           success: false,
-          error: 'API密钥不存在'
+          error: 'API密钥不存在',
         });
       }
 
@@ -725,18 +717,13 @@ export default async function apiKeyRoutes(
       const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
       // 获取健康指标
-      const [
-        recentRequests,
-        recentErrors,
-        avgResponseTime,
-        uniqueIPs
-      ] = await Promise.all([
+      const [recentRequests, recentErrors, avgResponseTime, uniqueIPs] = await Promise.all([
         // 最近1小时请求数
         prisma.mcpUsageLog.count({
           where: {
             apiKeyId: keyId,
-            timestamp: { gte: oneHourAgo }
-          }
+            timestamp: { gte: oneHourAgo },
+          },
         }),
 
         // 最近1小时错误数
@@ -744,28 +731,28 @@ export default async function apiKeyRoutes(
           where: {
             apiKeyId: keyId,
             timestamp: { gte: oneHourAgo },
-            statusCode: { gte: 400 }
-          }
+            statusCode: { gte: 400 },
+          },
         }),
 
         // 平均响应时间（最近24小时）
         prisma.mcpUsageLog.aggregate({
           where: {
             apiKeyId: keyId,
-            timestamp: { gte: oneDayAgo }
+            timestamp: { gte: oneDayAgo },
           },
-          _avg: { responseTime: true }
+          _avg: { responseTime: true },
         }),
 
         // 最近24小时唯一IP数
         prisma.mcpUsageLog.findMany({
           where: {
             apiKeyId: keyId,
-            timestamp: { gte: oneDayAgo }
+            timestamp: { gte: oneDayAgo },
           },
           select: { ipAddress: true },
-          distinct: ['ipAddress']
-        })
+          distinct: ['ipAddress'],
+        }),
       ]);
 
       // 检查过期状态
@@ -831,16 +818,16 @@ export default async function apiKeyRoutes(
             errorRate: errorRate.toFixed(2) + '%',
             avgResponseTime: avgTime.toFixed(0) + 'ms',
             uniqueIPs: uniqueIPs.length,
-            expirationInfo
+            expirationInfo,
           },
-          recommendations: generateHealthRecommendations(healthScore, issues)
-        }
+          recommendations: generateHealthRecommendations(healthScore, issues),
+        },
       };
     } catch (error) {
       console.error('获取API密钥健康状态失败:', error);
       return reply.status(500).send({
         success: false,
-        error: '获取API密钥健康状态失败'
+        error: '获取API密钥健康状态失败',
       });
     }
   });
@@ -856,19 +843,19 @@ function generateHealthRecommendations(healthScore: number, issues: string[]): s
     recommendations.push('建议立即检查API密钥的使用情况和错误日志');
   }
 
-  if (issues.some(issue => issue.includes('错误率'))) {
+  if (issues.some((issue) => issue.includes('错误率'))) {
     recommendations.push('检查API调用参数和处理逻辑，减少错误请求');
   }
 
-  if (issues.some(issue => issue.includes('响应时间'))) {
+  if (issues.some((issue) => issue.includes('响应时间'))) {
     recommendations.push('考虑优化请求频率或使用缓存机制');
   }
 
-  if (issues.some(issue => issue.includes('过期'))) {
+  if (issues.some((issue) => issue.includes('过期'))) {
     recommendations.push('及时更新API密钥的过期时间');
   }
 
-  if (issues.some(issue => issue.includes('IP地址'))) {
+  if (issues.some((issue) => issue.includes('IP地址'))) {
     recommendations.push('审查API密钥的使用范围，确保安全性');
   }
 

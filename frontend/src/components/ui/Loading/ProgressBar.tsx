@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-01-27 20:20:00
  * @FilePath: \XItools\frontend\src\components\ui\Loading\ProgressBar.tsx
  * @Description: 进度条组件 - 用于显示操作进度和加载状态
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -72,27 +72,27 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
   const getBarClasses = () => {
     const baseClasses = classNames(
       'h-full transition-all duration-500 ease-out',
-      colorClasses[color]
+      colorClasses[color],
     );
 
     switch (variant) {
       case 'gradient':
         return classNames(baseClasses, 'bg-gradient-to-r from-current to-current/80');
-      
+
       case 'striped':
         return classNames(
           baseClasses,
           'bg-gradient-to-r from-transparent via-white/20 to-transparent',
-          'bg-size-[20px_20px] bg-repeat-x'
+          'bg-size-[20px_20px] bg-repeat-x',
         );
-      
+
       case 'animated':
         return classNames(
           baseClasses,
           'bg-gradient-to-r from-current via-current/60 to-current',
-          'animate-pulse'
+          'animate-pulse',
         );
-      
+
       default:
         return baseClasses;
     }
@@ -103,7 +103,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
       'h-full rounded-full',
       colorClasses[color],
       'animate-pulse',
-      'bg-gradient-to-r from-transparent via-current to-transparent'
+      'bg-gradient-to-r from-transparent via-current to-transparent',
     );
   };
 
@@ -112,13 +112,9 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
       {/* 标签 */}
       {(showLabel || label) && (
         <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium text-text-primary">
-            {label || '进度'}
-          </span>
+          <span className="text-sm font-medium text-text-primary">{label || '进度'}</span>
           {!indeterminate && showLabel && (
-            <span className="text-sm text-text-secondary">
-              {Math.round(percentage)}%
-            </span>
+            <span className="text-sm text-text-secondary">{Math.round(percentage)}%</span>
           )}
         </div>
       )}
@@ -128,10 +124,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
         {indeterminate ? (
           <div className={getIndeterminateClasses()} />
         ) : (
-          <div
-            className={getBarClasses()}
-            style={{ width: `${percentage}%` }}
-          />
+          <div className={getBarClasses()} style={{ width: `${percentage}%` }} />
         )}
       </div>
     </div>
@@ -170,11 +163,7 @@ export const CircularProgress: React.FC<{
 
   return (
     <div className={classNames('relative inline-flex items-center justify-center', className)}>
-      <svg
-        width={size}
-        height={size}
-        className="transform -rotate-90"
-      >
+      <svg width={size} height={size} className="transform -rotate-90">
         {/* 背景圆环 */}
         <circle
           cx={size / 2}
@@ -196,19 +185,14 @@ export const CircularProgress: React.FC<{
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           strokeLinecap="round"
-          className={classNames(
-            'transition-all duration-500 ease-out',
-            colorClasses[color]
-          )}
+          className={classNames('transition-all duration-500 ease-out', colorClasses[color])}
         />
       </svg>
-      
+
       {/* 中心标签 */}
       {showLabel && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-xs font-medium text-text-primary">
-            {Math.round(value)}%
-          </span>
+          <span className="text-xs font-medium text-text-primary">{Math.round(value)}%</span>
         </div>
       )}
     </div>
@@ -236,26 +220,21 @@ export const StepProgress: React.FC<{
                   {
                     'bg-primary text-white': index <= currentStep,
                     'bg-surface border-2 border-border text-text-secondary': index > currentStep,
-                  }
+                  },
                 )}
               >
                 {index + 1}
               </div>
-              <span className="mt-2 text-xs text-center text-text-secondary max-w-20">
-                {step}
-              </span>
+              <span className="mt-2 text-xs text-center text-text-secondary max-w-20">{step}</span>
             </div>
 
             {/* 连接线 */}
             {index < steps.length - 1 && (
               <div
-                className={classNames(
-                  'flex-1 h-0.5 mx-4 transition-all duration-300',
-                  {
-                    'bg-primary': index < currentStep,
-                    'bg-border': index >= currentStep,
-                  }
-                )}
+                className={classNames('flex-1 h-0.5 mx-4 transition-all duration-300', {
+                  'bg-primary': index < currentStep,
+                  'bg-border': index >= currentStep,
+                })}
               />
             )}
           </React.Fragment>

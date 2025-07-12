@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-01-27 22:00:00
  * @FilePath: \XItools\frontend\src\components\animations\CardAnimation.tsx
  * @Description: 卡片动画组件 - 提供任务卡片的各种微动画效果
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 
 import React from 'react';

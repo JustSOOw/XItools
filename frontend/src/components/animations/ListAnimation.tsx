@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-01-27 22:00:00
  * @FilePath: \XItools\frontend\src\components\animations\ListAnimation.tsx
  * @Description: 列表动画组件 - 提供列表项的添加、删除、排序动画效果
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 
 import React from 'react';
@@ -43,9 +43,7 @@ const ListAnimation: React.FC<ListAnimationProps> = ({
           },
         }}
       >
-        <AnimatePresence mode="popLayout">
-          {children}
-        </AnimatePresence>
+        <AnimatePresence mode="popLayout">{children}</AnimatePresence>
       </motion.div>
     </LayoutGroup>
   );

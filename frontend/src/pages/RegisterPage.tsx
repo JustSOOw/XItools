@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-07-01 10:30:00
  * @FilePath: \XItools\frontend\src\pages\RegisterPage.tsx
  * @Description: 独立注册页面组件
- * 
- * Copyright (c) 2025 by XItools Team, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
 import React, { useEffect } from 'react';
@@ -19,9 +19,7 @@ interface RegisterPageProps {
   className?: string;
 }
 
-export const RegisterPage: React.FC<RegisterPageProps> = ({ 
-  className = '' 
-}) => {
+export const RegisterPage: React.FC<RegisterPageProps> = ({ className = '' }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -34,7 +32,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
   useEffect(() => {
     const checkAuth = async () => {
       await checkAuthStatus();
-      
+
       // 如果已经登录，重定向到目标页面
       if (userStoreHelpers.isLoggedIn()) {
         navigate(from, { replace: true });

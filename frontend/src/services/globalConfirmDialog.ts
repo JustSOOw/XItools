@@ -44,15 +44,17 @@ export const globalConfirmDialog = {
     if (globalConfirmDialogAPI) {
       return globalConfirmDialogAPI.showConfirm(config, onConfirm);
     }
-    console.warn('Global ConfirmDialog API not initialized. Please ensure App component is properly set up.');
-    
+    console.warn(
+      'Global ConfirmDialog API not initialized. Please ensure App component is properly set up.',
+    );
+
     // 降级到原生confirm作为备用方案
     const result = window.confirm(`${config.title ? config.title + '\n\n' : ''}${config.message}`);
     if (result && onConfirm) {
       try {
         const result = onConfirm();
         if (result instanceof Promise) {
-          result.catch(error => console.error('确认操作失败:', error));
+          result.catch((error) => console.error('确认操作失败:', error));
         }
       } catch (error) {
         console.error('确认操作失败:', error);
@@ -73,52 +75,64 @@ export const globalConfirmDialog = {
    * 便捷方法：显示危险操作确认对话框
    */
   danger: (message: string, onConfirm?: () => void | Promise<void>, title?: string) => {
-    return globalConfirmDialog.show({
-      title: title || '危险操作',
-      message,
-      type: 'danger',
-      confirmText: '确定',
-      cancelText: '取消',
-    }, onConfirm);
+    return globalConfirmDialog.show(
+      {
+        title: title || '危险操作',
+        message,
+        type: 'danger',
+        confirmText: '确定',
+        cancelText: '取消',
+      },
+      onConfirm,
+    );
   },
 
   /**
    * 便捷方法：显示警告确认对话框
    */
   warning: (message: string, onConfirm?: () => void | Promise<void>, title?: string) => {
-    return globalConfirmDialog.show({
-      title: title || '警告',
-      message,
-      type: 'warning',
-      confirmText: '确定',
-      cancelText: '取消',
-    }, onConfirm);
+    return globalConfirmDialog.show(
+      {
+        title: title || '警告',
+        message,
+        type: 'warning',
+        confirmText: '确定',
+        cancelText: '取消',
+      },
+      onConfirm,
+    );
   },
 
   /**
    * 便捷方法：显示信息确认对话框
    */
   info: (message: string, onConfirm?: () => void | Promise<void>, title?: string) => {
-    return globalConfirmDialog.show({
-      title: title || '提示',
-      message,
-      type: 'info',
-      confirmText: '确定',
-      cancelText: '取消',
-    }, onConfirm);
+    return globalConfirmDialog.show(
+      {
+        title: title || '提示',
+        message,
+        type: 'info',
+        confirmText: '确定',
+        cancelText: '取消',
+      },
+      onConfirm,
+    );
   },
 
   /**
    * 便捷方法：显示删除确认对话框
    */
   delete: (itemName: string, onConfirm?: () => void | Promise<void>) => {
-    return globalConfirmDialog.show({
-      title: '确认删除',
-      message: `确定要删除"${itemName}"吗？此操作不可撤销。`,
-      type: 'danger',
-      confirmText: '删除',
-      cancelText: '取消',
-    }, onConfirm);
+    return globalConfirmDialog.show(
+      {
+        title: '确认删除',
+        message: `确定要删除"${itemName}"吗？此操作不可撤销。`,
+        type: 'danger',
+        confirmText: '删除',
+        cancelText: '取消',
+      },
+      onConfirm,
+    );
   },
 };
 

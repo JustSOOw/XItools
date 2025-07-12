@@ -45,24 +45,24 @@ const EditableColumnTitle: React.FC<EditableColumnTitleProps> = ({
 
   const handleSave = () => {
     const trimmedValue = editValue.trim();
-    
+
     // 验证输入
     if (!trimmedValue) {
       setError('列名不能为空');
       return;
     }
-    
+
     if (trimmedValue.length > maxLength) {
       setError(`列名不能超过${maxLength}个字符`);
       return;
     }
-    
+
     // 如果值没有变化，直接取消编辑
     if (trimmedValue === title) {
       handleCancel();
       return;
     }
-    
+
     try {
       onSave(trimmedValue);
       setIsEditing(false);
@@ -122,7 +122,7 @@ const EditableColumnTitle: React.FC<EditableColumnTitleProps> = ({
               'bg-surface text-text-primary border-border',
               {
                 'border-red-500 focus:ring-red-500': error,
-              }
+              },
             )}
             maxLength={maxLength}
             placeholder="输入列名..."
@@ -134,7 +134,12 @@ const EditableColumnTitle: React.FC<EditableColumnTitleProps> = ({
               title="保存 (Enter)"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
             </button>
             <button
@@ -143,19 +148,18 @@ const EditableColumnTitle: React.FC<EditableColumnTitleProps> = ({
               title="取消 (Esc)"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
         </div>
-        {error && (
-          <div className="mt-1 text-xs text-red-600">
-            {error}
-          </div>
-        )}
-        <div className="mt-1 text-xs text-text-secondary">
-          双击编辑 • Enter保存 • Esc取消
-        </div>
+        {error && <div className="mt-1 text-xs text-red-600">{error}</div>}
+        <div className="mt-1 text-xs text-text-secondary">双击编辑 • Enter保存 • Esc取消</div>
       </div>
     );
   }
@@ -168,7 +172,7 @@ const EditableColumnTitle: React.FC<EditableColumnTitleProps> = ({
         {
           'cursor-not-allowed opacity-50': disabled,
         },
-        className
+        className,
       )}
       onDoubleClick={handleDoubleClick}
       title={disabled ? '此列不可编辑' : '双击编辑列名'}

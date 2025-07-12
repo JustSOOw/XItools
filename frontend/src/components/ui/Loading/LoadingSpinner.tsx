@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-01-27 20:15:00
  * @FilePath: \XItools\frontend\src\components\ui\Loading\LoadingSpinner.tsx
  * @Description: 加载旋转器组件 - 提供多种样式的加载动画
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 
 import React from 'react';
@@ -50,11 +50,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
       case 'spinner':
         return (
           <svg
-            className={classNames(
-              'animate-spin',
-              sizeClasses[size],
-              colorClasses[color]
-            )}
+            className={classNames('animate-spin', sizeClasses[size], colorClasses[color])}
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -84,7 +80,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
                 className={classNames(
                   'rounded-full animate-pulse',
                   colorClasses[color],
-                  'bg-current w-1/4 h-1/4'
+                  'bg-current w-1/4 h-1/4',
                 )}
                 style={{
                   animationDelay: `${index * 0.2}s`,
@@ -102,7 +98,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
               'rounded-full animate-ping',
               sizeClasses[size],
               colorClasses[color],
-              'bg-current opacity-75'
+              'bg-current opacity-75',
             )}
           ></div>
         );
@@ -113,10 +109,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
             {[0, 1, 2, 3].map((index) => (
               <div
                 key={index}
-                className={classNames(
-                  'animate-pulse bg-current w-1/5',
-                  colorClasses[color]
-                )}
+                className={classNames('animate-pulse bg-current w-1/5', colorClasses[color])}
                 style={{
                   height: `${25 + (index % 2) * 50}%`,
                   animationDelay: `${index * 0.15}s`,
@@ -136,13 +129,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
     <div className={classNames('flex flex-col items-center justify-center', className)}>
       {renderSpinner()}
       {text && (
-        <p className={classNames(
-          'mt-2 text-sm',
-          colorClasses[color],
-          'animate-pulse'
-        )}>
-          {text}
-        </p>
+        <p className={classNames('mt-2 text-sm', colorClasses[color], 'animate-pulse')}>{text}</p>
       )}
     </div>
   );
@@ -158,12 +145,7 @@ export const FullScreenLoader: React.FC<{
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
       <div className="bg-surface rounded-lg p-8 shadow-xl">
-        <LoadingSpinner
-          size="lg"
-          variant={variant}
-          color="primary"
-          text={text}
-        />
+        <LoadingSpinner size="lg" variant={variant} color="primary" text={text} />
       </div>
     </div>
   );
@@ -176,14 +158,7 @@ export const InlineLoader: React.FC<{
   size?: LoadingSpinnerProps['size'];
   className?: string;
 }> = ({ size = 'sm', className = '' }) => {
-  return (
-    <LoadingSpinner
-      size={size}
-      variant="spinner"
-      color="muted"
-      className={className}
-    />
-  );
+  return <LoadingSpinner size={size} variant="spinner" color="muted" className={className} />;
 };
 
 /**
@@ -194,16 +169,10 @@ export const CardLoader: React.FC<{
   className?: string;
 }> = ({ text = '加载中...', className = '' }) => {
   return (
-    <div className={classNames(
-      'flex flex-col items-center justify-center p-8 text-center',
-      className
-    )}>
-      <LoadingSpinner
-        size="md"
-        variant="dots"
-        color="primary"
-        text={text}
-      />
+    <div
+      className={classNames('flex flex-col items-center justify-center p-8 text-center', className)}
+    >
+      <LoadingSpinner size="md" variant="dots" color="primary" text={text} />
     </div>
   );
 };

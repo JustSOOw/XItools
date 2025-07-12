@@ -11,7 +11,7 @@ import { getBackendUrl, log } from '../utils/env';
 const useMcpConnection = (mcpUrl?: string) => {
   const { setTasks, setLoading, setError } = useTaskStore();
   const [isConnected, setIsConnected] = useState(false);
-  
+
   // 初始化连接
   const initConnection = useCallback(async () => {
     try {
@@ -27,7 +27,7 @@ const useMcpConnection = (mcpUrl?: string) => {
       // 直接设置连接状态，不再测试getTaskSchema（因为它现在需要boardId参数）
       setIsConnected(true);
       log.info('MCP服务连接初始化完成');
-      
+
       // 清除加载状态
       setLoading(false);
     } catch (error) {
@@ -37,14 +37,14 @@ const useMcpConnection = (mcpUrl?: string) => {
       setIsConnected(false);
     }
   }, [mcpUrl, setTasks, setLoading, setError]);
-  
+
   // 重新连接
   const reconnect = useCallback(() => {
     socketService.disconnect();
     setIsConnected(false);
     initConnection();
   }, [initConnection]);
-  
+
   // 监听连接状态变化
   useEffect(() => {
     // 设置事件监听器
@@ -54,15 +54,15 @@ const useMcpConnection = (mcpUrl?: string) => {
       setError(`MCP服务连接错误: ${err.message}`);
       setIsConnected(false);
     };
-    
+
     // 添加事件监听
     socketService.onConnect(handleConnect);
     socketService.onDisconnect(handleDisconnect);
     socketService.onError(handleError);
-    
+
     // 初始化连接
     initConnection();
-    
+
     // 组件卸载时断开连接
     return () => {
       socketService.offConnect(handleConnect);
@@ -71,11 +71,11 @@ const useMcpConnection = (mcpUrl?: string) => {
       socketService.disconnect();
     };
   }, [initConnection, setError]);
-  
+
   return {
     isConnected,
-    reconnect
+    reconnect,
   };
 };
 
-export default useMcpConnection; 
+export default useMcpConnection;

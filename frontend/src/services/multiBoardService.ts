@@ -163,9 +163,7 @@ class MultiBoardService {
   }> {
     try {
       // 并行获取所有数据
-      const [workspaces] = await Promise.all([
-        this.getAllWorkspaces()
-      ]);
+      const [workspaces] = await Promise.all([this.getAllWorkspaces()]);
 
       // 获取所有项目和看板
       const allProjects: Project[] = [];
@@ -174,7 +172,7 @@ class MultiBoardService {
       for (const workspace of workspaces) {
         const [projects, workspaceBoards] = await Promise.all([
           this.getProjectsByWorkspace(workspace.id),
-          this.getBoardsByWorkspace(workspace.id)
+          this.getBoardsByWorkspace(workspace.id),
         ]);
 
         allProjects.push(...projects);
@@ -190,7 +188,7 @@ class MultiBoardService {
       return {
         workspaces,
         projects: allProjects,
-        boards: allBoards
+        boards: allBoards,
       };
     } catch (error) {
       console.error('初始化多看板数据失败:', error);

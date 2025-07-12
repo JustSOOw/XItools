@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-01-27 22:00:00
  * @FilePath: \XItools\frontend\src\components\feedback\ConfirmDialog.tsx
  * @Description: 操作确认对话框组件 - 提供用户操作确认功能
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 
 import React from 'react';
@@ -84,44 +84,27 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   };
 
   return (
-    <ConfirmDialogAnimation
-      isOpen={isOpen}
-      onOverlayClick={onClose}
-    >
+    <ConfirmDialogAnimation isOpen={isOpen} onOverlayClick={onClose}>
       <div className="p-6">
         {/* 图标和标题 */}
         <div className="flex items-start space-x-4 mb-4">
-          <div className={`flex-shrink-0 w-10 h-10 rounded-full ${typeConfig.iconBg} flex items-center justify-center`}>
-            <span className={`text-lg ${typeConfig.iconColor}`}>
-              {typeConfig.icon}
-            </span>
+          <div
+            className={`flex-shrink-0 w-10 h-10 rounded-full ${typeConfig.iconBg} flex items-center justify-center`}
+          >
+            <span className={`text-lg ${typeConfig.iconColor}`}>{typeConfig.icon}</span>
           </div>
           <div className="flex-1">
-            {title && (
-              <h3 className="text-lg font-medium text-text-primary mb-2">
-                {title}
-              </h3>
-            )}
-            <p className="text-text-secondary leading-relaxed">
-              {message}
-            </p>
+            {title && <h3 className="text-lg font-medium text-text-primary mb-2">{title}</h3>}
+            <p className="text-text-secondary leading-relaxed">{message}</p>
           </div>
         </div>
 
         {/* 操作按钮 */}
         <div className="flex justify-end space-x-3 mt-6">
-          <Button
-            variant="ghost"
-            onClick={onClose}
-            disabled={isLoading}
-          >
+          <Button variant="ghost" onClick={onClose} disabled={isLoading}>
             {cancelText}
           </Button>
-          <Button
-            variant={typeConfig.confirmVariant}
-            onClick={handleConfirm}
-            isLoading={isLoading}
-          >
+          <Button variant={typeConfig.confirmVariant} onClick={handleConfirm} isLoading={isLoading}>
             {confirmText}
           </Button>
         </div>
@@ -144,19 +127,22 @@ export const useConfirmDialog = () => {
     props: { message: '' },
   });
 
-  const showConfirm = React.useCallback((
-    props: Omit<ConfirmDialogProps, 'isOpen' | 'onClose' | 'onConfirm'>,
-    onConfirm?: () => void | Promise<void>
-  ) => {
-    setDialogState({
-      isOpen: true,
-      props,
-      onConfirm,
-    });
-  }, []);
+  const showConfirm = React.useCallback(
+    (
+      props: Omit<ConfirmDialogProps, 'isOpen' | 'onClose' | 'onConfirm'>,
+      onConfirm?: () => void | Promise<void>,
+    ) => {
+      setDialogState({
+        isOpen: true,
+        props,
+        onConfirm,
+      });
+    },
+    [],
+  );
 
   const hideConfirm = React.useCallback(() => {
-    setDialogState(prev => ({ ...prev, isOpen: false }));
+    setDialogState((prev) => ({ ...prev, isOpen: false }));
   }, []);
 
   const handleConfirm = React.useCallback(async () => {
@@ -173,14 +159,17 @@ export const useConfirmDialog = () => {
     }
   }, [dialogState.onConfirm, hideConfirm]);
 
-  const ConfirmDialogComponent = React.useMemo(() => (
-    <ConfirmDialog
-      {...dialogState.props}
-      isOpen={dialogState.isOpen}
-      onClose={hideConfirm}
-      onConfirm={handleConfirm}
-    />
-  ), [dialogState, hideConfirm, handleConfirm]);
+  const ConfirmDialogComponent = React.useMemo(
+    () => (
+      <ConfirmDialog
+        {...dialogState.props}
+        isOpen={dialogState.isOpen}
+        onClose={hideConfirm}
+        onConfirm={handleConfirm}
+      />
+    ),
+    [dialogState, hideConfirm, handleConfirm],
+  );
 
   return {
     showConfirm,

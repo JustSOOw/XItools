@@ -40,18 +40,21 @@ export function loadConfig(): Config {
       port: parseInt(process.env.PORT || '3000', 10),
       host: process.env.HOST || '0.0.0.0',
       nodeEnv,
-      trustProxy: process.env.TRUST_PROXY === 'true'
+      trustProxy: process.env.TRUST_PROXY === 'true',
     },
     database: {
-      url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/xitools'
+      url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/xitools',
     },
     cors: {
-      allowedOrigins: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:5173']
+      allowedOrigins: process.env.CORS_ORIGINS?.split(',') || [
+        'http://localhost:3000',
+        'http://localhost:5173',
+      ],
     },
     log: {
       level: process.env.LOG_LEVEL || 'info',
-      debugMode: process.env.DEBUG_MODE === 'true'
-    }
+      debugMode: process.env.DEBUG_MODE === 'true',
+    },
   };
 }
 

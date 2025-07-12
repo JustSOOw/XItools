@@ -30,35 +30,35 @@ export async function setupRoutes(fastify: FastifyInstance): Promise<void> {
 
   // 注册列管理路由（包含兼容性端点）
   fastify.register(columnRoutes, { prefix: '/api' });
-  
+
   // 添加根路径响应
   fastify.get('/', async () => {
     return { status: 'ok', message: 'XItools MCP服务正在运行' };
   });
-
-
 
   // 添加任务排序API端点
   fastify.post('/api/tasks/sort', async (request, reply) => {
     try {
       // 设置响应头
       reply.header('Content-Type', 'application/json');
-      
+
       const { taskId, targetId, columnId, insertPosition = 'before' } = request.body as any;
 
       if (!taskId || !targetId || !columnId) {
         reply.status(400);
         return {
           success: false,
-          error: '缺少必要参数: taskId, targetId, columnId'
+          error: '缺少必要参数: taskId, targetId, columnId',
         };
       }
-      
-      console.log(`接收到任务排序请求: 任务 ${taskId} 移动到 ${targetId} ${insertPosition}，列 ${columnId}`);
+
+      console.log(
+        `接收到任务排序请求: 任务 ${taskId} 移动到 ${targetId} ${insertPosition}，列 ${columnId}`,
+      );
 
       // 获取当前被拖拽的任务
       const draggedTask = await prisma.task.findUnique({
-        where: { id: taskId }
+        where: { id: taskId },
       });
 
       if (!draggedTask) {
@@ -68,7 +68,7 @@ export async function setupRoutes(fastify: FastifyInstance): Promise<void> {
 
       // 查询目标任务
       const targetTask = await prisma.task.findUnique({
-        where: { id: targetId }
+        where: { id: targetId },
       });
 
       if (!targetTask) {
@@ -77,23 +77,25 @@ export async function setupRoutes(fastify: FastifyInstance): Promise<void> {
       }
 
       // 增加排序操作的日志
-      console.log(`执行排序: 任务 ${taskId}(${draggedTask.title}) 排序到 ${targetId}(${targetTask.title}) ${insertPosition}，在列 ${columnId} 中`);
-      
+      console.log(
+        `执行排序: 任务 ${taskId}(${draggedTask.title}) 排序到 ${targetId}(${targetTask.title}) ${insertPosition}，在列 ${columnId} 中`,
+      );
+
       // 查找该列中的所有任务，以更新排序
       const columnTasks = await prisma.task.findMany({
         where: { status: columnId },
-        orderBy: { sortOrder: 'asc' }
+        orderBy: { sortOrder: 'asc' },
       });
-      
+
       console.log(`列 ${columnId} 中有 ${columnTasks.length} 个任务`);
-      
+
       // 获取任务在列中的当前顺序
-      const allTaskIds = columnTasks.map(task => task.id);
+      const allTaskIds = columnTasks.map((task) => task.id);
       const sourceIndex = allTaskIds.indexOf(taskId);
       const targetIndex = allTaskIds.indexOf(targetId);
-      
+
       console.log(`任务当前索引: ${sourceIndex}, 目标索引: ${targetIndex}`);
-      
+
       // 从列中移除源任务
       if (sourceIndex !== -1) {
         allTaskIds.splice(sourceIndex, 1);
@@ -114,7 +116,9 @@ export async function setupRoutes(fastify: FastifyInstance): Promise<void> {
         insertIndex = Math.max(0, Math.min(insertIndex, allTaskIds.length));
         allTaskIds.splice(insertIndex, 0, taskId);
 
-        console.log(`插入任务 ${taskId} 到位置 ${insertIndex}，目标任务 ${targetId} 在位置 ${targetTaskIndex}`);
+        console.log(
+          `插入任务 ${taskId} 到位置 ${insertIndex}，目标任务 ${targetId} 在位置 ${targetTaskIndex}`,
+        );
       } else {
         // 如果找不到目标任务，就添加到末尾
         allTaskIds.push(taskId);
@@ -129,9 +133,9 @@ export async function setupRoutes(fastify: FastifyInstance): Promise<void> {
         console.error('任务ID重复，修复中...');
         allTaskIds.splice(0, allTaskIds.length, ...uniqueTaskIds);
       }
-      
+
       console.log(`重新排序后的任务顺序: ${allTaskIds.join(', ')}`);
-      
+
       // 使用事务确保数据一致性
       const updatedTask = await prisma.$transaction(async (tx) => {
         // 当用户拖拽任务时，清除相关列的排序状态，回到手动排序
@@ -139,8 +143,8 @@ export async function setupRoutes(fastify: FastifyInstance): Promise<void> {
           where: { id: columnId },
           data: {
             sortOption: 'manual',
-            updatedAt: new Date()
-          }
+            updatedAt: new Date(),
+          },
         });
 
         // 如果是跨列拖拽，也清除原列的排序状态
@@ -149,8 +153,8 @@ export async function setupRoutes(fastify: FastifyInstance): Promise<void> {
             where: { id: draggedTask.status },
             data: {
               sortOption: 'manual',
-              updatedAt: new Date()
-            }
+              updatedAt: new Date(),
+            },
           });
         }
 
@@ -169,20 +173,24 @@ export async function setupRoutes(fastify: FastifyInstance): Promise<void> {
             data: {
               sortOrder: newSortOrder,
               status: id === taskId ? columnId : undefined, // 只更新被拖拽任务的状态
-              updatedAt: new Date()
-            }
+              updatedAt: new Date(),
+            },
           });
 
-          console.log(`更新任务 ${id} 的排序值为 ${newSortOrder}${id === taskId ? ` 并更新状态为 ${columnId}` : ''}`);
+          console.log(
+            `更新任务 ${id} 的排序值为 ${newSortOrder}${
+              id === taskId ? ` 并更新状态为 ${columnId}` : ''
+            }`,
+          );
         }
 
         // 返回更新后的被拖拽任务
         return await tx.task.findUnique({
           where: { id: taskId },
-          include: { tags: true }
+          include: { tags: true },
         });
       });
-      
+
       if (!updatedTask) {
         reply.status(404);
         return { success: false, error: '更新后未找到任务' };
@@ -197,7 +205,6 @@ export async function setupRoutes(fastify: FastifyInstance): Promise<void> {
 
       console.log(`任务 ${taskId} 成功移动到任务 ${targetId} ${insertPosition}`);
       return { success: true, data: updatedTask };
-
     } catch (error) {
       console.error('任务排序失败:', error);
       reply.status(500);
@@ -217,7 +224,7 @@ export async function setupRoutes(fastify: FastifyInstance): Promise<void> {
         reply.status(400);
         return {
           success: false,
-          error: '缺少必要参数: columnId, sortOption'
+          error: '缺少必要参数: columnId, sortOption',
         };
       }
 
@@ -226,7 +233,7 @@ export async function setupRoutes(fastify: FastifyInstance): Promise<void> {
       // 获取该列的所有任务
       const columnTasks = await prisma.task.findMany({
         where: { status: columnId },
-        include: { tags: true }
+        include: { tags: true },
       });
 
       if (columnTasks.length === 0) {
@@ -240,7 +247,7 @@ export async function setupRoutes(fastify: FastifyInstance): Promise<void> {
         case 'priority':
           // 按优先级排序：High > Medium > Low > null
           sortedTasks.sort((a, b) => {
-            const priorityOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
+            const priorityOrder = { High: 3, Medium: 2, Low: 1 };
             const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] || 0;
             const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] || 0;
             return bPriority - aPriority;
@@ -249,12 +256,16 @@ export async function setupRoutes(fastify: FastifyInstance): Promise<void> {
 
         case 'created_asc':
           // 按创建时间升序
-          sortedTasks.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+          sortedTasks.sort(
+            (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+          );
           break;
 
         case 'created_desc':
           // 按创建时间降序
-          sortedTasks.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          sortedTasks.sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+          );
           break;
 
         case 'title_asc':
@@ -296,9 +307,9 @@ export async function setupRoutes(fastify: FastifyInstance): Promise<void> {
             where: { id: task.id },
             data: {
               sortOrder: newSortOrder,
-              updatedAt: new Date()
+              updatedAt: new Date(),
             },
-            include: { tags: true }
+            include: { tags: true },
           });
 
           results.push(updatedTask);
@@ -312,8 +323,8 @@ export async function setupRoutes(fastify: FastifyInstance): Promise<void> {
         where: { id: columnId },
         data: {
           sortOption,
-          updatedAt: new Date()
-        }
+          updatedAt: new Date(),
+        },
       });
 
       // 广播更新事件
@@ -322,17 +333,16 @@ export async function setupRoutes(fastify: FastifyInstance): Promise<void> {
         io.emit('column_tasks_sorted', {
           columnId,
           sortOption,
-          tasks: updatedTasks
+          tasks: updatedTasks,
         });
       }
 
       console.log(`列 ${columnId} 的 ${columnTasks.length} 个任务已按 ${sortOption} 排序`);
       return { success: true, data: updatedTasks, sortOption };
-
     } catch (error) {
       console.error('列任务排序失败:', error);
       reply.status(500);
       return { success: false, error: '列任务排序失败' };
     }
   });
-} 
+}

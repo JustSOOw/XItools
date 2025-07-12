@@ -20,4 +20,4 @@ export default async function healthRoutes(fastify: FastifyInstance): Promise<vo
       return { status: 'error', message: '数据库连接失败', error: String(error) };
     }
   });
-} 
+}

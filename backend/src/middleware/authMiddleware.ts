@@ -1,6 +1,6 @@
 /**
  * 认证中间件
- * 
+ *
  * 提供JWT token验证和用户身份验证功能
  */
 
@@ -14,24 +14,24 @@ import { authService } from '../services/authService';
 export async function authMiddleware(request: FastifyRequest, reply: FastifyReply) {
   try {
     const token = extractBearerToken(request.headers.authorization);
-    
+
     if (!token) {
       return reply.status(401).send({
         success: false,
-        error: '缺少认证token'
+        error: '缺少认证token',
       });
     }
-    
+
     // 验证token并获取用户信息
     const user = await authService.verifyToken(token);
-    
+
     if (!user) {
       return reply.status(401).send({
         success: false,
-        error: 'Token无效或已过期'
+        error: 'Token无效或已过期',
       });
     }
-    
+
     // 将用户信息添加到请求上下文
     request.user = {
       userId: user.id,
@@ -39,14 +39,13 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
       email: user.email,
       sessionId: '', // 可以从token中获取或生成
       permissions: [], // 可以根据需要添加权限系统
-      isActive: user.isActive
+      isActive: user.isActive,
     };
-    
   } catch (error) {
     console.error('认证中间件错误:', error);
     return reply.status(401).send({
       success: false,
-      error: '认证失败'
+      error: '认证失败',
     });
   }
 }
@@ -57,10 +56,10 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
 export async function optionalAuthMiddleware(request: FastifyRequest, reply: FastifyReply) {
   try {
     const token = extractBearerToken(request.headers.authorization);
-    
+
     if (token) {
       const user = await authService.verifyToken(token);
-      
+
       if (user) {
         request.user = {
           userId: user.id,
@@ -68,11 +67,11 @@ export async function optionalAuthMiddleware(request: FastifyRequest, reply: Fas
           email: user.email,
           sessionId: '',
           permissions: [],
-          isActive: user.isActive
+          isActive: user.isActive,
         };
       }
     }
-    
+
     // 无论是否有token都继续执行
   } catch (error) {
     console.error('可选认证中间件错误:', error);
@@ -106,7 +105,7 @@ export async function verifyOwnership(
   request: FastifyRequest,
   reply: FastifyReply,
   resourceType: 'workspace' | 'project' | 'board' | 'task' | 'column',
-  resourceId: string
+  resourceId: string,
 ) {
   try {
     const userId = requireAuth(request);
@@ -118,28 +117,28 @@ export async function verifyOwnership(
     switch (resourceType) {
       case 'workspace':
         const workspace = await prisma.workspace.findFirst({
-          where: { id: resourceId, ownerId: userId }
+          where: { id: resourceId, ownerId: userId },
         });
         isOwner = !!workspace;
         break;
 
       case 'project':
         const project = await prisma.project.findFirst({
-          where: { id: resourceId, ownerId: userId }
+          where: { id: resourceId, ownerId: userId },
         });
         isOwner = !!project;
         break;
 
       case 'board':
         const board = await prisma.board.findFirst({
-          where: { id: resourceId, ownerId: userId }
+          where: { id: resourceId, ownerId: userId },
         });
         isOwner = !!board;
         break;
 
       case 'task':
         const task = await prisma.task.findFirst({
-          where: { id: resourceId, ownerId: userId }
+          where: { id: resourceId, ownerId: userId },
         });
         isOwner = !!task;
         break;
@@ -149,8 +148,8 @@ export async function verifyOwnership(
         const column = await prisma.boardColumn.findFirst({
           where: {
             id: resourceId,
-            board: { ownerId: userId }
-          }
+            board: { ownerId: userId },
+          },
         });
         isOwner = !!column;
         break;
@@ -162,7 +161,7 @@ export async function verifyOwnership(
     if (!isOwner) {
       return reply.status(403).send({
         success: false,
-        error: '无权访问此资源'
+        error: '无权访问此资源',
       });
     }
 
@@ -171,7 +170,7 @@ export async function verifyOwnership(
     console.error('所有权验证失败:', error);
     return reply.status(500).send({
       success: false,
-      error: '权限验证失败'
+      error: '权限验证失败',
     });
   }
 }
@@ -179,9 +178,15 @@ export async function verifyOwnership(
 /**
  * 创建资源所有权验证的辅助函数
  */
-export function createOwnershipVerifier(resourceType: 'workspace' | 'project' | 'board' | 'task' | 'column') {
+export function createOwnershipVerifier(
+  resourceType: 'workspace' | 'project' | 'board' | 'task' | 'column',
+) {
   return async (request: FastifyRequest, reply: FastifyReply) => {
-    const resourceId = (request.params as any).id || (request.params as any).boardId || (request.params as any).workspaceId || (request.params as any).projectId;
+    const resourceId =
+      (request.params as any).id ||
+      (request.params as any).boardId ||
+      (request.params as any).workspaceId ||
+      (request.params as any).projectId;
     if (resourceId) {
       await verifyOwnership(request, reply, resourceType, resourceId);
     }

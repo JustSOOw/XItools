@@ -4,9 +4,9 @@
  * @LastEditors: JustSOOw 117962858+JustSOOw@users.noreply.github.com
  * @LastEditTime: 2025-07-07 22:23:12
  * @FilePath: \XItools\frontend\src\components\settings\ApiKeyManagement.tsx
- * @Description: 
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ * @Description:
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 /**
  * API密钥管理主组件
@@ -24,9 +24,7 @@ interface ApiKeyManagementProps {
   className?: string;
 }
 
-export const ApiKeyManagement: React.FC<ApiKeyManagementProps> = ({ 
-  className = '' 
-}) => {
+export const ApiKeyManagement: React.FC<ApiKeyManagementProps> = ({ className = '' }) => {
   const { t } = useTranslation();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -41,7 +39,7 @@ export const ApiKeyManagement: React.FC<ApiKeyManagementProps> = ({
     setShowCreateModal(false);
     setShowSuccessModal(true);
     // 触发列表刷新
-    setRefreshTrigger(prev => prev + 1);
+    setRefreshTrigger((prev) => prev + 1);
   };
 
   // 处理成功模态框关闭
@@ -62,12 +60,14 @@ export const ApiKeyManagement: React.FC<ApiKeyManagementProps> = ({
               通过API密钥，您可以授权外部应用（如Cursor）安全地访问您在XItools中的数据，而无需暴露您的账户密码。
             </p>
           </div>
-          <button
-            className="create-key-button"
-            onClick={() => setShowCreateModal(true)}
-          >
+          <button className="create-key-button" onClick={() => setShowCreateModal(true)}>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+              />
             </svg>
             生成新密钥
           </button>

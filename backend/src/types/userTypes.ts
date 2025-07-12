@@ -1,6 +1,6 @@
 /**
  * 用户认证相关的类型定义
- * 
+ *
  * 包含用户模型、认证请求/响应、JWT载荷等类型定义
  */
 
@@ -63,21 +63,17 @@ export interface UserRole {
  * 用户注册请求Schema
  */
 export const userRegisterSchema = z.object({
-  username: z.string()
+  username: z
+    .string()
     .min(3, '用户名至少3个字符')
     .max(20, '用户名最多20个字符')
     .regex(/^[a-zA-Z0-9_-]+$/, '用户名只能包含字母、数字、下划线和连字符'),
-  email: z.string()
-    .email('请输入有效的邮箱地址')
-    .max(100, '邮箱地址过长'),
-  password: z.string()
-    .min(6, '密码至少6个字符')
-    .max(50, '密码最多50个字符'),
+  email: z.string().email('请输入有效的邮箱地址').max(100, '邮箱地址过长'),
+  password: z.string().min(6, '密码至少6个字符').max(50, '密码最多50个字符'),
   avatar: z.string().url('头像必须是有效的URL').optional(),
-  bio: z.string()
-    .max(500, '个人简介最多500个字符')
-    .optional(),
-  role: z.string()
+  bio: z.string().max(500, '个人简介最多500个字符').optional(),
+  role: z
+    .string()
     .regex(/^(admin|user|viewer)$/, '角色必须是admin、user或viewer之一')
     .default('user')
     .optional(),
@@ -89,10 +85,8 @@ export type UserRegisterRequest = z.infer<typeof userRegisterSchema>;
  * 用户登录请求Schema
  */
 export const userLoginSchema = z.object({
-  identifier: z.string()
-    .min(1, '用户名或邮箱不能为空'), // 可以是用户名或邮箱
-  password: z.string()
-    .min(1, '密码不能为空'),
+  identifier: z.string().min(1, '用户名或邮箱不能为空'), // 可以是用户名或邮箱
+  password: z.string().min(1, '密码不能为空'),
   rememberMe: z.boolean().optional().default(false),
 });
 
@@ -103,15 +97,10 @@ export type UserLoginRequest = z.infer<typeof userLoginSchema>;
  */
 export const userUpdateSchema = z.object({
   avatar: z.string().url('头像必须是有效的URL').nullable().optional(),
-  bio: z.string()
-    .max(500, '个人简介最多500个字符')
-    .nullable()
-    .optional(),
-  email: z.string()
-    .email('请输入有效的邮箱地址')
-    .max(100, '邮箱地址过长')
-    .optional(),
-  role: z.string()
+  bio: z.string().max(500, '个人简介最多500个字符').nullable().optional(),
+  email: z.string().email('请输入有效的邮箱地址').max(100, '邮箱地址过长').optional(),
+  role: z
+    .string()
     .regex(/^(admin|user|viewer)$/, '角色必须是admin、user或viewer之一')
     .optional(),
 });
@@ -121,16 +110,16 @@ export type UserUpdateRequest = z.infer<typeof userUpdateSchema>;
 /**
  * 密码修改请求Schema
  */
-export const passwordChangeSchema = z.object({
-  currentPassword: z.string().min(1, '当前密码不能为空'),
-  newPassword: z.string()
-    .min(6, '新密码至少6个字符')
-    .max(50, '新密码最多50个字符'),
-  confirmPassword: z.string().min(1, '确认密码不能为空'),
-}).refine((data) => data.newPassword === data.confirmPassword, {
-  message: '新密码和确认密码不匹配',
-  path: ['confirmPassword'],
-});
+export const passwordChangeSchema = z
+  .object({
+    currentPassword: z.string().min(1, '当前密码不能为空'),
+    newPassword: z.string().min(6, '新密码至少6个字符').max(50, '新密码最多50个字符'),
+    confirmPassword: z.string().min(1, '确认密码不能为空'),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: '新密码和确认密码不匹配',
+    path: ['confirmPassword'],
+  });
 
 export type PasswordChangeRequest = z.infer<typeof passwordChangeSchema>;
 
@@ -208,28 +197,28 @@ export interface JWTConfig {
 export enum Permission {
   // 通用权限
   ALL = '*',
-  
+
   // 读取权限
   READ_OWN = 'read:own',
   READ_SHARED = 'read:shared',
   READ_ALL = 'read:all',
-  
+
   // 写入权限
   WRITE_OWN = 'write:own',
   WRITE_SHARED = 'write:shared',
   WRITE_ALL = 'write:all',
-  
+
   // 删除权限
   DELETE_OWN = 'delete:own',
   DELETE_SHARED = 'delete:shared',
   DELETE_ALL = 'delete:all',
-  
+
   // 创建权限
   CREATE_WORKSPACE = 'create:workspace',
   CREATE_PROJECT = 'create:project',
   CREATE_BOARD = 'create:board',
   CREATE_TASK = 'create:task',
-  
+
   // 管理权限
   MANAGE_USERS = 'manage:users',
   MANAGE_ROLES = 'manage:roles',
@@ -337,11 +326,7 @@ export enum AuthErrorCode {
  * 认证错误类
  */
 export class AuthError extends Error {
-  constructor(
-    public code: AuthErrorCode,
-    message: string,
-    public statusCode: number = 401
-  ) {
+  constructor(public code: AuthErrorCode, message: string, public statusCode: number = 401) {
     super(message);
     this.name = 'AuthError';
   }

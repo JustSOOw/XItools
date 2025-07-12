@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-01-27 20:00:00
  * @FilePath: \XItools\frontend\src\components\ui\Loading\SkeletonCard.tsx
  * @Description: 任务卡片骨架屏组件 - 用于任务卡片加载时的占位显示
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 
 import React from 'react';
@@ -43,7 +43,7 @@ const SkeletonCard: React.FC<SkeletonCardProps> = ({
           <div className="h-4 bg-text-secondary/20 rounded-md w-3/4 mb-2"></div>
           <div className="h-3 bg-text-secondary/15 rounded-md w-1/2"></div>
         </div>
-        
+
         {/* 更多按钮骨架 */}
         <div className="w-6 h-6 bg-text-secondary/20 rounded-full ml-2"></div>
       </div>
@@ -74,11 +74,9 @@ const SkeletonCard: React.FC<SkeletonCardProps> = ({
       <div className="flex items-center justify-between text-xs">
         {/* 创建时间骨架 */}
         <div className="h-3 bg-text-secondary/15 rounded-md w-20"></div>
-        
+
         {/* 截止日期骨架 */}
-        {showDueDate && (
-          <div className="h-3 bg-text-secondary/15 rounded-md w-16"></div>
-        )}
+        {showDueDate && <div className="h-3 bg-text-secondary/15 rounded-md w-16"></div>}
       </div>
     </div>
   );
@@ -94,8 +92,8 @@ export const SkeletonCardList: React.FC<{
   return (
     <div className={classNames('space-y-3', className)}>
       {Array.from({ length: count }, (_, index) => (
-        <SkeletonCard 
-          key={index} 
+        <SkeletonCard
+          key={index}
           animate={true}
           showPriority={Math.random() > 0.3}
           showTags={Math.random() > 0.4}

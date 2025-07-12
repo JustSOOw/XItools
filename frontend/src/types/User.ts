@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-06-30 15:00:00
  * @FilePath: \XItools\frontend\src\types\User.ts
  * @Description: 用户相关类型定义
- * 
- * Copyright (c) 2025 by XItools Team, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
 // 用户基本信息接口
@@ -104,14 +104,14 @@ export interface UserSession {
 export enum UserStatus {
   ACTIVE = 'active',
   INACTIVE = 'inactive',
-  SUSPENDED = 'suspended'
+  SUSPENDED = 'suspended',
 }
 
 // 用户角色枚举
 export enum UserRole {
   ADMIN = 'admin',
   USER = 'user',
-  VIEWER = 'viewer'
+  VIEWER = 'viewer',
 }
 
 // 登录状态枚举
@@ -120,5 +120,5 @@ export enum LoginStatus {
   LOGGING_IN = 'logging_in',
   LOGGED_IN = 'logged_in',
   TOKEN_EXPIRED = 'token_expired',
-  ERROR = 'error'
+  ERROR = 'error',
 }

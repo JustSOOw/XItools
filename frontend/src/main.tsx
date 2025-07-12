@@ -12,5 +12,5 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <ToastProvider>
       <AppRouter />
     </ToastProvider>
-  </ErrorBoundary>
+  </ErrorBoundary>,
 );

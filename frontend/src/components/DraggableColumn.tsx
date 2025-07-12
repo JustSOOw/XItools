@@ -52,7 +52,9 @@ const DraggableColumn: React.FC<DraggableColumnProps> = ({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isColumnDragging ? 'transform 200ms ease-in-out, width 200ms ease-in-out' : transition,
+    transition: isColumnDragging
+      ? 'transform 200ms ease-in-out, width 200ms ease-in-out'
+      : transition,
   };
 
   // 如果正在被拖拽，显示完全透明占位符（保持布局稳定）

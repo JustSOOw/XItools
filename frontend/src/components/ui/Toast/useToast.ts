@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-01-27 21:10:00
  * @FilePath: \XItools\frontend\src\components\ui\Toast\useToast.ts
  * @Description: Toast Hook - 提供Toast通知的状态管理和API
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 
 import { useState, useCallback, useMemo } from 'react';
@@ -41,32 +41,31 @@ export const useToast = (): [ToastProps[], ToastAPI] => {
   }, []);
 
   // 添加Toast
-  const addToast = useCallback((
-    type: ToastProps['type'],
-    message: string,
-    options: ToastOptions = {}
-  ): string => {
-    const id = generateId();
-    const toast: ToastProps = {
-      id,
-      type,
-      message,
-      title: options.title,
-      duration: options.duration,
-      action: options.action,
-      position: options.position || 'bottom-right',
-      onClose: (toastId) => {
-        setToasts(prev => prev.filter(t => t.id !== toastId));
-      },
-    };
+  const addToast = useCallback(
+    (type: ToastProps['type'], message: string, options: ToastOptions = {}): string => {
+      const id = generateId();
+      const toast: ToastProps = {
+        id,
+        type,
+        message,
+        title: options.title,
+        duration: options.duration,
+        action: options.action,
+        position: options.position || 'bottom-right',
+        onClose: (toastId) => {
+          setToasts((prev) => prev.filter((t) => t.id !== toastId));
+        },
+      };
 
-    setToasts(prev => [...prev, toast]);
-    return id;
-  }, [generateId]);
+      setToasts((prev) => [...prev, toast]);
+      return id;
+    },
+    [generateId],
+  );
 
   // 移除Toast
   const dismiss = useCallback((id: string) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
+    setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   // 移除所有Toast
@@ -75,14 +74,17 @@ export const useToast = (): [ToastProps[], ToastAPI] => {
   }, []);
 
   // 便捷API - 使用useMemo避免每次渲染都创建新对象
-  const api: ToastAPI = useMemo(() => ({
-    success: (message, options) => addToast('success', message, options),
-    error: (message, options) => addToast('error', message, options),
-    warning: (message, options) => addToast('warning', message, options),
-    info: (message, options) => addToast('info', message, options),
-    dismiss,
-    dismissAll,
-  }), [addToast, dismiss, dismissAll]);
+  const api: ToastAPI = useMemo(
+    () => ({
+      success: (message, options) => addToast('success', message, options),
+      error: (message, options) => addToast('error', message, options),
+      warning: (message, options) => addToast('warning', message, options),
+      info: (message, options) => addToast('info', message, options),
+      dismiss,
+      dismissAll,
+    }),
+    [addToast, dismiss, dismissAll],
+  );
 
   return [toasts, api];
 };

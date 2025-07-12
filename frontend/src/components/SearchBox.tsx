@@ -100,7 +100,7 @@ const SearchBox: React.FC<SearchBoxProps> = ({
             {
               'opacity-50 cursor-not-allowed': disabled,
               'hover:border-primary/30': !disabled,
-            }
+            },
           )}
         />
 
@@ -115,16 +115,11 @@ const SearchBox: React.FC<SearchBoxProps> = ({
               'transition-colors duration-200',
               {
                 'cursor-not-allowed': disabled,
-              }
+              },
             )}
             title="清空搜索"
           >
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"

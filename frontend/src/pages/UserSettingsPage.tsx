@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-07-01 10:00:00
  * @FilePath: \XItools\frontend\src\pages\UserSettingsPage.tsx
  * @Description: 用户设置页面组件
- * 
- * Copyright (c) 2025 by XItools Team, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
 import React, { useState } from 'react';
@@ -21,15 +21,15 @@ interface UserSettingsPageProps {
   className?: string;
 }
 
-export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ 
-  className = '' 
-}) => {
+export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ className = '' }) => {
   const { t } = useTranslation();
   const { user } = useUserStore();
   const { currentTheme, setTheme, themeConfigs } = useThemeStore();
   const { language, changeLanguage, supportedLanguages } = useI18n();
-  
-  const [activeTab, setActiveTab] = useState<'profile' | 'appearance' | 'preferences' | 'api-keys'>('profile');
+
+  const [activeTab, setActiveTab] = useState<'profile' | 'appearance' | 'preferences' | 'api-keys'>(
+    'profile',
+  );
 
   if (!user) {
     return (
@@ -102,7 +102,7 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({
               <div className="settings-section">
                 <h2 className="section-title">{t('settings.appearance.title')}</h2>
                 <p className="section-description">{t('settings.appearance.description')}</p>
-                
+
                 {/* 主题选择 */}
                 <div className="setting-group">
                   <h3 className="setting-label">{t('settings.appearance.theme')}</h3>
@@ -114,15 +114,15 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({
                         onClick={() => setTheme(theme.id)}
                       >
                         <div className="theme-preview">
-                          <div 
+                          <div
                             className="preview-color primary"
                             style={{ backgroundColor: theme.preview.primary }}
                           ></div>
-                          <div 
+                          <div
                             className="preview-color secondary"
                             style={{ backgroundColor: theme.preview.secondary }}
                           ></div>
-                          <div 
+                          <div
                             className="preview-color accent"
                             style={{ backgroundColor: theme.preview.accent }}
                           ></div>
@@ -168,7 +168,7 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({
               <div className="settings-section">
                 <h2 className="section-title">{t('settings.preferences.title')}</h2>
                 <p className="section-description">{t('settings.preferences.description')}</p>
-                
+
                 {/* 通知设置 */}
                 <div className="setting-group">
                   <h3 className="setting-label">{t('settings.preferences.notifications')}</h3>
@@ -176,7 +176,9 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({
                     <label className="setting-option">
                       <input type="checkbox" defaultChecked />
                       <span className="checkmark"></span>
-                      <span className="option-text">{t('settings.preferences.emailNotifications')}</span>
+                      <span className="option-text">
+                        {t('settings.preferences.emailNotifications')}
+                      </span>
                     </label>
                     <label className="setting-option">
                       <input type="checkbox" defaultChecked />
@@ -198,12 +200,16 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({
                     <label className="setting-option">
                       <input type="checkbox" defaultChecked />
                       <span className="checkmark"></span>
-                      <span className="option-text">{t('settings.preferences.profileVisibility')}</span>
+                      <span className="option-text">
+                        {t('settings.preferences.profileVisibility')}
+                      </span>
                     </label>
                     <label className="setting-option">
                       <input type="checkbox" />
                       <span className="checkmark"></span>
-                      <span className="option-text">{t('settings.preferences.activityTracking')}</span>
+                      <span className="option-text">
+                        {t('settings.preferences.activityTracking')}
+                      </span>
                     </label>
                   </div>
                 </div>

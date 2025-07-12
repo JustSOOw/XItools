@@ -4,7 +4,12 @@
 
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
-import { boardSchema, boardUpdateSchema, type BoardInput, type BoardUpdate } from '../types/multiBoardSchema';
+import {
+  boardSchema,
+  boardUpdateSchema,
+  type BoardInput,
+  type BoardUpdate,
+} from '../types/multiBoardSchema';
 
 const prisma = new PrismaClient();
 
@@ -17,13 +22,13 @@ export class BoardService {
       where: { workspaceId },
       include: {
         columns: {
-          orderBy: { order: 'asc' }
+          orderBy: { order: 'asc' },
         },
         tasks: {
-          orderBy: { sortOrder: 'asc' }
-        }
+          orderBy: { sortOrder: 'asc' },
+        },
       },
-      orderBy: { order: 'asc' }
+      orderBy: { order: 'asc' },
     });
   }
 
@@ -35,13 +40,13 @@ export class BoardService {
       where: { projectId },
       include: {
         columns: {
-          orderBy: { order: 'asc' }
+          orderBy: { order: 'asc' },
         },
         tasks: {
-          orderBy: { sortOrder: 'asc' }
-        }
+          orderBy: { sortOrder: 'asc' },
+        },
       },
-      orderBy: { order: 'asc' }
+      orderBy: { order: 'asc' },
     });
   }
 
@@ -55,19 +60,19 @@ export class BoardService {
         workspace: true,
         project: {
           include: {
-            workspace: true
-          }
+            workspace: true,
+          },
         },
         columns: {
-          orderBy: { order: 'asc' }
+          orderBy: { order: 'asc' },
         },
         tasks: {
           orderBy: { sortOrder: 'asc' },
           include: {
-            tags: true
-          }
-        }
-      }
+            tags: true,
+          },
+        },
+      },
     });
   }
 
@@ -77,11 +82,11 @@ export class BoardService {
   async createBoard(data: BoardInput, userId: string) {
     // 验证数据
     const validatedData = boardSchema.parse(data);
-    
+
     // 检查父级容器是否存在
     if (validatedData.workspaceId) {
       const workspace = await prisma.workspace.findUnique({
-        where: { id: validatedData.workspaceId }
+        where: { id: validatedData.workspaceId },
       });
       if (!workspace) {
         throw new Error('工作区不存在');
@@ -90,7 +95,7 @@ export class BoardService {
 
     if (validatedData.projectId) {
       const project = await prisma.project.findUnique({
-        where: { id: validatedData.projectId }
+        where: { id: validatedData.projectId },
       });
       if (!project) {
         throw new Error('项目不存在');
@@ -99,13 +104,13 @@ export class BoardService {
 
     // 如果没有指定order，设置为最大值+1
     if (validatedData.order === undefined || validatedData.order === 0) {
-      const whereClause = validatedData.workspaceId 
+      const whereClause = validatedData.workspaceId
         ? { workspaceId: validatedData.workspaceId }
         : { projectId: validatedData.projectId };
 
       const maxOrder = await prisma.board.aggregate({
         where: whereClause,
-        _max: { order: true }
+        _max: { order: true },
       });
       validatedData.order = (maxOrder._max.order || 0) + 1;
     }
@@ -113,12 +118,12 @@ export class BoardService {
     const newBoard = await prisma.board.create({
       data: {
         ...validatedData,
-        ownerId: userId
+        ownerId: userId,
       },
       include: {
         workspace: true,
-        project: true
-      }
+        project: true,
+      },
     });
 
     // 创建默认列
@@ -141,9 +146,9 @@ export class BoardService {
         workspace: true,
         project: true,
         columns: {
-          orderBy: { order: 'asc' }
-        }
-      }
+          orderBy: { order: 'asc' },
+        },
+      },
     });
   }
 
@@ -153,7 +158,7 @@ export class BoardService {
   async deleteBoard(id: string) {
     // 检查是否有任务
     const taskCount = await prisma.task.count({
-      where: { boardId: id }
+      where: { boardId: id },
     });
 
     if (taskCount > 0) {
@@ -161,14 +166,19 @@ export class BoardService {
     }
 
     return await prisma.board.delete({
-      where: { id }
+      where: { id },
     });
   }
 
   /**
    * 移动看板
    */
-  async moveBoard(id: string, targetWorkspaceId?: string, targetProjectId?: string, userId?: string) {
+  async moveBoard(
+    id: string,
+    targetWorkspaceId?: string,
+    targetProjectId?: string,
+    userId?: string,
+  ) {
     // 验证目标容器
     if (targetWorkspaceId && targetProjectId) {
       throw new Error('看板不能同时属于工作区和项目');
@@ -184,7 +194,7 @@ export class BoardService {
         : { id: targetWorkspaceId };
 
       const workspace = await prisma.workspace.findFirst({
-        where: whereClause
+        where: whereClause,
       });
       if (!workspace) {
         throw new Error(userId ? '目标工作区不存在或无权限访问' : '目标工作区不存在');
@@ -197,7 +207,7 @@ export class BoardService {
         : { id: targetProjectId };
 
       const project = await prisma.project.findFirst({
-        where: whereClause
+        where: whereClause,
       });
       if (!project) {
         throw new Error(userId ? '目标项目不存在或无权限访问' : '目标项目不存在');
@@ -205,13 +215,13 @@ export class BoardService {
     }
 
     // 获取目标容器中的最大order值
-    const whereClause = targetWorkspaceId 
+    const whereClause = targetWorkspaceId
       ? { workspaceId: targetWorkspaceId }
       : { projectId: targetProjectId };
 
     const maxOrder = await prisma.board.aggregate({
       where: whereClause,
-      _max: { order: true }
+      _max: { order: true },
     });
 
     return await prisma.board.update({
@@ -219,29 +229,32 @@ export class BoardService {
       data: {
         workspaceId: targetWorkspaceId || null,
         projectId: targetProjectId || null,
-        order: (maxOrder._max.order || 0) + 1
+        order: (maxOrder._max.order || 0) + 1,
       },
       include: {
         workspace: true,
-        project: true
-      }
+        project: true,
+      },
     });
   }
 
   /**
    * 重新排序看板
    */
-  async reorderBoards(containerId: string, boardIds: string[], containerType: 'workspace' | 'project') {
+  async reorderBoards(
+    containerId: string,
+    boardIds: string[],
+    containerType: 'workspace' | 'project',
+  ) {
     // 验证所有看板都属于指定容器
-    const whereClause = containerType === 'workspace' 
-      ? { workspaceId: containerId }
-      : { projectId: containerId };
+    const whereClause =
+      containerType === 'workspace' ? { workspaceId: containerId } : { projectId: containerId };
 
     const boards = await prisma.board.findMany({
       where: {
         id: { in: boardIds },
-        ...whereClause
-      }
+        ...whereClause,
+      },
     });
 
     if (boards.length !== boardIds.length) {
@@ -252,13 +265,13 @@ export class BoardService {
     const updatePromises = boardIds.map((boardId, index) =>
       prisma.board.update({
         where: { id: boardId },
-        data: { order: index }
-      })
+        data: { order: index },
+      }),
     );
 
     await Promise.all(updatePromises);
 
-    return containerType === 'workspace' 
+    return containerType === 'workspace'
       ? await this.getBoardsByWorkspace(containerId)
       : await this.getBoardsByProject(containerId);
   }
@@ -266,9 +279,15 @@ export class BoardService {
   /**
    * 复制看板
    */
-  async duplicateBoard(id: string, userId: string, newName?: string, targetWorkspaceId?: string, targetProjectId?: string) {
+  async duplicateBoard(
+    id: string,
+    userId: string,
+    newName?: string,
+    targetWorkspaceId?: string,
+    targetProjectId?: string,
+  ) {
     const originalBoard = await this.getBoardById(id);
-    
+
     if (!originalBoard) {
       throw new Error('看板不存在');
     }
@@ -278,14 +297,17 @@ export class BoardService {
     const finalProjectId = targetProjectId || originalBoard.projectId;
 
     // 创建新看板
-    const newBoard = await this.createBoard({
-      name: newName || `${originalBoard.name} (副本)`,
-      description: originalBoard.description,
-      color: originalBoard.color,
-      icon: originalBoard.icon,
-      workspaceId: finalWorkspaceId,
-      projectId: finalProjectId
-    }, userId);
+    const newBoard = await this.createBoard(
+      {
+        name: newName || `${originalBoard.name} (副本)`,
+        description: originalBoard.description,
+        color: originalBoard.color,
+        icon: originalBoard.icon,
+        workspaceId: finalWorkspaceId,
+        projectId: finalProjectId,
+      },
+      userId,
+    );
 
     // 复制列
     for (const column of originalBoard.columns) {
@@ -296,8 +318,8 @@ export class BoardService {
           color: column.color,
           sortOption: column.sortOption,
           isDefault: column.isDefault,
-          boardId: newBoard.id
-        }
+          boardId: newBoard.id,
+        },
       });
     }
 
@@ -311,15 +333,15 @@ export class BoardService {
     const defaultColumns = [
       { name: '待办', order: 0, isDefault: true },
       { name: '进行中', order: 1, isDefault: true },
-      { name: '已完成', order: 2, isDefault: true }
+      { name: '已完成', order: 2, isDefault: true },
     ];
 
     for (const column of defaultColumns) {
       await prisma.boardColumn.create({
         data: {
           ...column,
-          boardId
-        }
+          boardId,
+        },
       });
     }
   }
@@ -330,26 +352,26 @@ export class BoardService {
   async getBoardStats(id: string) {
     const [columnCount, taskCount, completedTaskCount] = await Promise.all([
       prisma.boardColumn.count({
-        where: { boardId: id }
+        where: { boardId: id },
       }),
       prisma.task.count({
-        where: { boardId: id }
+        where: { boardId: id },
       }),
       prisma.task.count({
         where: {
           boardId: id,
           status: {
-            in: await this.getCompletedStatusIds(id)
-          }
-        }
-      })
+            in: await this.getCompletedStatusIds(id),
+          },
+        },
+      }),
     ]);
 
     return {
       columns: columnCount,
       tasks: taskCount,
       completedTasks: completedTaskCount,
-      progress: taskCount > 0 ? Math.round((completedTaskCount / taskCount) * 100) : 0
+      progress: taskCount > 0 ? Math.round((completedTaskCount / taskCount) * 100) : 0,
     };
   }
 
@@ -363,13 +385,13 @@ export class BoardService {
         OR: [
           { name: { contains: '完成', mode: 'insensitive' } },
           { name: { contains: 'done', mode: 'insensitive' } },
-          { name: { contains: 'completed', mode: 'insensitive' } }
-        ]
+          { name: { contains: 'completed', mode: 'insensitive' } },
+        ],
       },
-      select: { id: true }
+      select: { id: true },
     });
 
-    return completedColumns.map(col => col.id);
+    return completedColumns.map((col) => col.id);
   }
 }
 

@@ -1,6 +1,6 @@
 /**
  * API密钥管理服务
- * 
+ *
  * 提供API密钥的CRUD操作和管理功能
  */
 
@@ -138,9 +138,7 @@ class ApiKeyService {
    */
   async getApiKeyStats(keyId: string): Promise<ApiKeyUsageStats> {
     try {
-      const result = await apiService.get<ApiKeyUsageStats>(
-        `${this.baseUrl}/${keyId}/stats`
-      );
+      const result = await apiService.get<ApiKeyUsageStats>(`${this.baseUrl}/${keyId}/stats`);
       return result;
     } catch (error) {
       log.error('获取API密钥统计失败:', error);
@@ -152,12 +150,12 @@ class ApiKeyService {
    * 获取API密钥使用日志
    */
   async getApiKeyLogs(
-    keyId: string, 
+    keyId: string,
     options: {
       page?: number;
       limit?: number;
       toolName?: string;
-    } = {}
+    } = {},
   ): Promise<LogsResponse> {
     try {
       const { page = 1, limit = 50, toolName } = options;
@@ -165,13 +163,13 @@ class ApiKeyService {
         page: page.toString(),
         limit: limit.toString(),
       });
-      
+
       if (toolName) {
         params.append('toolName', toolName);
       }
 
       const result = await apiService.get<LogsResponse>(
-        `${this.baseUrl}/${keyId}/logs?${params.toString()}`
+        `${this.baseUrl}/${keyId}/logs?${params.toString()}`,
       );
       return result;
     } catch (error) {
@@ -203,7 +201,7 @@ class ApiKeyService {
     return {
       'mcp:read': 'MCP读取权限',
       'mcp:write': 'MCP写入权限',
-      'mcp:admin': 'MCP管理权限'
+      'mcp:admin': 'MCP管理权限',
     };
   }
 
@@ -214,7 +212,7 @@ class ApiKeyService {
     return {
       'mcp:read': '允许读取任务、看板和项目数据',
       'mcp:write': '允许创建、修改和删除任务和看板',
-      'mcp:admin': '允许管理系统设置和用户权限'
+      'mcp:admin': '允许管理系统设置和用户权限',
     };
   }
 }
