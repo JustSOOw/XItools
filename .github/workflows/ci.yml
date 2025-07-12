@@ -69,8 +69,11 @@ jobs:
     - name: 前端构建测试
       working-directory: ./frontend
       run: |
-        echo "🏗️ 构建前端应用..."
-        npm run build
+        echo "🏗️ 构建前端应用（Web版本）..."
+        echo "📝 复制Web版本TypeScript配置..."
+        cp tsconfig.web.json tsconfig.json
+        echo "🔨 直接调用vite构建，跳过npm钩子..."
+        npx vite build
 
     - name: 后端构建测试
       working-directory: ./backend

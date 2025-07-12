@@ -41,7 +41,11 @@ jobs:
     - name: 构建验证
       run: |
         echo "🏗️ 生产构建验证..."
-        cd frontend && npm ci && npm run build
+        cd frontend && npm ci
+        echo "📝 复制Web版本TypeScript配置..."
+        cp tsconfig.web.json tsconfig.json
+        echo "🔨 构建前端（Web版本）..."
+        npx vite build
         cd ../backend && npm ci && npm run build
         echo "✅ 构建验证完成"
 

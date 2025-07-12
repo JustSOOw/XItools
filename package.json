@@ -26,7 +26,9 @@
     "rollback": "bash scripts/rollback.sh -i",
     "rollback:auto": "bash scripts/rollback.sh -y",
     "test:docker-build": "powershell -ExecutionPolicy Bypass -File scripts/test-docker-build.ps1",
-    "test:docker-build:cleanup": "powershell -ExecutionPolicy Bypass -File scripts/test-docker-build.ps1 -Cleanup"
+    "test:docker-build:cleanup": "powershell -ExecutionPolicy Bypass -File scripts/test-docker-build.ps1 -Cleanup",
+    "test:ci-build": "powershell -ExecutionPolicy Bypass -File scripts/test-ci-build.ps1",
+    "test:ci-build:cleanup": "powershell -ExecutionPolicy Bypass -File scripts/test-ci-build.ps1 -Cleanup"
   },
   "keywords": [
     "task-management",
