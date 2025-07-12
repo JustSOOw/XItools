@@ -57,8 +57,8 @@ COPY tsconfig.web.json tsconfig.json
 # 复制源代码（.dockerignore会排除electron文件夹）
 COPY . .
 
-# 构建应用
-RUN npm run build
+# 构建应用（直接调用vite，跳过npm钩子）
+RUN npx vite build
 
 # 阶段4: 生产环境
 FROM nginx:alpine AS production
