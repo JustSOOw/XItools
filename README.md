@@ -190,8 +190,9 @@ XItools/
 项目的详细文档位于 `docs/` 目录，覆盖了产品、设计、架构和开发指南。关键文档包括：
 
 ### CI/CD 部署文档
-- **[CI/CD 总览](./docs/cicd/README.md)** - 企业级 CI/CD 方案介绍
-- **[设置和使用指南](./docs/cicd/setup-guide.md)** - 完整的配置和使用说明
+- **[CI/CD 总览](./docs/cicd/README.md)** - 简化版 CI/CD 方案介绍
+- **[简化设置指南](./docs/cicd/setup-guide-simplified.md)** - 快速配置和使用说明
+- **[完整设置指南](./docs/cicd/setup-guide.md)** - 详细的配置和使用说明
 
 ### 产品与技术文档
 - **产品与设计**: `docs/product/PROJECT_PRD.md`, `docs/design/API_KEY_MANAGEMENT_UI_DESIGN.md`
@@ -221,29 +222,34 @@ main (生产环境) ← develop (预发布环境) ← feature/* (功能开发)
 
 📋 **详细规则**: 查看 [Git Flow 规则文档](.augment/rules/gitflow.md)
 
-## 🚀 企业级 CI/CD 部署
+## 🚀 简化版 CI/CD 部署
 
-XItools 采用现代化的 CI/CD 部署方案，基于 GitHub Actions 实现自动化构建、测试和部署。
+XItools 采用简化的 CI/CD 部署方案，基于 GitHub Actions 实现自动化构建和部署，专注于实用性和可靠性。
 
 ### 部署架构
 
 ```
-GitHub → CI/CD Pipeline → Docker Registry → Production Server
+GitHub → 简化 CI/CD → Docker Registry → Production Server
    ↓           ↓              ↓                    ↓
-代码推送 → 自动构建测试 → 镜像存储 → 自动部署更新
+代码推送 → 代码检查构建 → 镜像存储 → 自动部署更新
 ```
 
-### 部署流程
+### 工作流程
+
+#### 持续集成 (CI)
+- **代码检查**: ESLint + TypeScript 类型检查
+- **构建验证**: 前端和后端构建测试
+- **基础安全检查**: npm audit 依赖漏洞扫描
+- **Docker构建验证**: 仅在 PR 时验证 Docker 构建
 
 #### 自动部署
 - **生产环境**: 推送到 `main` 分支自动触发部署
 - **预生产环境**: 推送到 `develop` 分支自动触发部署
-- **代码检查**: 创建 Pull Request 自动触发 CI 检查
 
-#### 手动部署
-1. 进入 GitHub 仓库的 **Actions** 页面
-2. 选择对应的部署工作流
-3. 点击 **Run workflow** 手动触发
+#### 紧急回滚
+- **手动触发**: GitHub Actions 手动回滚工作流
+- **自动回滚**: 回滚到上一个稳定版本
+- **基础验证**: 简单的健康检查
 
 ### 部署监控
 
@@ -258,24 +264,7 @@ ssh root@8.140.237.185 "docker-compose -f /opt/xitools/current/docker-compose.pr
 ssh root@8.140.237.185 "docker-compose -f /opt/xitools/current/docker-compose.prod.yml logs -f"
 ```
 
-### 回滚操作
-
-#### 自动回滚
-系统在部署失败时会自动回滚到上一个稳定版本
-
-#### 手动回滚
-```bash
-# 交互式回滚
-npm run rollback
-
-# 快速回滚到上一版本
-npm run rollback:auto
-
-# 回滚到指定版本
-bash scripts/rollback.sh 20250110-143022-abc123
-```
-
-### 备份管理
+### 手动操作
 
 ```bash
 # 完整备份
@@ -284,8 +273,8 @@ npm run backup
 # 仅备份数据库
 npm run backup:database
 
-# 自定义保留期
-bash scripts/backup.sh -r 7
+# 快速回滚到上一版本
+npm run rollback:auto
 ```
 
 ### 访问地址
