@@ -24,7 +24,10 @@ RUN npm config set fetch-retry-mintimeout 20000 && \
 # 安装依赖
 RUN npm install
 
-# 复制源代码（包括node_modules）
+# 复制Web版本专用的TypeScript配置
+COPY tsconfig.web.json tsconfig.json
+
+# 复制源代码（.dockerignore会排除electron文件夹）
 COPY . .
 
 # 暴露开发服务器端口
@@ -48,7 +51,10 @@ RUN npm config set fetch-retry-mintimeout 20000 && \
 # 安装依赖
 RUN npm install
 
-# 复制源代码（包括node_modules）
+# 复制Web版本专用的TypeScript配置
+COPY tsconfig.web.json tsconfig.json
+
+# 复制源代码（.dockerignore会排除electron文件夹）
 COPY . .
 
 # 构建应用

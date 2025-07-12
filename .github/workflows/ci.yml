@@ -49,7 +49,8 @@ jobs:
       run: |
         echo "🔍 执行前端代码检查..."
         npm run lint || echo "⚠️ 前端代码检查发现问题，继续执行"
-        echo "⏭️ 跳过类型检查（暂时禁用）"
+        echo "🔍 执行前端类型检查..."
+        npm run type-check || echo "⚠️ 前端类型检查发现问题，继续执行"
 
     - name: 后端代码检查
       working-directory: ./backend
@@ -88,7 +89,9 @@ jobs:
       if: github.event_name == 'pull_request'
       run: |
         echo "🐳 验证 Docker 构建..."
+        echo "📦 构建前端镜像（Web版本）..."
         docker build -t xitools-frontend:test ./frontend --target production
+        echo "📦 构建后端镜像..."
         docker build -t xitools-backend:test ./backend --target production
         echo "✅ Docker 构建验证完成"
 

@@ -24,7 +24,9 @@
     "backup": "bash scripts/backup.sh",
     "backup:database": "bash scripts/backup.sh -t database",
     "rollback": "bash scripts/rollback.sh -i",
-    "rollback:auto": "bash scripts/rollback.sh -y"
+    "rollback:auto": "bash scripts/rollback.sh -y",
+    "test:docker-build": "powershell -ExecutionPolicy Bypass -File scripts/test-docker-build.ps1",
+    "test:docker-build:cleanup": "powershell -ExecutionPolicy Bypass -File scripts/test-docker-build.ps1 -Cleanup"
   },
   "keywords": [
     "task-management",

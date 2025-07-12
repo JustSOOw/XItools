@@ -74,6 +74,9 @@ __tests__/
 *.spec.js
 *.spec.ts
 
+# Electron相关文件（Web版本不需要）
+electron/
+
 # 其他
 .eslintrc*
 .prettierrc*
