@@ -4,8 +4,6 @@
 name: 生产环境部署
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
     branches: [ main ]
     types: [ closed ]
@@ -20,8 +18,8 @@ jobs:
     name: 部署到生产环境
     runs-on: ubuntu-latest
     environment: production
-    # 只在push到main分支或PR合并到main时触发
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+    # 只在PR合并到main分支时触发，禁止直接push部署
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true
 
     steps:
     - name: 检出代码

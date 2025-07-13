@@ -190,11 +190,10 @@ XItools/
 项目的详细文档位于 `docs/` 目录，覆盖了产品、设计、架构和开发指南。关键文档包括：
 
 ### CI/CD 部署文档
-- **[CI/CD 总览](./docs/cicd/README.md)** - 简化版 CI/CD 方案介绍
 - **[环境配置指南](./docs/cicd/environment-setup.md)** - 多环境部署配置详解
 - **[GitHub环境配置清单](./docs/cicd/github-environments-checklist.md)** - GitHub环境变量配置步骤
 - **[简化设置指南](./docs/cicd/setup-guide-simplified.md)** - 快速配置和使用说明
-- **[完整设置指南](./docs/cicd/setup-guide.md)** - 详细的配置和使用说明
+
 
 ### 产品与技术文档
 - **产品与设计**: `docs/product/PROJECT_PRD.md`, `docs/design/API_KEY_MANAGEMENT_UI_DESIGN.md`
@@ -246,8 +245,9 @@ GitHub → 简化 CI/CD → Docker Registry → Production Server
 - **触发条件**: PR 到 main/develop 分支，或推送到 main/develop 分支
 
 #### 自动部署 (双环境部署)
-- **预生产环境**: PR合并到 `develop` 分支或直接推送到 `develop` 分支时触发部署
-- **生产环境**: PR合并到 `main` 分支或直接推送到 `main` 分支时触发部署
+- **预生产环境**: 仅在PR合并到 `develop` 分支时触发部署
+- **生产环境**: 仅在PR合并到 `main` 分支时触发部署
+- **安全机制**: 禁止直接push触发部署，强制代码审查流程
 
 #### 紧急回滚
 - **手动触发**: GitHub Actions 手动回滚工作流
