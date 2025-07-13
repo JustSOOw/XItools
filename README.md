@@ -191,6 +191,8 @@ XItools/
 
 ### CI/CD 部署文档
 - **[CI/CD 总览](./docs/cicd/README.md)** - 简化版 CI/CD 方案介绍
+- **[环境配置指南](./docs/cicd/environment-setup.md)** - 多环境部署配置详解
+- **[GitHub环境配置清单](./docs/cicd/github-environments-checklist.md)** - GitHub环境变量配置步骤
 - **[简化设置指南](./docs/cicd/setup-guide-simplified.md)** - 快速配置和使用说明
 - **[完整设置指南](./docs/cicd/setup-guide.md)** - 详细的配置和使用说明
 
@@ -241,10 +243,11 @@ GitHub → 简化 CI/CD → Docker Registry → Production Server
 - **构建验证**: 前端和后端构建测试
 - **基础安全检查**: npm audit 依赖漏洞扫描
 - **Docker构建验证**: 仅在 PR 时验证 Docker 构建
+- **触发条件**: PR 到 main/develop 分支，或推送到 main/develop 分支
 
-#### 自动部署
-- **生产环境**: 推送到 `main` 分支自动触发部署
+#### 自动部署 (双环境部署)
 - **预生产环境**: 推送到 `develop` 分支自动触发部署
+- **生产环境**: 推送到 `main` 分支自动触发部署
 
 #### 紧急回滚
 - **手动触发**: GitHub Actions 手动回滚工作流
@@ -262,6 +265,12 @@ ssh root@8.140.237.185 "docker-compose -f /opt/xitools/current/docker-compose.pr
 
 # 查看应用日志
 ssh root@8.140.237.185 "docker-compose -f /opt/xitools/current/docker-compose.prod.yml logs -f"
+
+# 验证所有环境部署状态
+npm run verify:deployment
+
+# 快速检查环境可访问性
+npm run verify:deployment:quick
 ```
 
 ### 手动操作
@@ -283,6 +292,15 @@ npm run rollback:auto
 - **预生产环境**: http://xitools.furdow.com:8081
 - **健康检查**: https://xitools.furdow.com/health
 - **API文档**: https://xitools.furdow.com/api/documentation
+
+### 环境对应关系
+
+| 环境 | 分支 | 访问地址 | 数据库端口 | 用途 |
+|------|------|----------|------------|------|
+| 生产环境 | `main` | https://xitools.furdow.com | 5432 | 正式发布版本 |
+| 预生产环境 | `develop` | http://xitools.furdow.com:8081 | 5433 | 发布前测试 |
+
+**注意**: `feature/*` 分支仅进行CI检查（代码质量、构建验证），不进行远程部署。开发者使用本地环境 (`npm run dev`) 进行功能开发和测试。
 
 ## 🔧 MCP工具使用
 
