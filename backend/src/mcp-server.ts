@@ -9,7 +9,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { PrismaClient } from './generated/prisma/index.js';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { taskUpdateSchema } from './types/taskSchema.js';
 import { columnService } from './services/columnService.js';
@@ -508,8 +508,11 @@ async function registerMCPTools(server: McpServer): Promise<void> {
           success: true,
           message: `成功删除了 ${taskCount} 个任务`,
           deletedCount: taskCount,
-          deletedTaskIds: allTasks.map((task) => task.id),
-          deletedTasks: allTasks.map((task) => ({ id: task.id, title: task.title })),
+          deletedTaskIds: allTasks.map((task: { id: string; title: string }) => task.id),
+          deletedTasks: allTasks.map((task: { id: string; title: string }) => ({
+            id: task.id,
+            title: task.title,
+          })),
         };
 
         console.error(result.message);
