@@ -57,11 +57,14 @@ jobs:
         echo "🐳 构建生产环境 Docker 镜像..."
         echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-        docker build -t ghcr.io/${{ github.repository }}/frontend:latest ./frontend --target production
-        docker push ghcr.io/${{ github.repository }}/frontend:latest
+        # 将仓库名称转换为小写以符合GitHub Container Registry要求
+        REPO_LOWERCASE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
 
-        docker build -t ghcr.io/${{ github.repository }}/backend:latest ./backend --target production
-        docker push ghcr.io/${{ github.repository }}/backend:latest
+        docker build -t ghcr.io/${REPO_LOWERCASE}/frontend:latest ./frontend --target production
+        docker push ghcr.io/${REPO_LOWERCASE}/frontend:latest
+
+        docker build -t ghcr.io/${REPO_LOWERCASE}/backend:latest ./backend --target production
+        docker push ghcr.io/${REPO_LOWERCASE}/backend:latest
 
         echo "✅ 镜像构建和推送完成"
 
