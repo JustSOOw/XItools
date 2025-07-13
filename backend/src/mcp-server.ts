@@ -209,14 +209,14 @@ async function registerMCPTools(server: McpServer): Promise<void> {
             const tags = undefined;
 
             const { tags: tagNames, dueDate, ...taskCreateData } = taskData;
-            
+
             // 使用简单的数据对象，包含所有必需的字段
             const createData: any = {
               ...taskCreateData,
               dueDate: dueDate ? new Date(dueDate) : null,
               ownerId: 'default-user', // TODO: 需要从上下文获取实际用户ID
             };
-            
+
             const task = await tx.task.create({
               data: createData,
               include: {

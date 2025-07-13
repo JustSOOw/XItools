@@ -126,15 +126,15 @@ export class TaskService {
     if (validatedData.tags && validatedData.tags.length > 0) {
       tagsConnect = {
         connectOrCreate: validatedData.tags.map((tagName: string) => ({
-          where: { 
+          where: {
             ownerId_name: {
               ownerId: userId,
-              name: tagName
-            }
+              name: tagName,
+            },
           },
-          create: { 
+          create: {
             name: tagName,
-            ownerId: userId
+            ownerId: userId,
           },
         })),
       };
@@ -206,15 +206,15 @@ export class TaskService {
         if (validatedData.tags && validatedData.tags.length > 0) {
           tagsConnect = {
             connectOrCreate: validatedData.tags.map((tagName: string) => ({
-              where: { 
+              where: {
                 ownerId_name: {
                   ownerId: userId,
-                  name: tagName
-                }
+                  name: tagName,
+                },
               },
-              create: { 
+              create: {
                 name: tagName,
-                ownerId: userId
+                ownerId: userId,
               },
             })),
           };
@@ -300,15 +300,15 @@ export class TaskService {
       tagsUpdate = {
         set: [], // 先清空现有标签
         connectOrCreate: validatedData.tags.map((tagName: string) => ({
-          where: { 
+          where: {
             ownerId_name: {
               ownerId: userId,
-              name: tagName
-            }
+              name: tagName,
+            },
           },
-          create: { 
+          create: {
             name: tagName,
-            ownerId: userId
+            ownerId: userId,
           },
         })),
       };

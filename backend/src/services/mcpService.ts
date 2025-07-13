@@ -1901,19 +1901,19 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
                   for (const tagName of updates.tags) {
                     // 暂时使用简单查询，因为复合唯一键查询需要特定语法
                     let tag = await prisma.tag.findFirst({
-                      where: { 
+                      where: {
                         AND: [
                           { ownerId: 'default-user' }, // TODO: 需要从上下文获取实际用户ID
-                          { name: tagName }
-                        ]
+                          { name: tagName },
+                        ],
                       },
                     });
 
                     if (!tag) {
                       tag = await prisma.tag.create({
-                        data: { 
+                        data: {
                           name: tagName,
-                          ownerId: 'default-user' // TODO: 需要从上下文获取实际用户ID
+                          ownerId: 'default-user', // TODO: 需要从上下文获取实际用户ID
                         },
                       });
                     }

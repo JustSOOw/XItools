@@ -1,6 +1,6 @@
 /**
  * 增强的使用日志记录服务 - 简化版本
- * 
+ *
  * 注意：这是一个临时的简化版本，用于解决构建错误
  * 完整功能请参考 enhancedUsageLogger.ts.bak
  */
@@ -137,7 +137,7 @@ class EnhancedUsageLogger {
     recommendations: string[];
   }> {
     const statistics = await this.getUsageStatistics(apiKeyId, timeRange);
-    
+
     return {
       summary: {
         timeRange,

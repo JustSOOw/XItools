@@ -125,23 +125,29 @@ export function registerMultiBoardMCPTools(mcpServer: McpServer) {
         }
 
         // 创建项目
-        const project = await projectService.createProject({
-          name: projectName,
-          description: projectDescription,
-          workspaceId: targetWorkspaceId,
-          order: 0,
-        }, 'default-user'); // TODO: 需要从上下文获取实际用户ID
+        const project = await projectService.createProject(
+          {
+            name: projectName,
+            description: projectDescription,
+            workspaceId: targetWorkspaceId,
+            order: 0,
+          },
+          'default-user',
+        ); // TODO: 需要从上下文获取实际用户ID
 
         // 创建看板 - 每个看板都使用标准的默认列结构
         const createdBoards = [];
         for (let i = 0; i < boards.length; i++) {
           const boardData = boards[i];
-          const board = await boardService.createBoard({
-            name: boardData.name,
-            description: boardData.description,
-            projectId: project.id,
-            order: i,
-          }, 'default-user'); // TODO: 需要从上下文获取实际用户ID
+          const board = await boardService.createBoard(
+            {
+              name: boardData.name,
+              description: boardData.description,
+              projectId: project.id,
+              order: i,
+            },
+            'default-user',
+          ); // TODO: 需要从上下文获取实际用户ID
 
           // 使用标准的默认列结构（待办、进行中、已完成）
           // boardService.createBoard 已经自动创建了默认列

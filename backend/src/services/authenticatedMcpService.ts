@@ -109,7 +109,11 @@ export async function setupAuthenticatedMCPService(
           if (toolName) {
             // 检查权限
             if (isReadOnlyTool(toolName)) {
-              if (!mcpUser.permissions.some(p => (p as any) === ApiKeyPermission.MCP_READ || (p as any) === 'mcp:read')) {
+              if (
+                !mcpUser.permissions.some(
+                  (p) => (p as any) === ApiKeyPermission.MCP_READ || (p as any) === 'mcp:read',
+                )
+              ) {
                 return reply.status(403).send({
                   jsonrpc: '2.0',
                   error: {
@@ -120,7 +124,11 @@ export async function setupAuthenticatedMCPService(
                 });
               }
             } else {
-              if (!mcpUser.permissions.some(p => (p as any) === ApiKeyPermission.MCP_WRITE || (p as any) === 'mcp:write')) {
+              if (
+                !mcpUser.permissions.some(
+                  (p) => (p as any) === ApiKeyPermission.MCP_WRITE || (p as any) === 'mcp:write',
+                )
+              ) {
                 return reply.status(403).send({
                   jsonrpc: '2.0',
                   error: {
