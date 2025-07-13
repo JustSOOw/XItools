@@ -246,8 +246,8 @@ GitHub → 简化 CI/CD → Docker Registry → Production Server
 - **触发条件**: PR 到 main/develop 分支，或推送到 main/develop 分支
 
 #### 自动部署 (双环境部署)
-- **预生产环境**: 推送到 `develop` 分支自动触发部署
-- **生产环境**: 推送到 `main` 分支自动触发部署
+- **预生产环境**: PR合并到 `develop` 分支或直接推送到 `develop` 分支时触发部署
+- **生产环境**: PR合并到 `main` 分支或直接推送到 `main` 分支时触发部署
 
 #### 紧急回滚
 - **手动触发**: GitHub Actions 手动回滚工作流

@@ -6,6 +6,9 @@ name: 预生产环境部署
 on:
   push:
     branches: [ develop ]
+  pull_request:
+    branches: [ develop ]
+    types: [ closed ]
   workflow_dispatch:
     inputs:
       deploy_branch:
@@ -24,6 +27,8 @@ jobs:
     name: 部署到预生产环境
     runs-on: ubuntu-latest
     environment: staging
+    # 只在push到develop分支或PR合并到develop时触发
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
 
     steps:
     - name: 检出代码
