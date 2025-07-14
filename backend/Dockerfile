@@ -29,8 +29,15 @@ COPY prisma ./prisma/
 RUN npm cache clean --force
 # 删除可能存在的node_modules
 RUN rm -rf node_modules
-# 安装依赖
-RUN npm ci
+
+# 检查package-lock.json是否存在，如果不存在则生成
+RUN if [ ! -f package-lock.json ]; then \
+        echo "⚠️ package-lock.json not found, generating..."; \
+        npm install --package-lock-only; \
+    fi
+
+# 安装依赖 (优先使用npm ci，失败时回退到npm install)
+RUN npm ci || (echo "⚠️ npm ci failed, falling back to npm install" && npm install)
 
 # 阶段3: 开发环境
 FROM dependencies AS development
@@ -74,12 +81,19 @@ FROM base AS production
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# 只安装生产依赖
-RUN npm ci --only=production && npm cache clean --force
+# 检查package-lock.json是否存在，如果不存在则生成
+RUN if [ ! -f package-lock.json ]; then \
+        echo "⚠️ package-lock.json not found in production stage, generating..."; \
+        npm install --package-lock-only; \
+    fi
+
+# 只安装生产依赖 (优先使用npm ci，失败时回退到npm install)
+RUN (npm ci --only=production || (echo "⚠️ npm ci failed, falling back to npm install" && npm install --only=production)) && npm cache clean --force
 
 # 复制构建产物
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=build /app/node_modules/@prisma ./node_modules/@prisma
 
 # 复制必要的文件
 COPY docker-entrypoint.sh /usr/local/bin/

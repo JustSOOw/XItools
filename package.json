@@ -29,6 +29,7 @@
     "test:docker-build:cleanup": "powershell -ExecutionPolicy Bypass -File scripts/test-docker-build.ps1 -Cleanup",
     "test:ci-build": "powershell -ExecutionPolicy Bypass -File scripts/test-ci-build.ps1",
     "test:ci-build:cleanup": "powershell -ExecutionPolicy Bypass -File scripts/test-ci-build.ps1 -Cleanup",
+    "test:docker-backend": "bash scripts/test-docker-build-backend.sh",
     "verify:deployment": "bash scripts/verify-deployment.sh",
     "verify:deployment:quick": "bash scripts/verify-deployment.sh --quick"
   },
