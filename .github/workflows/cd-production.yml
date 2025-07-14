@@ -153,6 +153,38 @@ jobs:
         ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
         cd /opt/xitools
 
+        # 基础设施检查和修复
+        echo "🔍 执行基础设施检查..."
+
+        # 检查Docker服务状态
+        if ! systemctl is-active --quiet docker; then
+          echo "启动Docker服务..."
+          systemctl start docker
+          sleep 5
+        fi
+
+        # 检查Docker daemon连接
+        if ! docker info > /dev/null 2>&1; then
+          echo "重启Docker服务..."
+          systemctl restart docker
+          sleep 10
+          if ! docker info > /dev/null 2>&1; then
+            echo "❌ Docker daemon连接失败"
+            exit 1
+          fi
+        fi
+
+        # 配置Docker镜像加速器（如果需要）
+        if [ ! -f /etc/docker/daemon.json ]; then
+          echo "配置Docker镜像加速器..."
+          mkdir -p /etc/docker
+          echo '{"registry-mirrors":["https://docker.1ms.run","https://docker.xuanyuan.me"],"dns":["8.8.8.8","114.114.114.114"]}' > /etc/docker/daemon.json
+          systemctl restart docker
+          sleep 10
+        fi
+
+        echo "✅ 基础设施检查完成"
+
         # 停止当前服务
         if [ -f current/docker-compose.prod.yml ]; then
           docker compose -f current/docker-compose.prod.yml down || docker-compose -f current/docker-compose.prod.yml down || true
