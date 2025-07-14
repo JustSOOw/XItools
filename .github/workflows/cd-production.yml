@@ -69,6 +69,19 @@ jobs:
         REPO_LOWERCASE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
         echo "📦 使用镜像仓库: ghcr.io/${REPO_LOWERCASE}"
 
+        # 拉取并推送基础镜像到GitHub Container Registry
+        echo "📥 拉取基础镜像..."
+        docker pull postgres:14
+        docker pull nginx:alpine
+
+        echo "🏷️ 重新标记基础镜像..."
+        docker tag postgres:14 ghcr.io/${REPO_LOWERCASE}/postgres:14
+        docker tag nginx:alpine ghcr.io/${REPO_LOWERCASE}/nginx:alpine
+
+        echo "📤 推送基础镜像..."
+        docker push ghcr.io/${REPO_LOWERCASE}/postgres:14
+        docker push ghcr.io/${REPO_LOWERCASE}/nginx:alpine
+
         # 构建前端镜像
         echo "🔨 构建前端镜像..."
         docker build -t ghcr.io/${REPO_LOWERCASE}/frontend:latest ./frontend --target production
@@ -153,7 +166,7 @@ jobs:
         ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
         cd /opt/xitools
 
-        # 基础设施检查和修复
+        # 基础设施检查
         echo "🔍 执行基础设施检查..."
 
         # 检查Docker服务状态
@@ -172,15 +185,6 @@ jobs:
             echo "❌ Docker daemon连接失败"
             exit 1
           fi
-        fi
-
-        # 配置Docker镜像加速器（如果需要）
-        if [ ! -f /etc/docker/daemon.json ]; then
-          echo "配置Docker镜像加速器..."
-          mkdir -p /etc/docker
-          echo '{"registry-mirrors":["https://docker.1ms.run","https://docker.xuanyuan.me"],"dns":["8.8.8.8","114.114.114.114"]}' > /etc/docker/daemon.json
-          systemctl restart docker
-          sleep 10
         fi
 
         echo "✅ 基础设施检查完成"
