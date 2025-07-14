@@ -116,8 +116,38 @@ jobs:
         EOF
 
         # 上传文件
+        echo "📤 上传部署文件..."
         scp -o StrictHostKeyChecking=no docker-compose.prod.yml ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools/releases/${{ steps.version.outputs.version }}/
         scp -o StrictHostKeyChecking=no .env.production ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools/releases/${{ steps.version.outputs.version }}/
+        scp -r -o StrictHostKeyChecking=no nginx/ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools/releases/${{ steps.version.outputs.version }}/
+
+        # 验证文件上传完整性
+        echo "🔍 验证文件上传完整性..."
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'VERIFY_EOF'
+        cd /opt/xitools/releases/${{ steps.version.outputs.version }}
+
+        # 检查必需文件
+        REQUIRED_FILES=("docker-compose.prod.yml" ".env.production" "nginx/xitools-docker.conf")
+        for file in "${REQUIRED_FILES[@]}"; do
+          if [ ! -f "$file" ]; then
+            echo "❌ 缺少必需文件: $file"
+            exit 1
+          fi
+          echo "✅ 文件存在: $file"
+        done
+
+        # 验证配置文件语法
+        echo "🔍 验证Docker Compose配置语法..."
+        docker compose -f docker-compose.prod.yml config > /dev/null || docker-compose -f docker-compose.prod.yml config > /dev/null
+        if [ $? -eq 0 ]; then
+          echo "✅ Docker Compose配置语法正确"
+        else
+          echo "❌ Docker Compose配置语法错误"
+          exit 1
+        fi
+
+        echo "✅ 文件上传完整性验证通过"
+        VERIFY_EOF
 
         # 执行部署
         ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
@@ -125,7 +155,7 @@ jobs:
 
         # 停止当前服务
         if [ -f current/docker-compose.prod.yml ]; then
-          docker-compose -f current/docker-compose.prod.yml down || true
+          docker compose -f current/docker-compose.prod.yml down || docker-compose -f current/docker-compose.prod.yml down || true
         fi
 
         # 登录到GitHub Container Registry
@@ -135,36 +165,181 @@ jobs:
         ln -sfn releases/${{ steps.version.outputs.version }} current
         cd current
 
+        # 验证配置文件
+        echo "验证Docker Compose配置..."
+        docker compose -f docker-compose.prod.yml config || docker-compose -f docker-compose.prod.yml config
+
         # 拉取最新镜像
-        docker-compose -f docker-compose.prod.yml pull
+        echo "拉取最新镜像..."
+        docker compose -f docker-compose.prod.yml pull || docker-compose -f docker-compose.prod.yml pull
 
         # 启动服务
-        docker-compose -f docker-compose.prod.yml up -d
+        echo "启动服务..."
+        docker compose -f docker-compose.prod.yml up -d || docker-compose -f docker-compose.prod.yml up -d
+
+        # 验证容器启动状态
+        echo "🔍 验证容器启动状态..."
+        sleep 10  # 等待容器启动
+
+        # 检查所有容器是否正在运行
+        EXPECTED_CONTAINERS=("xitools-postgres-prod" "xitools-backend-prod" "xitools-frontend-prod" "xitools-nginx-prod")
+        FAILED_CONTAINERS=()
+
+        for container in "${EXPECTED_CONTAINERS[@]}"; do
+          if docker ps --format "table {{.Names}}" | grep -q "^${container}$"; then
+            echo "✅ 容器运行正常: $container"
+          else
+            echo "❌ 容器未运行: $container"
+            FAILED_CONTAINERS+=("$container")
+          fi
+        done
+
+        # 如果有容器启动失败，显示详细信息并退出
+        if [ ${#FAILED_CONTAINERS[@]} -gt 0 ]; then
+          echo "❌ 以下容器启动失败: ${FAILED_CONTAINERS[*]}"
+          echo "📋 显示容器状态和日志..."
+          docker compose -f docker-compose.prod.yml ps || docker-compose -f docker-compose.prod.yml ps
+
+          for container in "${FAILED_CONTAINERS[@]}"; do
+            echo "📋 容器 $container 的日志:"
+            docker logs $container --tail 20 2>&1 || echo "无法获取容器日志"
+          done
+
+          exit 1
+        fi
+
+        # 显示容器状态
+        echo "📊 所有容器状态："
+        docker compose -f docker-compose.prod.yml ps || docker-compose -f docker-compose.prod.yml ps
 
         # 清理旧镜像
         docker image prune -f
 
-        echo "✅ 生产环境部署完成"
+        echo "✅ 生产环境部署完成，所有容器正常运行"
         EOF
 
-    - name: 基础健康检查
+    - name: 全面健康检查
       run: |
-        echo "🏥 等待服务启动并进行健康检查..."
-        sleep 30
+        echo "🏥 执行全面健康检查..."
 
-        # 简单的健康检查
-        for i in {1..10}; do
-          if curl -f -s --connect-timeout 5 "https://xitools.furdow.com/" > /dev/null; then
-            echo "✅ 生产环境健康检查通过"
+        # 等待服务完全启动
+        echo "⏳ 等待服务完全启动..."
+        sleep 45
+
+        # 检查容器健康状态
+        echo "🔍 检查容器健康状态..."
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'HEALTH_EOF'
+        cd /opt/xitools/current
+
+        # 检查容器健康状态
+        UNHEALTHY_CONTAINERS=()
+        for container in xitools-postgres-prod xitools-backend-prod xitools-frontend-prod xitools-nginx-prod; do
+          health=$(docker inspect --format='{{.State.Health.Status}}' $container 2>/dev/null || echo "no-healthcheck")
+          status=$(docker inspect --format='{{.State.Status}}' $container 2>/dev/null || echo "not-found")
+
+          if [ "$status" = "running" ]; then
+            if [ "$health" = "healthy" ] || [ "$health" = "no-healthcheck" ]; then
+              echo "✅ $container: $status ($health)"
+            else
+              echo "❌ $container: $status ($health)"
+              UNHEALTHY_CONTAINERS+=("$container")
+            fi
+          else
+            echo "❌ $container: $status"
+            UNHEALTHY_CONTAINERS+=("$container")
+          fi
+        done
+
+        if [ ${#UNHEALTHY_CONTAINERS[@]} -gt 0 ]; then
+          echo "❌ 发现不健康的容器: ${UNHEALTHY_CONTAINERS[*]}"
+          exit 1
+        fi
+        HEALTH_EOF
+
+        # 检查应用可访问性
+        echo "🌐 检查应用可访问性..."
+        HEALTH_CHECK_FAILED=false
+
+        # 检查前端
+        for i in {1..12}; do
+          if curl -f -s --connect-timeout 10 "https://xitools.furdow.com/" > /dev/null; then
+            echo "✅ 前端应用可访问"
             break
           else
-            echo "⏳ 等待服务启动... ($i/10)"
-            if [ $i -eq 10 ]; then
-              echo "⚠️ 健康检查超时，但部署已完成"
+            echo "⏳ 等待前端应用启动... ($i/12)"
+            if [ $i -eq 12 ]; then
+              echo "❌ 前端应用健康检查失败"
+              HEALTH_CHECK_FAILED=true
             fi
             sleep 10
           fi
         done
+
+        # 检查后端API
+        for i in {1..12}; do
+          if curl -f -s --connect-timeout 10 "https://xitools.furdow.com/api/health" > /dev/null; then
+            echo "✅ 后端API可访问"
+            break
+          else
+            echo "⏳ 等待后端API启动... ($i/12)"
+            if [ $i -eq 12 ]; then
+              echo "❌ 后端API健康检查失败"
+              HEALTH_CHECK_FAILED=true
+            fi
+            sleep 10
+          fi
+        done
+
+        # 如果健康检查失败，标记部署失败
+        if [ "$HEALTH_CHECK_FAILED" = true ]; then
+          echo "❌ 健康检查失败，部署被标记为失败"
+          echo "📋 获取失败诊断信息..."
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'DIAG_EOF'
+          cd /opt/xitools/current
+          echo "容器状态："
+          docker compose -f docker-compose.prod.yml ps || docker-compose -f docker-compose.prod.yml ps
+          echo "容器日志（最近20行）："
+          docker compose -f docker-compose.prod.yml logs --tail 20 || docker-compose -f docker-compose.prod.yml logs --tail 20
+          DIAG_EOF
+          exit 1
+        fi
+
+        echo "✅ 所有健康检查通过，部署成功"
+
+    - name: 自动回滚处理
+      if: failure()
+      run: |
+        echo "🔄 检测到部署失败，执行自动回滚..."
+
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ROLLBACK_EOF'
+        cd /opt/xitools
+
+        # 查找上一个版本
+        PREVIOUS_VERSION=$(ls -1t releases/ | grep -v "$(readlink current | sed 's/releases\///')" | head -1)
+
+        if [ -n "$PREVIOUS_VERSION" ] && [ -d "releases/$PREVIOUS_VERSION" ]; then
+          echo "🔄 回滚到上一个版本: $PREVIOUS_VERSION"
+
+          # 停止当前失败的服务
+          if [ -f current/docker-compose.prod.yml ]; then
+            docker compose -f current/docker-compose.prod.yml down || docker-compose -f current/docker-compose.prod.yml down || true
+          fi
+
+          # 切换到上一个版本
+          ln -sfn releases/$PREVIOUS_VERSION current
+          cd current
+
+          # 启动上一个版本的服务
+          docker compose -f docker-compose.prod.yml up -d || docker-compose -f docker-compose.prod.yml up -d
+
+          echo "✅ 回滚完成，服务已恢复到上一个稳定版本"
+        else
+          echo "⚠️ 没有找到可回滚的版本"
+        fi
+        ROLLBACK_EOF
+
+        echo "❌ 部署失败，已尝试自动回滚"
+        exit 1
 
     - name: 部署完成通知
       if: always()
