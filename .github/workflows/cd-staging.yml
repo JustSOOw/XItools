@@ -15,6 +15,12 @@ on:
         default: 'develop'
         type: string
 
+# 添加必要的权限以支持GitHub Container Registry
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
 env:
   NODE_VERSION: '20.x'
   STAGING_PORT: 8081
@@ -65,15 +71,28 @@ jobs:
     - name: 构建并推送镜像
       run: |
         echo "🐳 构建 Docker 镜像..."
+
+        # 登录到GitHub Container Registry
         echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
         # 将仓库名称转换为小写以符合GitHub Container Registry要求
         REPO_LOWERCASE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+        echo "📦 使用镜像仓库: ghcr.io/${REPO_LOWERCASE}"
 
+        # 构建前端镜像
+        echo "🔨 构建前端镜像..."
         docker build -t ghcr.io/${REPO_LOWERCASE}/frontend:staging ./frontend --target production
+
+        # 构建后端镜像
+        echo "🔨 构建后端镜像..."
+        docker build -t ghcr.io/${REPO_LOWERCASE}/backend:staging ./backend --target production
+
+        # 推送前端镜像
+        echo "📤 推送前端镜像..."
         docker push ghcr.io/${REPO_LOWERCASE}/frontend:staging
 
-        docker build -t ghcr.io/${REPO_LOWERCASE}/backend:staging ./backend --target production
+        # 推送后端镜像
+        echo "📤 推送后端镜像..."
         docker push ghcr.io/${REPO_LOWERCASE}/backend:staging
 
         echo "✅ 镜像构建和推送完成"
