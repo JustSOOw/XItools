@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-06-30 15:00:00
  * @FilePath: \XItools\frontend\src\components\auth\ProtectedRoute.tsx
  * @Description: 路由保护组件
- * 
- * Copyright (c) 2025 by XItools Team, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -30,7 +30,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requiredRole,
   fallback,
   redirectTo,
-  className = ''
+  className = '',
 }) => {
   const { t } = useTranslation();
   const { user, loginStatus, checkAuthStatus, isLoading } = useUserStore();
@@ -67,7 +67,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // 检查用户是否已登录
   const isLoggedIn = userStoreHelpers.isLoggedIn();
-  
+
   // 如果未登录或token过期，显示登录界面
   if (!isLoggedIn || loginStatus === LoginStatus.TOKEN_EXPIRED) {
     if (fallback) {
@@ -95,20 +95,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           <div className="unauthorized-icon">
             <i className="icon-shield-off"></i>
           </div>
-          <h2 className="unauthorized-title">
-            {t('auth:unauthorized.title')}
-          </h2>
+          <h2 className="unauthorized-title">{t('auth:unauthorized.title')}</h2>
           <p className="unauthorized-message">
             {t('auth:unauthorized.message', {
               requiredRole: t(`auth:roles.${requiredRole}`),
-              currentRole: t(`auth:roles.${user?.role}`)
+              currentRole: t(`auth:roles.${user?.role}`),
             })}
           </p>
           <div className="unauthorized-actions">
-            <button
-              onClick={() => window.history.back()}
-              className="back-button"
-            >
+            <button onClick={() => window.history.back()} className="back-button">
               <i className="icon-arrow-left"></i>
               {t('auth:unauthorized.goBack')}
             </button>
@@ -129,7 +124,7 @@ export function withAuth<P extends object>(
     requireAuth?: boolean;
     requiredRole?: UserRole;
     fallback?: React.ReactNode;
-  } = {}
+  } = {},
 ) {
   const WrappedComponent: React.FC<P> = (props) => {
     return (
@@ -140,7 +135,7 @@ export function withAuth<P extends object>(
   };
 
   WrappedComponent.displayName = `withAuth(${Component.displayName || Component.name})`;
-  
+
   return WrappedComponent;
 }
 
@@ -156,7 +151,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
   children,
   allowedRoles,
   fallback,
-  className = ''
+  className = '',
 }) => {
   const { t } = useTranslation();
   const { user } = useUserStore();
@@ -180,16 +175,18 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
 };
 
 // 认证状态检查Hook
-export const useAuthGuard = (options: {
-  requireAuth?: boolean;
-  requiredRole?: UserRole;
-} = {}) => {
+export const useAuthGuard = (
+  options: {
+    requireAuth?: boolean;
+    requiredRole?: UserRole;
+  } = {},
+) => {
   const { requireAuth = true, requiredRole } = options;
   const { user, loginStatus } = useUserStore();
 
   const isLoggedIn = userStoreHelpers.isLoggedIn();
   const hasRequiredRole = !requiredRole || userStoreHelpers.hasRole(requiredRole);
-  
+
   const isAuthorized = !requireAuth || (isLoggedIn && hasRequiredRole);
   const needsAuth = requireAuth && !isLoggedIn;
   const needsRole = requireAuth && isLoggedIn && !hasRequiredRole;
@@ -201,7 +198,7 @@ export const useAuthGuard = (options: {
     isLoggedIn,
     hasRequiredRole,
     user,
-    loginStatus
+    loginStatus,
   };
 };
 

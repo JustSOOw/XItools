@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-06-30 15:00:00
  * @FilePath: \XItools\frontend\src\services\authService.ts
  * @Description: 用户认证服务
- * 
- * Copyright (c) 2025 by XItools Team, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
 import axios, { AxiosResponse } from 'axios';
@@ -20,7 +20,7 @@ import {
   AuthResponse,
   AuthErrorResponse,
   UserInfoResponse,
-  JWTPayload
+  JWTPayload,
 } from '../types/User';
 
 const API_BASE_URL = getBackendUrl();
@@ -40,18 +40,18 @@ class AuthService {
     try {
       const response: AxiosResponse<AuthResponse> = await axios.post(
         `${this.baseURL}/auth/register`,
-        userData
+        userData,
       );
-      
+
       if (response.data.success) {
         // 注册成功后自动保存token和用户信息
         this.saveAuthData(response.data.data.token, response.data.data.user);
       }
-      
+
       return response.data;
     } catch (error: any) {
       console.error('用户注册失败:', error);
-      
+
       if (error.response?.data) {
         throw new Error(error.response.data.error || '注册失败');
       }
@@ -66,18 +66,18 @@ class AuthService {
     try {
       const response: AxiosResponse<AuthResponse> = await axios.post(
         `${this.baseURL}/auth/login`,
-        loginData
+        loginData,
       );
-      
+
       if (response.data.success) {
         // 登录成功后保存token和用户信息
         this.saveAuthData(response.data.data.token, response.data.data.user);
       }
-      
+
       return response.data;
     } catch (error: any) {
       console.error('用户登录失败:', error);
-      
+
       if (error.response?.data) {
         throw new Error(error.response.data.error || '登录失败');
       }
@@ -97,8 +97,8 @@ class AuthService {
           `${this.baseURL}/auth/logout`,
           {},
           {
-            headers: { Authorization: `Bearer ${token}` }
-          }
+            headers: { Authorization: `Bearer ${token}` },
+          },
         );
       }
     } catch (error) {
@@ -120,12 +120,9 @@ class AuthService {
         return null;
       }
 
-      const response: AxiosResponse<UserInfoResponse> = await axios.get(
-        `${this.baseURL}/auth/me`,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
+      const response: AxiosResponse<UserInfoResponse> = await axios.get(`${this.baseURL}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       if (response.data.success) {
         // 后端返回的格式是 { success: true, data: { user: User } }
@@ -139,12 +136,12 @@ class AuthService {
       return null;
     } catch (error: any) {
       console.error('获取用户信息失败:', error);
-      
+
       // 如果是401错误，说明token已过期
       if (error.response?.status === 401) {
         this.clearAuthData();
       }
-      
+
       return null;
     }
   }
@@ -163,8 +160,8 @@ class AuthService {
         `${this.baseURL}/auth/profile`,
         updateData,
         {
-          headers: { Authorization: `Bearer ${token}` }
-        }
+          headers: { Authorization: `Bearer ${token}` },
+        },
       );
 
       if (response.data.success) {
@@ -179,7 +176,7 @@ class AuthService {
       throw new Error('更新用户信息失败');
     } catch (error: any) {
       console.error('更新用户信息失败:', error);
-      
+
       if (error.response?.data) {
         throw new Error(error.response.data.error || '更新失败');
       }
@@ -197,16 +194,12 @@ class AuthService {
         throw new Error('用户未登录');
       }
 
-      await axios.post(
-        `${this.baseURL}/auth/change-password`,
-        passwordData,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
+      await axios.post(`${this.baseURL}/auth/change-password`, passwordData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
     } catch (error: any) {
       console.error('修改密码失败:', error);
-      
+
       if (error.response?.data) {
         throw new Error(error.response.data.error || '修改密码失败');
       }
@@ -224,12 +217,9 @@ class AuthService {
         return false;
       }
 
-      const response = await axios.get(
-        `${this.baseURL}/auth/verify`,
-        {
-          headers: { Authorization: `Bearer ${authToken}` }
-        }
-      );
+      const response = await axios.get(`${this.baseURL}/auth/verify`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
 
       return response.data.success;
     } catch (error) {
@@ -251,7 +241,7 @@ class AuthService {
       const payload = this.decodeToken(token);
       const now = Math.floor(Date.now() / 1000);
       const expiresIn = payload.exp - now;
-      
+
       // 如果30分钟内过期，返回true
       return expiresIn < 30 * 60;
     } catch (error) {
@@ -274,8 +264,8 @@ class AuthService {
         `${this.baseURL}/auth/refresh`,
         {},
         {
-          headers: { Authorization: `Bearer ${token}` }
-        }
+          headers: { Authorization: `Bearer ${token}` },
+        },
       );
 
       if (response.data.token) {
@@ -419,10 +409,10 @@ class AuthService {
     const jsonPayload = decodeURIComponent(
       atob(base64)
         .split('')
-        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join(''),
     );
-    
+
     return JSON.parse(jsonPayload);
   }
 }

@@ -76,5 +76,5 @@ temp
 .eslintrc*
 .prettierrc*
 .editorconfig
-tsconfig.json
+# tsconfig.json  # 注释掉，Docker构建需要这个文件
 jest.config.js

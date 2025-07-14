@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-01-27 20:25:00
  * @FilePath: \XItools\frontend\src\components\ui\Loading\index.ts
  * @Description: 加载状态组件库统一导出文件
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 
 // 骨架屏组件
@@ -15,19 +15,15 @@ export { default as SkeletonList, SkeletonListCompact } from './SkeletonList';
 export { default as SkeletonCalendar, SkeletonCalendarSidebar } from './SkeletonCalendar';
 
 // 加载旋转器组件
-export { 
-  default as LoadingSpinner, 
-  FullScreenLoader, 
-  InlineLoader, 
-  CardLoader 
+export {
+  default as LoadingSpinner,
+  FullScreenLoader,
+  InlineLoader,
+  CardLoader,
 } from './LoadingSpinner';
 
 // 进度条组件
-export { 
-  default as ProgressBar, 
-  CircularProgress, 
-  StepProgress 
-} from './ProgressBar';
+export { default as ProgressBar, CircularProgress, StepProgress } from './ProgressBar';
 
 // 类型定义
 export type { default as LoadingSpinnerProps } from './LoadingSpinner';

@@ -4,7 +4,12 @@
 
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
-import { workspaceSchema, workspaceUpdateSchema, type WorkspaceInput, type WorkspaceUpdate } from '../types/multiBoardSchema';
+import {
+  workspaceSchema,
+  workspaceUpdateSchema,
+  type WorkspaceInput,
+  type WorkspaceUpdate,
+} from '../types/multiBoardSchema';
 
 const prisma = new PrismaClient();
 
@@ -19,18 +24,18 @@ export class WorkspaceService {
           orderBy: { order: 'asc' },
           include: {
             boards: {
-              orderBy: { order: 'asc' }
-            }
-          }
+              orderBy: { order: 'asc' },
+            },
+          },
         },
         boards: {
-          orderBy: { order: 'asc' }
-        }
+          orderBy: { order: 'asc' },
+        },
       },
       orderBy: [
         { isDefault: 'desc' }, // 默认工作区排在前面
-        { createdAt: 'asc' }
-      ]
+        { createdAt: 'asc' },
+      ],
     });
   }
 
@@ -45,18 +50,18 @@ export class WorkspaceService {
           orderBy: { order: 'asc' },
           include: {
             boards: {
-              orderBy: { order: 'asc' }
-            }
-          }
+              orderBy: { order: 'asc' },
+            },
+          },
         },
         boards: {
-          orderBy: { order: 'asc' }
-        }
+          orderBy: { order: 'asc' },
+        },
       },
       orderBy: [
         { isDefault: 'desc' }, // 默认工作区排在前面
-        { createdAt: 'asc' }
-      ]
+        { createdAt: 'asc' },
+      ],
     });
   }
 
@@ -71,14 +76,14 @@ export class WorkspaceService {
           orderBy: { order: 'asc' },
           include: {
             boards: {
-              orderBy: { order: 'asc' }
-            }
-          }
+              orderBy: { order: 'asc' },
+            },
+          },
         },
         boards: {
-          orderBy: { order: 'asc' }
-        }
-      }
+          orderBy: { order: 'asc' },
+        },
+      },
     });
   }
 
@@ -93,14 +98,14 @@ export class WorkspaceService {
           orderBy: { order: 'asc' },
           include: {
             boards: {
-              orderBy: { order: 'asc' }
-            }
-          }
+              orderBy: { order: 'asc' },
+            },
+          },
         },
         boards: {
-          orderBy: { order: 'asc' }
-        }
-      }
+          orderBy: { order: 'asc' },
+        },
+      },
     });
   }
 
@@ -111,21 +116,21 @@ export class WorkspaceService {
     return await prisma.workspace.findFirst({
       where: {
         ownerId: userId,
-        isDefault: true
+        isDefault: true,
       },
       include: {
         projects: {
           orderBy: { order: 'asc' },
           include: {
             boards: {
-              orderBy: { order: 'asc' }
-            }
-          }
+              orderBy: { order: 'asc' },
+            },
+          },
         },
         boards: {
-          orderBy: { order: 'asc' }
-        }
-      }
+          orderBy: { order: 'asc' },
+        },
+      },
     });
   }
 
@@ -141,21 +146,21 @@ export class WorkspaceService {
       await prisma.workspace.updateMany({
         where: {
           ownerId: userId,
-          isDefault: true
+          isDefault: true,
         },
-        data: { isDefault: false }
+        data: { isDefault: false },
       });
     }
 
     return await prisma.workspace.create({
       data: {
         ...validatedData,
-        ownerId: userId
+        ownerId: userId,
       },
       include: {
         projects: true,
-        boards: true
-      }
+        boards: true,
+      },
     });
   }
 
@@ -165,15 +170,15 @@ export class WorkspaceService {
   async updateWorkspace(id: string, data: WorkspaceUpdate) {
     // 验证数据
     const validatedData = workspaceUpdateSchema.parse(data);
-    
+
     // 如果设置为默认工作区，先取消其他工作区的默认状态
     if (validatedData.isDefault) {
       await prisma.workspace.updateMany({
-        where: { 
+        where: {
           isDefault: true,
-          id: { not: id }
+          id: { not: id },
         },
-        data: { isDefault: false }
+        data: { isDefault: false },
       });
     }
 
@@ -182,12 +187,12 @@ export class WorkspaceService {
       data: validatedData,
       include: {
         projects: {
-          orderBy: { order: 'asc' }
+          orderBy: { order: 'asc' },
         },
         boards: {
-          orderBy: { order: 'asc' }
-        }
-      }
+          orderBy: { order: 'asc' },
+        },
+      },
     });
   }
 
@@ -197,7 +202,7 @@ export class WorkspaceService {
   async deleteWorkspace(id: string) {
     // 检查是否为默认工作区
     const workspace = await prisma.workspace.findUnique({
-      where: { id }
+      where: { id },
     });
 
     if (!workspace) {
@@ -210,11 +215,11 @@ export class WorkspaceService {
 
     // 检查是否有项目或看板
     const projectCount = await prisma.project.count({
-      where: { workspaceId: id }
+      where: { workspaceId: id },
     });
 
     const boardCount = await prisma.board.count({
-      where: { workspaceId: id }
+      where: { workspaceId: id },
     });
 
     if (projectCount > 0 || boardCount > 0) {
@@ -222,7 +227,7 @@ export class WorkspaceService {
     }
 
     return await prisma.workspace.delete({
-      where: { id }
+      where: { id },
     });
   }
 
@@ -232,24 +237,24 @@ export class WorkspaceService {
   async getWorkspaceStats(id: string) {
     const [projectCount, boardCount, taskCount] = await Promise.all([
       prisma.project.count({
-        where: { workspaceId: id }
+        where: { workspaceId: id },
       }),
       prisma.board.count({
-        where: { workspaceId: id }
+        where: { workspaceId: id },
       }),
       prisma.task.count({
         where: {
           board: {
-            workspaceId: id
-          }
-        }
-      })
+            workspaceId: id,
+          },
+        },
+      }),
     ]);
 
     return {
       projects: projectCount,
       boards: boardCount,
-      tasks: taskCount
+      tasks: taskCount,
     };
   }
 
@@ -262,8 +267,8 @@ export class WorkspaceService {
       let defaultWorkspace = await prisma.workspace.findFirst({
         where: {
           ownerId: userId,
-          isDefault: true
-        }
+          isDefault: true,
+        },
       });
 
       if (!defaultWorkspace) {
@@ -272,8 +277,8 @@ export class WorkspaceService {
             name: '我的工作区',
             description: '默认工作区',
             isDefault: true,
-            ownerId: userId
-          }
+            ownerId: userId,
+          },
         });
       }
 
@@ -282,7 +287,7 @@ export class WorkspaceService {
       // 系统级默认工作区需要一个默认用户ID
       // 首先尝试获取系统中的第一个用户作为默认所有者
       const firstUser = await prisma.user.findFirst({
-        orderBy: { createdAt: 'asc' }
+        orderBy: { createdAt: 'asc' },
       });
 
       if (!firstUser) {
@@ -290,7 +295,7 @@ export class WorkspaceService {
       }
 
       let defaultWorkspace = await prisma.workspace.findFirst({
-        where: { isDefault: true }
+        where: { isDefault: true },
       });
 
       if (!defaultWorkspace) {
@@ -299,8 +304,8 @@ export class WorkspaceService {
             name: '默认工作区',
             description: '系统默认工作区',
             isDefault: true,
-            ownerId: firstUser.id
-          }
+            ownerId: firstUser.id,
+          },
         });
       }
 
@@ -316,7 +321,7 @@ export class WorkspaceService {
 
     // 检查是否需要创建默认看板
     const boardCount = await prisma.board.count({
-      where: { workspaceId: defaultWorkspace.id }
+      where: { workspaceId: defaultWorkspace.id },
     });
 
     if (boardCount === 0) {
@@ -327,23 +332,23 @@ export class WorkspaceService {
           description: '默认看板',
           workspaceId: defaultWorkspace.id,
           ownerId: userId,
-          order: 0
-        }
+          order: 0,
+        },
       });
 
       // 创建默认列
       const defaultColumns = [
         { name: '待办', order: 0, isDefault: true },
         { name: '进行中', order: 1, isDefault: true },
-        { name: '已完成', order: 2, isDefault: true }
+        { name: '已完成', order: 2, isDefault: true },
       ];
 
       for (const column of defaultColumns) {
         await prisma.boardColumn.create({
           data: {
             ...column,
-            boardId: defaultBoard.id
-          }
+            boardId: defaultBoard.id,
+          },
         });
       }
 

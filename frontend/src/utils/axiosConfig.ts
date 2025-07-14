@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-06-30 15:00:00
  * @FilePath: \XItools\frontend\src\utils\axiosConfig.ts
  * @Description: Axios配置和拦截器设置
- * 
- * Copyright (c) 2025 by XItools Team, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
 import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
@@ -33,23 +33,23 @@ export function setupAxiosInterceptors() {
     (config) => {
       // 获取token
       const token = authService.getToken();
-      
+
       // 如果有token且不是认证相关的请求，添加Authorization头
       if (token && !isAuthRequest(config.url || '')) {
         config.headers.Authorization = `Bearer ${token}`;
       }
-      
+
       // 设置默认的Content-Type
       if (!config.headers['Content-Type']) {
         config.headers['Content-Type'] = 'application/json';
       }
-      
+
       return config;
     },
     (error) => {
       console.error('请求拦截器错误:', error);
       return Promise.reject(error);
-    }
+    },
   );
 
   // 响应拦截器 - 处理认证错误和token刷新
@@ -59,7 +59,7 @@ export function setupAxiosInterceptors() {
     },
     async (error: AxiosError) => {
       const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
-      
+
       // 如果是401错误且不是认证请求
       if (error.response?.status === 401 && !isAuthRequest(originalRequest.url || '')) {
         // 如果已经重试过，直接登出
@@ -67,35 +67,35 @@ export function setupAxiosInterceptors() {
           handleAuthError();
           return Promise.reject(error);
         }
-        
+
         // 标记为已重试
         originalRequest._retry = true;
-        
+
         // 如果正在刷新token，将请求加入队列
         if (isRefreshing) {
           return new Promise((resolve, reject) => {
             pendingRequests.push({
               resolve,
               reject,
-              config: originalRequest
+              config: originalRequest,
             });
           });
         }
-        
+
         // 尝试刷新token
         isRefreshing = true;
-        
+
         try {
           const newToken = await authService.refreshToken();
-          
+
           if (newToken) {
             // 刷新成功，重新发送原请求
             originalRequest.headers = originalRequest.headers || {};
             originalRequest.headers.Authorization = `Bearer ${newToken}`;
-            
+
             // 处理队列中的请求
             processPendingRequests(newToken);
-            
+
             return axios(originalRequest);
           } else {
             // 刷新失败，登出用户
@@ -110,10 +110,10 @@ export function setupAxiosInterceptors() {
           isRefreshing = false;
         }
       }
-      
+
       // 处理其他错误
       return Promise.reject(error);
-    }
+    },
   );
 }
 
@@ -124,12 +124,10 @@ function processPendingRequests(token: string) {
   pendingRequests.forEach(({ resolve, reject, config }) => {
     config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;
-    
-    axios(config)
-      .then(resolve)
-      .catch(reject);
+
+    axios(config).then(resolve).catch(reject);
   });
-  
+
   pendingRequests = [];
 }
 
@@ -138,14 +136,14 @@ function processPendingRequests(token: string) {
  */
 function handleAuthError() {
   const userStore = useUserStore.getState();
-  
+
   // 设置用户状态为token过期
   userStore.setLoginStatus(LoginStatus.TOKEN_EXPIRED);
   userStore.setUser(null);
-  
+
   // 清除本地存储的认证数据
   authService.logout();
-  
+
   // 清空待处理请求队列
   pendingRequests.forEach(({ reject }) => {
     reject(new Error('认证已过期，请重新登录'));
@@ -162,10 +160,10 @@ function isAuthRequest(url: string): boolean {
     '/auth/register',
     '/auth/refresh',
     '/auth/logout',
-    '/auth/verify'
+    '/auth/verify',
   ];
-  
-  return authPaths.some(path => url.includes(path));
+
+  return authPaths.some((path) => url.includes(path));
 }
 
 /**
@@ -173,7 +171,7 @@ function isAuthRequest(url: string): boolean {
  */
 export function createAuthenticatedAxios() {
   const instance = axios.create();
-  
+
   // 为实例设置请求拦截器
   instance.interceptors.request.use(
     (config) => {
@@ -185,9 +183,9 @@ export function createAuthenticatedAxios() {
     },
     (error) => {
       return Promise.reject(error);
-    }
+    },
   );
-  
+
   return instance;
 }
 
@@ -206,15 +204,15 @@ export function setupNetworkStatusListener() {
     console.log('网络连接已恢复');
     // 可以在这里添加重新连接的逻辑
   };
-  
+
   const handleOffline = () => {
     console.log('网络连接已断开');
     // 可以在这里添加离线处理逻辑
   };
-  
+
   window.addEventListener('online', handleOnline);
   window.addEventListener('offline', handleOffline);
-  
+
   // 返回清理函数
   return () => {
     window.removeEventListener('online', handleOnline);
@@ -228,31 +226,31 @@ export function setupNetworkStatusListener() {
 export async function retryRequest<T>(
   requestFn: () => Promise<T>,
   maxRetries: number = 3,
-  delay: number = 1000
+  delay: number = 1000,
 ): Promise<T> {
   let lastError: any;
-  
+
   for (let i = 0; i <= maxRetries; i++) {
     try {
       return await requestFn();
     } catch (error) {
       lastError = error;
-      
+
       // 如果是最后一次重试，直接抛出错误
       if (i === maxRetries) {
         break;
       }
-      
+
       // 如果是认证错误，不进行重试
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         break;
       }
-      
+
       // 等待指定时间后重试
-      await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+      await new Promise((resolve) => setTimeout(resolve, delay * Math.pow(2, i)));
     }
   }
-  
+
   throw lastError;
 }
 
@@ -261,5 +259,5 @@ export default {
   createAuthenticatedAxios,
   checkNetworkStatus,
   setupNetworkStatusListener,
-  retryRequest
+  retryRequest,
 };

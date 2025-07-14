@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-07-01 11:15:00
  * @FilePath: \XItools\frontend\src\components\ui\PasswordStrengthIndicator.tsx
  * @Description: 密码强度指示器组件
- * 
- * Copyright (c) 2025 by XItools Team, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
 import React from 'react';
@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next';
 import {
   checkPasswordStrength,
   getPasswordStrengthColor,
-  type PasswordStrengthResult
+  type PasswordStrengthResult,
 } from '../../utils/passwordStrength';
 
 interface PasswordStrengthIndicatorProps {
@@ -26,53 +26,50 @@ interface PasswordStrengthIndicatorProps {
 export const PasswordStrengthIndicator: React.FC<PasswordStrengthIndicatorProps> = ({
   password,
   showDetails = true,
-  className = ''
+  className = '',
 }) => {
   const { t } = useTranslation();
-  
+
   // 如果密码为空，不显示指示器
   if (!password) {
     return null;
   }
-  
+
   const result: PasswordStrengthResult = checkPasswordStrength(password);
   const strengthColor = getPasswordStrengthColor(result.strength);
-  
+
   return (
     <div className={`password-strength ${className}`}>
       {/* 强度标签和进度条 */}
       <div className="strength-header">
         <span className="strength-label">
           {t('auth:password.strength')}:
-          <span
-            className={`strength-text ${result.strength}`}
-            style={{ color: strengthColor }}
-          >
+          <span className={`strength-text ${result.strength}`} style={{ color: strengthColor }}>
             {t(`auth:password.${result.strength}`)}
           </span>
         </span>
-        <span className="strength-score">
-          {result.score}/100
-        </span>
+        <span className="strength-score">{result.score}/100</span>
       </div>
-      
+
       <div className="strength-bar">
-        <div 
+        <div
           className={`strength-fill ${result.strength}`}
-          style={{ 
+          style={{
             width: `${result.score}%`,
-            backgroundColor: strengthColor 
+            backgroundColor: strengthColor,
           }}
         />
       </div>
-      
+
       {/* 详细信息 */}
       {showDetails && (
         <div className="strength-details">
           {/* 要求检查 - 简化显示 */}
           <div className="requirements-check">
             <div className="requirement-item">
-              <i className={`icon-${result.requirements.length ? 'check' : 'x'} ${result.requirements.length ? 'success' : 'error'}`}></i>
+              <i
+                className={`icon-${result.requirements.length ? 'check' : 'x'} ${result.requirements.length ? 'success' : 'error'}`}
+              ></i>
               <span>至少6个字符</span>
             </div>
             {(result.requirements.lowercase || result.requirements.uppercase) && (
@@ -94,7 +91,7 @@ export const PasswordStrengthIndicator: React.FC<PasswordStrengthIndicatorProps>
               </div>
             )}
           </div>
-          
+
           {/* 改进建议 */}
           {result.feedback.length > 0 && (
             <div className="strength-feedback">

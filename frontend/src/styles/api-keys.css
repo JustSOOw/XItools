@@ -241,7 +241,8 @@
 }
 
 .key-prefix {
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-family:
+    'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
   font-size: 0.875rem;
   color: var(--text-primary);
   background: none;
@@ -686,7 +687,8 @@
   color: #dc2626;
 }
 
-.form-input, .form-select {
+.form-input,
+.form-select {
   padding: 0.75rem;
   border: 1px solid var(--border-color);
   border-radius: 8px;
@@ -696,7 +698,8 @@
   transition: border-color 0.2s ease;
 }
 
-.form-input:focus, .form-select:focus {
+.form-input:focus,
+.form-select:focus {
   outline: none;
   border-color: var(--accent-color);
   box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1);
@@ -731,7 +734,7 @@
   background: var(--background-hover);
 }
 
-.permission-option input[type="checkbox"] {
+.permission-option input[type='checkbox'] {
   margin: 0.125rem 0 0 0;
 }
 
@@ -931,7 +934,8 @@
 
 .api-key-value {
   flex: 1;
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-family:
+    'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
   font-size: 0.875rem;
   color: var(--text-primary);
   word-break: break-all;
@@ -1089,7 +1093,8 @@
   margin: 0;
   padding: 1rem;
   background: var(--surface);
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-family:
+    'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
   font-size: 0.75rem;
   line-height: 1.6;
   overflow-x: auto;
@@ -1218,37 +1223,37 @@
   .keys-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .list-header {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .info-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .steps-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .links-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .form-actions {
     flex-direction: column-reverse;
   }
-  
+
   .examples-header {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .example-tabs {
     justify-content: center;
   }
@@ -1259,15 +1264,15 @@
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .copy-btn {
     justify-content: center;
   }
-  
+
   .api-key-value {
     font-size: 0.75rem;
   }
-  
+
   .code-block {
     font-size: 0.6rem;
   }

@@ -92,7 +92,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       const end = textarea.selectionEnd;
       const newValue = value.substring(0, start) + '  ' + value.substring(end);
       onChange(newValue);
-      
+
       // 设置光标位置
       setTimeout(() => {
         textarea.selectionStart = textarea.selectionEnd = start + 2;
@@ -110,13 +110,11 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const selectedText = value.substring(start, end);
-    const newValue = 
-      value.substring(0, start) + 
-      before + selectedText + after + 
-      value.substring(end);
-    
+    const newValue =
+      value.substring(0, start) + before + selectedText + after + value.substring(end);
+
     onChange(newValue);
-    
+
     // 设置光标位置
     setTimeout(() => {
       const newCursorPos = start + before.length + selectedText.length + after.length;
@@ -144,9 +142,9 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
             <button
               className={classNames(
                 'px-3 py-1 text-xs font-medium transition-colors',
-                mode === 'edit' 
-                  ? 'bg-primary text-white' 
-                  : 'bg-background text-text-secondary hover:text-text-primary'
+                mode === 'edit'
+                  ? 'bg-primary text-white'
+                  : 'bg-background text-text-secondary hover:text-text-primary',
               )}
               onClick={() => setMode('edit')}
             >
@@ -155,9 +153,9 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
             <button
               className={classNames(
                 'px-3 py-1 text-xs font-medium transition-colors',
-                mode === 'preview' 
-                  ? 'bg-primary text-white' 
-                  : 'bg-background text-text-secondary hover:text-text-primary'
+                mode === 'preview'
+                  ? 'bg-primary text-white'
+                  : 'bg-background text-text-secondary hover:text-text-primary',
               )}
               onClick={() => setMode('preview')}
             >
@@ -166,9 +164,9 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
             <button
               className={classNames(
                 'px-3 py-1 text-xs font-medium transition-colors',
-                mode === 'split' 
-                  ? 'bg-primary text-white' 
-                  : 'bg-background text-text-secondary hover:text-text-primary'
+                mode === 'split'
+                  ? 'bg-primary text-white'
+                  : 'bg-background text-text-secondary hover:text-text-primary',
               )}
               onClick={() => setMode('split')}
             >
@@ -201,9 +199,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
               <span>保存中...</span>
             </div>
           )}
-          {lastSaved && !isSaving && (
-            <span>已保存 {lastSaved.toLocaleTimeString()}</span>
-          )}
+          {lastSaved && !isSaving && <span>已保存 {lastSaved.toLocaleTimeString()}</span>}
           {onSave && !autoSave && (
             <button
               className="px-2 py-1 bg-primary text-white rounded hover:bg-primary/90 transition-colors"
@@ -237,7 +233,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         {(mode === 'preview' || mode === 'split') && (
           <div className="flex-1 p-3 bg-background overflow-y-auto">
             {value ? (
-              <ReactMarkdown 
+              <ReactMarkdown
                 className="prose prose-sm max-w-none text-text-primary
                   prose-headings:text-text-primary prose-p:text-text-primary
                   prose-strong:text-text-primary prose-em:text-text-primary
@@ -250,9 +246,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
                 {value}
               </ReactMarkdown>
             ) : (
-              <div className="text-text-secondary italic">
-                {placeholder}
-              </div>
+              <div className="text-text-secondary italic">{placeholder}</div>
             )}
           </div>
         )}

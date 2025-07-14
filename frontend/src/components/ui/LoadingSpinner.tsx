@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-07-01 16:30:00
  * @FilePath: \XItools\frontend\src\components\ui\LoadingSpinner.tsx
  * @Description: 加载状态指示器组件，提供多种样式的加载动画
- * 
- * Copyright (c) 2025 by XItools Team, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
 import React from 'react';
@@ -30,14 +30,14 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   text,
   overlay = false,
   className = '',
-  color
+  color,
 }) => {
   const { t } = useTranslation('common');
 
   const sizeClasses = {
     small: 'loading-small',
     medium: 'loading-medium',
-    large: 'loading-large'
+    large: 'loading-large',
   };
 
   const renderSpinner = () => {
@@ -50,14 +50,14 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
             <div className="dot"></div>
           </div>
         );
-      
+
       case 'pulse':
         return (
           <div className={`loading-pulse ${sizeClasses[size]}`}>
             <div className="pulse-circle"></div>
           </div>
         );
-      
+
       case 'skeleton':
         return (
           <div className={`loading-skeleton ${sizeClasses[size]}`}>
@@ -66,7 +66,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
             <div className="skeleton-line"></div>
           </div>
         );
-      
+
       default: // spinner
         return (
           <div className={`loading-spinner ${sizeClasses[size]}`}>
@@ -77,25 +77,17 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   };
 
   const content = (
-    <div 
+    <div
       className={`loading-container ${className}`}
-      style={color ? { '--loading-color': color } as React.CSSProperties : undefined}
+      style={color ? ({ '--loading-color': color } as React.CSSProperties) : undefined}
     >
       {renderSpinner()}
-      {text && (
-        <div className="loading-text">
-          {text}
-        </div>
-      )}
+      {text && <div className="loading-text">{text}</div>}
     </div>
   );
 
   if (overlay) {
-    return (
-      <div className="loading-overlay">
-        {content}
-      </div>
-    );
+    return <div className="loading-overlay">{content}</div>;
   }
 
   return content;
@@ -121,7 +113,7 @@ export const PageLoader: React.FC<{
   logo?: boolean;
 }> = ({ text, logo = true }) => {
   const { t } = useTranslation('common');
-  
+
   return (
     <div className="page-loader">
       <div className="page-loader-content">
@@ -130,11 +122,7 @@ export const PageLoader: React.FC<{
             <img src="/logo.svg" alt="XItools" className="logo-image" />
           </div>
         )}
-        <LoadingSpinner 
-          size="large" 
-          type="spinner"
-          text={text || t('loading.text')}
-        />
+        <LoadingSpinner size="large" type="spinner" text={text || t('loading.text')} />
       </div>
     </div>
   );
@@ -148,15 +136,10 @@ export const SkeletonLoader: React.FC<{
 }> = ({ lines = 3, avatar = false, className = '' }) => {
   return (
     <div className={`skeleton-loader ${className}`}>
-      {avatar && (
-        <div className="skeleton-avatar"></div>
-      )}
+      {avatar && <div className="skeleton-avatar"></div>}
       <div className="skeleton-content">
         {Array.from({ length: lines }, (_, index) => (
-          <div 
-            key={index}
-            className={`skeleton-line ${index === lines - 1 ? 'short' : ''}`}
-          ></div>
+          <div key={index} className={`skeleton-line ${index === lines - 1 ? 'short' : ''}`}></div>
         ))}
       </div>
     </div>

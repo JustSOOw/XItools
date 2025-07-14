@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-06-30 16:00:00
  * @FilePath: \XItools\frontend\src\services\BaseApiService.ts
  * @Description: API服务基类
- * 
- * Copyright (c) 2025 by XItools Team, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
 import { apiService, ApiService, ApiError } from '../utils/apiClient';
@@ -30,12 +30,12 @@ export abstract class BaseApiService {
     if (error instanceof ApiError) {
       return error.status >= 500 || error.status === 0;
     }
-    
+
     // 检查网络错误
     if (error.code === 'NETWORK_ERROR' || error.message?.includes('Network Error')) {
       return true;
     }
-    
+
     return false;
   }
 
@@ -45,18 +45,18 @@ export abstract class BaseApiService {
   protected async safeApiCall<T>(
     apiCall: () => Promise<T>,
     defaultValue: T,
-    errorMessage: string
+    errorMessage: string,
   ): Promise<T> {
     try {
       return await apiCall();
     } catch (error) {
       log.error(errorMessage, error);
-      
+
       if (this.isServerUnavailableError(error)) {
         log.warn('服务器不可用，返回默认值');
         return defaultValue;
       }
-      
+
       throw error;
     }
   }
@@ -69,7 +69,7 @@ export abstract class BaseApiService {
     options: {
       failFast?: boolean; // 是否在第一个失败时停止
       defaultValue?: T; // 失败时的默认值
-    } = {}
+    } = {},
   ): Promise<T[]> {
     const { failFast = false, defaultValue } = options;
     const results: T[] = [];
@@ -82,7 +82,7 @@ export abstract class BaseApiService {
         if (failFast) {
           throw error;
         }
-        
+
         if (defaultValue !== undefined) {
           results.push(defaultValue);
         } else {
@@ -103,10 +103,10 @@ export abstract class BaseApiService {
     options: {
       maxConcurrency?: number; // 最大并发数
       defaultValue?: T; // 失败时的默认值
-    } = {}
+    } = {},
   ): Promise<T[]> {
     const { maxConcurrency = 5, defaultValue } = options;
-    
+
     // 如果并发数限制大于等于调用数，直接并行执行
     if (maxConcurrency >= apiCalls.length) {
       const promises = apiCalls.map(async (apiCall) => {
@@ -119,7 +119,7 @@ export abstract class BaseApiService {
           throw error;
         }
       });
-      
+
       return Promise.all(promises);
     }
 
@@ -137,7 +137,7 @@ export abstract class BaseApiService {
           throw error;
         }
       });
-      
+
       const batchResults = await Promise.all(batchPromises);
       results.push(...batchResults);
     }
@@ -151,31 +151,31 @@ export abstract class BaseApiService {
   protected async retryApiCall<T>(
     apiCall: () => Promise<T>,
     maxRetries: number = 3,
-    delay: number = 1000
+    delay: number = 1000,
   ): Promise<T> {
     let lastError: any;
-    
+
     for (let i = 0; i <= maxRetries; i++) {
       try {
         return await apiCall();
       } catch (error) {
         lastError = error;
-        
+
         // 如果是认证错误或客户端错误，不重试
         if (error instanceof ApiError && error.status < 500) {
           break;
         }
-        
+
         // 如果是最后一次重试，直接抛出错误
         if (i === maxRetries) {
           break;
         }
-        
+
         // 等待一段时间后重试
-        await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+        await new Promise((resolve) => setTimeout(resolve, delay * Math.pow(2, i)));
       }
     }
-    
+
     throw lastError;
   }
 
@@ -183,9 +183,12 @@ export abstract class BaseApiService {
    * 分页API调用
    */
   protected async paginatedApiCall<T>(
-    apiCall: (page: number, pageSize: number) => Promise<{ data: T[]; total: number; hasMore: boolean }>,
+    apiCall: (
+      page: number,
+      pageSize: number,
+    ) => Promise<{ data: T[]; total: number; hasMore: boolean }>,
     pageSize: number = 20,
-    maxPages?: number
+    maxPages?: number,
   ): Promise<T[]> {
     const allData: T[] = [];
     let page = 1;
@@ -214,13 +217,13 @@ export abstract class BaseApiService {
   protected async cachedApiCall<T>(
     cacheKey: string,
     apiCall: () => Promise<T>,
-    ttl: number = 5 * 60 * 1000 // 默认5分钟缓存
+    ttl: number = 5 * 60 * 1000, // 默认5分钟缓存
   ): Promise<T> {
     const now = Date.now();
     const cached = this.cache.get(cacheKey);
 
     // 检查缓存是否有效
-    if (cached && (now - cached.timestamp) < cached.ttl) {
+    if (cached && now - cached.timestamp < cached.ttl) {
       log.debug('使用缓存数据:', cacheKey);
       return cached.data;
     }
@@ -262,7 +265,7 @@ export abstract class BaseApiService {
   protected getCacheStats(): { size: number; keys: string[] } {
     return {
       size: this.cache.size,
-      keys: Array.from(this.cache.keys())
+      keys: Array.from(this.cache.keys()),
     };
   }
 

@@ -23,7 +23,7 @@ const CreateSelector: React.FC<CreateSelectorProps> = ({
   isOpen,
   onClose,
   onSelectType,
-  workspaceName = '工作区'
+  workspaceName = '工作区',
 }) => {
   const { t } = useI18n();
 
@@ -37,16 +37,16 @@ const CreateSelector: React.FC<CreateSelectorProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={t('navigation.selectCreateType', { 
+      title={t('navigation.selectCreateType', {
         defaultValue: `在 "${workspaceName}" 中新建`,
-        workspaceName 
+        workspaceName,
       })}
       size="sm"
     >
       <div className="space-y-4">
         <p className="text-text-secondary text-sm mb-6">
-          {t('navigation.selectCreateTypeDescription', { 
-            defaultValue: '请选择要创建的类型：' 
+          {t('navigation.selectCreateTypeDescription', {
+            defaultValue: '请选择要创建的类型：',
           })}
         </p>
 
@@ -66,8 +66,8 @@ const CreateSelector: React.FC<CreateSelectorProps> = ({
                   {t('navigation.createProject', { defaultValue: '创建项目' })}
                 </h3>
                 <p className="text-sm text-text-secondary mt-1">
-                  {t('navigation.createProjectDescription', { 
-                    defaultValue: '项目可以包含多个看板，适合组织相关的任务集合' 
+                  {t('navigation.createProjectDescription', {
+                    defaultValue: '项目可以包含多个看板，适合组织相关的任务集合',
                   })}
                 </p>
               </div>
@@ -88,8 +88,8 @@ const CreateSelector: React.FC<CreateSelectorProps> = ({
                   {t('navigation.createBoard', { defaultValue: '创建看板' })}
                 </h3>
                 <p className="text-sm text-text-secondary mt-1">
-                  {t('navigation.createBoardDescription', { 
-                    defaultValue: '直接在工作区下创建独立的任务看板' 
+                  {t('navigation.createBoardDescription', {
+                    defaultValue: '直接在工作区下创建独立的任务看板',
                   })}
                 </p>
               </div>
@@ -99,10 +99,7 @@ const CreateSelector: React.FC<CreateSelectorProps> = ({
 
         {/* 取消按钮 */}
         <div className="flex justify-end pt-4 border-t border-border/30">
-          <Button
-            variant="ghost"
-            onClick={onClose}
-          >
+          <Button variant="ghost" onClick={onClose}>
             {t('common:actions.cancel')}
           </Button>
         </div>

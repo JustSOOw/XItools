@@ -19,15 +19,13 @@ interface SidebarProps {
   onOpenSettings: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({
-  isCollapsed,
-  onToggleCollapse,
-  onOpenSettings
-}) => {
+const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpenSettings }) => {
   const { t } = useI18n();
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [showCreateSelector, setShowCreateSelector] = useState(false);
-  const [createMenuType, setCreateMenuType] = useState<'workspace' | 'project' | 'board'>('workspace');
+  const [createMenuType, setCreateMenuType] = useState<'workspace' | 'project' | 'board'>(
+    'workspace',
+  );
   const [createMenuParentId, setCreateMenuParentId] = useState<string | undefined>();
   const [selectorWorkspaceId, setSelectorWorkspaceId] = useState<string | undefined>();
 
@@ -49,7 +47,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     selectBoard,
     toggleWorkspaceExpanded,
     toggleProjectExpanded,
-    initialize
+    initialize,
   } = useNavigationStore();
 
   // 初始化数据
@@ -89,7 +87,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       } else if (createMenuType === 'board') {
         if (createMenuParentId) {
           // 检查parentId是项目还是工作区
-          const project = projects.find(p => p.id === createMenuParentId);
+          const project = projects.find((p) => p.id === createMenuParentId);
           if (project) {
             await store.createBoard({ ...data, projectId: createMenuParentId });
           } else {
@@ -110,7 +108,11 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   // 处理重命名
-  const handleRename = async (type: 'workspace' | 'project' | 'board', id: string, newName: string) => {
+  const handleRename = async (
+    type: 'workspace' | 'project' | 'board',
+    id: string,
+    newName: string,
+  ) => {
     try {
       const store = useNavigationStore.getState();
 
@@ -136,7 +138,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     const workspaceBoards = getBoardsByWorkspace(workspace.id);
 
     // 检查是否可以删除工作区（不是默认工作区且没有项目和看板）
-    const canDeleteWorkspace = !workspace.isDefault && workspaceProjects.length === 0 && workspaceBoards.length === 0;
+    const canDeleteWorkspace =
+      !workspace.isDefault && workspaceProjects.length === 0 && workspaceBoards.length === 0;
 
     return (
       <div key={workspace.id}>
@@ -163,7 +166,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 title: t('navigation.deleteWorkspaceTitle', { defaultValue: '删除工作区' }),
                 message: t('navigation.deleteWorkspaceMessage', {
                   defaultValue: `确定要删除工作区"${workspace.name}"吗？此操作不可撤销，将同时删除其下的所有项目和看板。`,
-                  workspaceName: workspace.name
+                  workspaceName: workspace.name,
                 }),
                 type: 'danger',
                 confirmText: t('common:actions.delete'),
@@ -178,7 +181,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   console.error('删除工作区失败:', error);
                   // 这里可以添加错误提示，但不使用alert
                 }
-              }
+              },
             );
           }}
           onRename={(newName) => handleRename('workspace', workspace.id, newName)}
@@ -188,10 +191,10 @@ const Sidebar: React.FC<SidebarProps> = ({
         {isExpanded && !isCollapsed && (
           <div className="ml-4">
             {/* 项目列表 */}
-            {workspaceProjects.map(project => renderProjectItem(project))}
+            {workspaceProjects.map((project) => renderProjectItem(project))}
 
             {/* 工作区直属看板 */}
-            {workspaceBoards.map(board => renderBoardItem(board))}
+            {workspaceBoards.map((board) => renderBoardItem(board))}
           </div>
         )}
       </div>
@@ -232,7 +235,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 title: t('navigation.deleteProjectTitle', { defaultValue: '删除项目' }),
                 message: t('navigation.deleteProjectMessage', {
                   defaultValue: `确定要删除项目"${project.name}"吗？此操作不可撤销，将同时删除其下的所有看板。`,
-                  projectName: project.name
+                  projectName: project.name,
                 }),
                 type: 'danger',
                 confirmText: t('common:actions.delete'),
@@ -246,7 +249,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 } catch (error) {
                   console.error('删除项目失败:', error);
                 }
-              }
+              },
             );
           }}
           onRename={(newName) => handleRename('project', project.id, newName)}
@@ -254,9 +257,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         {/* 展开时显示项目下的看板 */}
         {isExpanded && !isCollapsed && (
-          <div className="ml-4">
-            {projectBoards.map(board => renderBoardItem(board))}
-          </div>
+          <div className="ml-4">{projectBoards.map((board) => renderBoardItem(board))}</div>
         )}
       </div>
     );
@@ -289,14 +290,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                   message: t('navigation.cannotDeleteBoardMessage', {
                     defaultValue: `看板"${board.name}"中还有 ${tasks.length} 个任务，请先删除或移动所有任务后再删除看板。`,
                     boardName: board.name,
-                    taskCount: tasks.length
+                    taskCount: tasks.length,
                   }),
                   type: 'warning',
                   confirmText: t('common:actions.ok'),
                 },
                 () => {
                   // 只有确认按钮，不执行删除操作
-                }
+                },
               );
               return;
             }
@@ -307,7 +308,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 title: t('navigation.deleteBoardTitle', { defaultValue: '删除看板' }),
                 message: t('navigation.deleteBoardMessage', {
                   defaultValue: `确定要删除看板"${board.name}"吗？此操作不可撤销。`,
-                  boardName: board.name
+                  boardName: board.name,
                 }),
                 type: 'danger',
                 confirmText: t('common:actions.delete'),
@@ -321,7 +322,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 } catch (error) {
                   console.error('删除看板失败:', error);
                 }
-              }
+              },
             );
           } catch (error) {
             console.error('检查看板任务失败:', error);
@@ -331,7 +332,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 title: t('navigation.deleteBoardTitle', { defaultValue: '删除看板' }),
                 message: t('navigation.deleteBoardMessage', {
                   defaultValue: `确定要删除看板"${board.name}"吗？此操作不可撤销。`,
-                  boardName: board.name
+                  boardName: board.name,
                 }),
                 type: 'danger',
                 confirmText: t('common:actions.delete'),
@@ -345,7 +346,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 } catch (error) {
                   console.error('删除看板失败:', error);
                 }
-              }
+              },
             );
           }
         }}
@@ -358,14 +359,16 @@ const Sidebar: React.FC<SidebarProps> = ({
     <aside
       className={classNames(
         'sidebar-container transition-all duration-300 ease-in-out flex flex-col',
-        isCollapsed ? 'w-16' : 'w-64'
+        isCollapsed ? 'w-16' : 'w-64',
       )}
     >
       {/* Logo区域 */}
-      <div className={classNames(
-        'h-16 border-b border-border/30 flex items-center px-4 mb-2',
-        isCollapsed ? 'justify-center' : 'justify-between'
-      )}>
+      <div
+        className={classNames(
+          'h-16 border-b border-border/30 flex items-center px-4 mb-2',
+          isCollapsed ? 'justify-center' : 'justify-between',
+        )}
+      >
         {!isCollapsed && <h1 className="text-xl font-bold text-primary">XItools</h1>}
         {isCollapsed && <span className="text-xl font-bold text-primary">XI</span>}
 
@@ -374,22 +377,35 @@ const Sidebar: React.FC<SidebarProps> = ({
           className="p-1.5 rounded-element hover:bg-primary/10 text-text-secondary hover:text-primary transition-all duration-200"
           aria-label={isCollapsed ? '展开侧边栏' : '收起侧边栏'}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-5 w-5"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
             {isCollapsed ? (
-              <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+              <path
+                fillRule="evenodd"
+                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                clipRule="evenodd"
+              />
             ) : (
-              <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+              <path
+                fillRule="evenodd"
+                d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                clipRule="evenodd"
+              />
             )}
           </svg>
         </button>
       </div>
-      
+
       {/* 导航菜单 */}
       <nav className="flex-1 overflow-y-auto py-2">
         <div className="space-y-1 px-3">
           {/* 工作区列表 */}
-          {workspaces.map(workspace => renderWorkspaceItem(workspace))}
-          
+          {workspaces.map((workspace) => renderWorkspaceItem(workspace))}
+
           {/* 新建工作区按钮 */}
           {!isCollapsed && (
             <button
@@ -397,46 +413,47 @@ const Sidebar: React.FC<SidebarProps> = ({
               className="w-full flex items-center px-3 py-2.5 text-text-secondary hover:text-text-primary hover:bg-surface/50 rounded-lg transition-all duration-200"
             >
               <span className="flex-shrink-0">➕</span>
-              <span className="ml-3">{t('navigation.newWorkspace', { defaultValue: '新建工作区' })}</span>
+              <span className="ml-3">
+                {t('navigation.newWorkspace', { defaultValue: '新建工作区' })}
+              </span>
             </button>
           )}
         </div>
       </nav>
-      
+
       {/* 底部控制区 */}
       <div className="p-3 border-t border-border/30 mt-2 space-y-2">
         {/* 用户菜单 */}
         <UserMenu isCollapsed={isCollapsed} />
 
         {/* 设置和主题切换按钮行 */}
-        <div className={classNames(
-          'flex gap-2',
-          isCollapsed ? 'flex-col' : 'flex-row'
-        )}>
+        <div className={classNames('flex gap-2', isCollapsed ? 'flex-col' : 'flex-row')}>
           {/* 设置按钮 - 固定宽度，只显示图标和简短文字 */}
           <button
             onClick={onOpenSettings}
             className={classNames(
               'flex items-center px-3 py-2.5 text-text-secondary hover:text-text-primary hover:bg-surface/50 rounded-lg transition-all duration-200',
-              isCollapsed ? 'w-full justify-center' : 'flex-shrink-0 justify-start'
+              isCollapsed ? 'w-full justify-center' : 'flex-shrink-0 justify-start',
             )}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 flex-shrink-0"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
+                clipRule="evenodd"
+              />
             </svg>
             {!isCollapsed && <span className="ml-3">{t('common:navigation.settings')}</span>}
           </button>
 
           {/* 主题切换按钮 - 占用剩余空间，确保文字完整显示 */}
-          <div className={classNames(
-            isCollapsed ? 'w-full' : 'flex-1 min-w-0'
-          )}>
-            <ThemeToggle
-              showLabel={!isCollapsed}
-              size="md"
-              variant="button"
-              className="w-full"
-            />
+          <div className={classNames(isCollapsed ? 'w-full' : 'flex-1 min-w-0')}>
+            <ThemeToggle showLabel={!isCollapsed} size="md" variant="button" className="w-full" />
           </div>
         </div>
       </div>
@@ -457,7 +474,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           isOpen={showCreateSelector}
           onClose={() => setShowCreateSelector(false)}
           onSelectType={handleSelectorSelect}
-          workspaceName={workspaces.find(w => w.id === selectorWorkspaceId)?.name}
+          workspaceName={workspaces.find((w) => w.id === selectorWorkspaceId)?.name}
         />
       )}
     </aside>

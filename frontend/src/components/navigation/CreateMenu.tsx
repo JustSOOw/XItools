@@ -17,25 +17,15 @@ interface CreateMenuProps {
   onConfirm?: (data: { name: string; description?: string }) => Promise<void>;
 }
 
-const CreateMenu: React.FC<CreateMenuProps> = ({
-  type,
-  parentId,
-  onClose,
-  onConfirm
-}) => {
+const CreateMenu: React.FC<CreateMenuProps> = ({ type, parentId, onClose, onConfirm }) => {
   const { t } = useI18n();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
-    description: ''
+    description: '',
   });
 
-  const {
-    addWorkspace,
-    addProject,
-    addBoard,
-    getCurrentWorkspace
-  } = useNavigationStore();
+  const { addWorkspace, addProject, addBoard, getCurrentWorkspace } = useNavigationStore();
 
   // 获取标题和描述
   const getModalConfig = () => {
@@ -44,17 +34,25 @@ const CreateMenu: React.FC<CreateMenuProps> = ({
         return {
           title: t('navigation.createWorkspace', { defaultValue: '新建工作区' }),
           nameLabel: t('navigation.workspaceName', { defaultValue: '工作区名称' }),
-          namePlaceholder: t('navigation.workspaceNamePlaceholder', { defaultValue: '请输入工作区名称' }),
+          namePlaceholder: t('navigation.workspaceNamePlaceholder', {
+            defaultValue: '请输入工作区名称',
+          }),
           descriptionLabel: t('navigation.workspaceDescription', { defaultValue: '工作区描述' }),
-          descriptionPlaceholder: t('navigation.workspaceDescriptionPlaceholder', { defaultValue: '请输入工作区描述（可选）' })
+          descriptionPlaceholder: t('navigation.workspaceDescriptionPlaceholder', {
+            defaultValue: '请输入工作区描述（可选）',
+          }),
         };
       case 'project':
         return {
           title: t('navigation.createProject', { defaultValue: '新建项目' }),
           nameLabel: t('navigation.projectName', { defaultValue: '项目名称' }),
-          namePlaceholder: t('navigation.projectNamePlaceholder', { defaultValue: '请输入项目名称' }),
+          namePlaceholder: t('navigation.projectNamePlaceholder', {
+            defaultValue: '请输入项目名称',
+          }),
           descriptionLabel: t('navigation.projectDescription', { defaultValue: '项目描述' }),
-          descriptionPlaceholder: t('navigation.projectDescriptionPlaceholder', { defaultValue: '请输入项目描述（可选）' })
+          descriptionPlaceholder: t('navigation.projectDescriptionPlaceholder', {
+            defaultValue: '请输入项目描述（可选）',
+          }),
         };
       case 'board':
         return {
@@ -62,7 +60,9 @@ const CreateMenu: React.FC<CreateMenuProps> = ({
           nameLabel: t('navigation.boardName', { defaultValue: '看板名称' }),
           namePlaceholder: t('navigation.boardNamePlaceholder', { defaultValue: '请输入看板名称' }),
           descriptionLabel: t('navigation.boardDescription', { defaultValue: '看板描述' }),
-          descriptionPlaceholder: t('navigation.boardDescriptionPlaceholder', { defaultValue: '请输入看板描述（可选）' })
+          descriptionPlaceholder: t('navigation.boardDescriptionPlaceholder', {
+            defaultValue: '请输入看板描述（可选）',
+          }),
         };
     }
   };
@@ -84,7 +84,7 @@ const CreateMenu: React.FC<CreateMenuProps> = ({
       if (onConfirm) {
         await onConfirm({
           name: formData.name.trim(),
-          description: formData.description.trim() || undefined
+          description: formData.description.trim() || undefined,
         });
       } else {
         // 否则使用原有的逻辑
@@ -93,11 +93,11 @@ const CreateMenu: React.FC<CreateMenuProps> = ({
             const workspace = await multiBoardService.createWorkspace({
               name: formData.name.trim(),
               description: formData.description.trim() || undefined,
-              isDefault: false
+              isDefault: false,
             });
             addWorkspace({
               ...workspace,
-              type: 'workspace'
+              type: 'workspace',
             });
             break;
 
@@ -108,11 +108,11 @@ const CreateMenu: React.FC<CreateMenuProps> = ({
             const project = await multiBoardService.createProject({
               name: formData.name.trim(),
               description: formData.description.trim() || undefined,
-              workspaceId: parentId
+              workspaceId: parentId,
             });
             addProject({
               ...project,
-              type: 'project'
+              type: 'project',
             });
             break;
 
@@ -120,7 +120,7 @@ const CreateMenu: React.FC<CreateMenuProps> = ({
             // 确定看板的父级容器
             let boardData: any = {
               name: formData.name.trim(),
-              description: formData.description.trim() || undefined
+              description: formData.description.trim() || undefined,
             };
 
             if (parentId) {
@@ -146,7 +146,7 @@ const CreateMenu: React.FC<CreateMenuProps> = ({
             const board = await multiBoardService.createBoard(boardData);
             addBoard({
               ...board,
-              type: 'board'
+              type: 'board',
             });
             break;
         }
@@ -163,19 +163,14 @@ const CreateMenu: React.FC<CreateMenuProps> = ({
 
   // 处理输入变化
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
   return (
-    <Modal
-      isOpen={true}
-      onClose={onClose}
-      title={config.title}
-      size="md"
-    >
+    <Modal isOpen={true} onClose={onClose} title={config.title} size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* 名称输入 */}
         <div>
@@ -210,12 +205,7 @@ const CreateMenu: React.FC<CreateMenuProps> = ({
 
         {/* 按钮组 */}
         <div className="flex justify-end space-x-3 pt-4">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={onClose}
-            disabled={isLoading}
-          >
+          <Button type="button" variant="ghost" onClick={onClose} disabled={isLoading}>
             {t('common:actions.cancel')}
           </Button>
           <Button

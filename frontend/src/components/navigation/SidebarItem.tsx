@@ -33,7 +33,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
   onToggle,
   onAdd,
   onDelete,
-  onRename
+  onRename,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -44,7 +44,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
     if (item.icon) {
       return item.icon;
     }
-    
+
     switch (type) {
       case 'workspace':
         return '🏠';
@@ -163,38 +163,33 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
         'sidebar-item group relative transition-all duration-200',
         `level-${level}`,
         {
-          'selected': isSelected,
-          'collapsed': isCollapsed
-        }
+          selected: isSelected,
+          collapsed: isCollapsed,
+        },
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* 主要内容区域 */}
       <div
-        className={classNames(
-          'flex items-center w-full rounded-lg transition-all duration-300',
-          {
-            'bg-primary/10 text-primary border-l-4 border-primary': isSelected,
-            'hover:bg-surface/50 text-text-secondary hover:text-text-primary hover:shadow-sm hover:scale-[1.02]': !isSelected && !isRenaming,
-            'bg-surface/80': isRenaming
-          }
-        )}
+        className={classNames('flex items-center w-full rounded-lg transition-all duration-300', {
+          'bg-primary/10 text-primary border-l-4 border-primary': isSelected,
+          'hover:bg-surface/50 text-text-secondary hover:text-text-primary hover:shadow-sm hover:scale-[1.02]':
+            !isSelected && !isRenaming,
+          'bg-surface/80': isRenaming,
+        })}
       >
         {/* 左侧内容区域 */}
         <div
           className={classNames(
             'flex items-center min-w-0 px-3 py-2.5 cursor-pointer',
-            isCollapsed ? 'justify-center flex-1' : 'flex-1'
+            isCollapsed ? 'justify-center flex-1' : 'flex-1',
           )}
           onClick={!isRenaming ? handleClick : undefined}
         >
           {/* 图标 */}
           <span
-            className={classNames(
-              'flex-shrink-0 text-lg',
-              item.color && `text-[${item.color}]`
-            )}
+            className={classNames('flex-shrink-0 text-lg', item.color && `text-[${item.color}]`)}
           >
             {getIcon()}
           </span>
@@ -245,7 +240,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
                     (canDelete && onDelete ? 32 : 0) + // 删除按钮
                     8 // 间距
                   }px`
-                : `${type !== 'board' ? 32 : 0}px` // 只保留展开按钮的空间
+                : `${type !== 'board' ? 32 : 0}px`, // 只保留展开按钮的空间
             }}
           >
             {/* 展开/收起按钮 - 始终显示 */}

@@ -38,25 +38,29 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
   });
 
   // 根据ID获取工作区（需要验证所有权）
-  fastify.get('/workspaces/:id', {
-    preHandler: [authMiddleware, createOwnershipVerifier('workspace')]
-  }, async (request, reply) => {
-    try {
-      const { id } = request.params as { id: string };
-      const workspace = await workspaceService.getWorkspaceById(id);
+  fastify.get(
+    '/workspaces/:id',
+    {
+      preHandler: [authMiddleware, createOwnershipVerifier('workspace')],
+    },
+    async (request, reply) => {
+      try {
+        const { id } = request.params as { id: string };
+        const workspace = await workspaceService.getWorkspaceById(id);
 
-      if (!workspace) {
-        reply.status(404);
-        return { success: false, error: '工作区不存在' };
+        if (!workspace) {
+          reply.status(404);
+          return { success: false, error: '工作区不存在' };
+        }
+
+        return { success: true, data: workspace };
+      } catch (error) {
+        console.error('获取工作区失败:', error);
+        reply.status(500);
+        return { success: false, error: '获取工作区失败' };
       }
-
-      return { success: true, data: workspace };
-    } catch (error) {
-      console.error('获取工作区失败:', error);
-      reply.status(500);
-      return { success: false, error: '获取工作区失败' };
-    }
-  });
+    },
+  );
 
   // 创建工作区
   fastify.post('/workspaces', { preHandler: authMiddleware }, async (request, reply) => {
@@ -80,64 +84,76 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
   });
 
   // 更新工作区
-  fastify.put('/workspaces/:id', {
-    preHandler: [authMiddleware, createOwnershipVerifier('workspace')]
-  }, async (request, reply) => {
-    try {
-      const { id } = request.params as { id: string };
-      const updateData = workspaceUpdateSchema.parse(request.body);
-      const workspace = await workspaceService.updateWorkspace(id, updateData);
+  fastify.put(
+    '/workspaces/:id',
+    {
+      preHandler: [authMiddleware, createOwnershipVerifier('workspace')],
+    },
+    async (request, reply) => {
+      try {
+        const { id } = request.params as { id: string };
+        const updateData = workspaceUpdateSchema.parse(request.body);
+        const workspace = await workspaceService.updateWorkspace(id, updateData);
 
-      // 广播工作区更新事件
-      const io = fastify.io;
-      if (io) {
-        io.emit('workspace_updated', workspace);
+        // 广播工作区更新事件
+        const io = fastify.io;
+        if (io) {
+          io.emit('workspace_updated', workspace);
+        }
+
+        return { success: true, data: workspace };
+      } catch (error) {
+        console.error('更新工作区失败:', error);
+        reply.status(500);
+        return { success: false, error: error instanceof Error ? error.message : '更新工作区失败' };
       }
-
-      return { success: true, data: workspace };
-    } catch (error) {
-      console.error('更新工作区失败:', error);
-      reply.status(500);
-      return { success: false, error: error instanceof Error ? error.message : '更新工作区失败' };
-    }
-  });
+    },
+  );
 
   // 删除工作区
-  fastify.delete('/workspaces/:id', {
-    preHandler: [authMiddleware, createOwnershipVerifier('workspace')]
-  }, async (request, reply) => {
-    try {
-      const { id } = request.params as { id: string };
-      await workspaceService.deleteWorkspace(id);
+  fastify.delete(
+    '/workspaces/:id',
+    {
+      preHandler: [authMiddleware, createOwnershipVerifier('workspace')],
+    },
+    async (request, reply) => {
+      try {
+        const { id } = request.params as { id: string };
+        await workspaceService.deleteWorkspace(id);
 
-      // 广播工作区删除事件
-      const io = fastify.io;
-      if (io) {
-        io.emit('workspace_deleted', { workspaceId: id });
+        // 广播工作区删除事件
+        const io = fastify.io;
+        if (io) {
+          io.emit('workspace_deleted', { workspaceId: id });
+        }
+
+        return { success: true, message: '工作区删除成功' };
+      } catch (error) {
+        console.error('删除工作区失败:', error);
+        reply.status(500);
+        return { success: false, error: error instanceof Error ? error.message : '删除工作区失败' };
       }
-
-      return { success: true, message: '工作区删除成功' };
-    } catch (error) {
-      console.error('删除工作区失败:', error);
-      reply.status(500);
-      return { success: false, error: error instanceof Error ? error.message : '删除工作区失败' };
-    }
-  });
+    },
+  );
 
   // 获取工作区统计信息
-  fastify.get('/workspaces/:id/stats', {
-    preHandler: [authMiddleware, createOwnershipVerifier('workspace')]
-  }, async (request, reply) => {
-    try {
-      const { id } = request.params as { id: string };
-      const stats = await workspaceService.getWorkspaceStats(id);
-      return { success: true, data: stats };
-    } catch (error) {
-      console.error('获取工作区统计失败:', error);
-      reply.status(500);
-      return { success: false, error: '获取工作区统计失败' };
-    }
-  });
+  fastify.get(
+    '/workspaces/:id/stats',
+    {
+      preHandler: [authMiddleware, createOwnershipVerifier('workspace')],
+    },
+    async (request, reply) => {
+      try {
+        const { id } = request.params as { id: string };
+        const stats = await workspaceService.getWorkspaceStats(id);
+        return { success: true, data: stats };
+      } catch (error) {
+        console.error('获取工作区统计失败:', error);
+        reply.status(500);
+        return { success: false, error: '获取工作区统计失败' };
+      }
+    },
+  );
 
   // 初始化默认数据
   fastify.post('/workspaces/initialize', { preHandler: authMiddleware }, async (request, reply) => {

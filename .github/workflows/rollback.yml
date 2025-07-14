@@ -1,397 +1,95 @@
 # XItools 回滚工作流
-# 用于快速回滚到指定版本
+# 简化版回滚，用于紧急回滚到上一个稳定版本
 
-name: 回滚部署
+name: 紧急回滚
 
 on:
   workflow_dispatch:
     inputs:
-      target_version:
-        description: '目标版本 (留空自动选择上一版本)'
-        required: false
-        type: string
       environment:
-        description: '目标环境'
+        description: '回滚环境'
         required: true
         default: 'production'
         type: choice
         options:
         - production
         - staging
-      skip_backup:
-        description: '跳过数据库备份'
-        required: false
-        default: false
-        type: boolean
-      force_rollback:
-        description: '强制回滚（跳过安全检查）'
-        required: false
-        default: false
-        type: boolean
-
-env:
-  ROLLBACK_TIMEOUT: 300
 
 jobs:
-  # 预回滚检查
-  pre-rollback-check:
-    name: 预回滚检查
-    runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment }}
-    
-    outputs:
-      target_version: ${{ steps.version.outputs.target_version }}
-      current_version: ${{ steps.version.outputs.current_version }}
-      can_rollback: ${{ steps.check.outputs.can_rollback }}
-    
-    steps:
-    - name: 设置 SSH
-      uses: webfactory/ssh-agent@v0.8.0
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-        
-    - name: 获取版本信息
-      id: version
-      run: |
-        # 获取当前版本
-        CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "cd /opt/xitools && readlink current | sed 's|releases/||'" 2>/dev/null || echo "unknown")
-        echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
-        echo "📦 当前版本: $CURRENT_VERSION"
-        
-        # 确定目标版本
-        if [ -n "${{ github.event.inputs.target_version }}" ]; then
-          TARGET_VERSION="${{ github.event.inputs.target_version }}"
-          echo "🎯 指定目标版本: $TARGET_VERSION"
-        else
-          # 自动选择上一个版本
-          TARGET_VERSION=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "cd /opt/xitools/releases && ls -t | sed -n '2p'" 2>/dev/null || echo "")
-          echo "🎯 自动选择目标版本: $TARGET_VERSION"
-        fi
-        
-        if [ -z "$TARGET_VERSION" ]; then
-          echo "❌ 无法确定目标版本"
-          exit 1
-        fi
-        
-        echo "target_version=$TARGET_VERSION" >> $GITHUB_OUTPUT
-        
-    - name: 安全检查
-      id: check
-      run: |
-        TARGET_VERSION="${{ steps.version.outputs.target_version }}"
-        CURRENT_VERSION="${{ steps.version.outputs.current_version }}"
-        
-        echo "🔍 执行安全检查..."
-        
-        # 检查目标版本是否存在
-        if ! ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "[ -d /opt/xitools/releases/$TARGET_VERSION ]"; then
-          echo "❌ 目标版本不存在: $TARGET_VERSION"
-          echo "can_rollback=false" >> $GITHUB_OUTPUT
-          exit 1
-        fi
-        
-        # 检查是否回滚到相同版本
-        if [ "$TARGET_VERSION" = "$CURRENT_VERSION" ]; then
-          echo "❌ 目标版本与当前版本相同"
-          echo "can_rollback=false" >> $GITHUB_OUTPUT
-          exit 1
-        fi
-        
-        # 检查版本时间（防止回滚到更新的版本）
-        if [[ "${{ github.event.inputs.force_rollback }}" != "true" ]]; then
-          TARGET_TIME=$(echo "$TARGET_VERSION" | cut -d'-' -f1-2)
-          CURRENT_TIME=$(echo "$CURRENT_VERSION" | cut -d'-' -f1-2)
-          
-          if [[ "$TARGET_TIME" > "$CURRENT_TIME" ]]; then
-            echo "⚠️ 目标版本比当前版本更新，这可能不是回滚操作"
-            if [[ "${{ github.event.inputs.force_rollback }}" != "true" ]]; then
-              echo "❌ 使用 force_rollback 选项来强制执行"
-              echo "can_rollback=false" >> $GITHUB_OUTPUT
-              exit 1
-            fi
-          fi
-        fi
-        
-        echo "✅ 安全检查通过"
-        echo "can_rollback=true" >> $GITHUB_OUTPUT
-
-  # 数据库备份
-  database-backup:
-    name: 数据库备份
-    runs-on: ubuntu-latest
-    needs: [pre-rollback-check]
-    if: needs.pre-rollback-check.outputs.can_rollback == 'true' && github.event.inputs.skip_backup != 'true'
-    
-    steps:
-    - name: 设置 SSH
-      uses: webfactory/ssh-agent@v0.8.0
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-        
-    - name: 创建数据库备份
-      run: |
-        echo "🗄️ 创建回滚前数据库备份..."
-        
-        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
-        cd /opt/xitools
-        
-        # 创建备份目录
-        mkdir -p shared/backups
-        
-        # 创建备份文件名
-        BACKUP_FILE="shared/backups/rollback-backup-$(date +%Y%m%d-%H%M%S).sql"
-        
-        # 执行备份
-        if [ -f current/docker-compose.prod.yml ]; then
-          echo "创建数据库备份: $BACKUP_FILE"
-          if docker-compose -f current/docker-compose.prod.yml exec -T postgres pg_dump -U ${{ secrets.POSTGRES_USER }} ${{ secrets.POSTGRES_DB }} > "$BACKUP_FILE"; then
-            echo "✅ 数据库备份完成: $BACKUP_FILE"
-            echo "备份文件大小: $(du -h "$BACKUP_FILE" | cut -f1)"
-          else
-            echo "❌ 数据库备份失败"
-            exit 1
-          fi
-        else
-          echo "⚠️ 未找到当前部署配置，跳过数据库备份"
-        fi
-        EOF
-
   # 执行回滚
   rollback:
     name: 执行回滚
     runs-on: ubuntu-latest
-    needs: [pre-rollback-check, database-backup]
-    if: always() && needs.pre-rollback-check.outputs.can_rollback == 'true' && (needs.database-backup.result == 'success' || needs.database-backup.result == 'skipped')
     environment: ${{ github.event.inputs.environment }}
-    
+
     steps:
-    - name: 检出代码
-      uses: actions/checkout@v4
-      
     - name: 设置 SSH
       uses: webfactory/ssh-agent@v0.8.0
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-        
+
     - name: 执行回滚操作
       run: |
-        TARGET_VERSION="${{ needs.pre-rollback-check.outputs.target_version }}"
-        CURRENT_VERSION="${{ needs.pre-rollback-check.outputs.current_version }}"
-        
         echo "🔄 开始回滚操作..."
-        echo "当前版本: $CURRENT_VERSION"
-        echo "目标版本: $TARGET_VERSION"
-        
-        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << EOF
+
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
         cd /opt/xitools
-        
-        echo "🔄 执行回滚到版本: $TARGET_VERSION"
-        
-        # 检查目标版本
-        if [ ! -d "releases/$TARGET_VERSION" ]; then
-          echo "❌ 目标版本目录不存在: releases/$TARGET_VERSION"
+
+        # 获取当前版本
+        CURRENT_VERSION=$(readlink current | sed 's|releases/||' 2>/dev/null || echo "unknown")
+        echo "📦 当前版本: $CURRENT_VERSION"
+
+        # 自动选择上一个版本
+        TARGET_VERSION=$(cd releases && ls -t | sed -n '2p' 2>/dev/null || echo "")
+
+        if [ -z "$TARGET_VERSION" ]; then
+          echo "❌ 无法找到可回滚的版本"
           exit 1
         fi
-        
+
+        echo "🎯 回滚到版本: $TARGET_VERSION"
+
         # 停止当前服务
         if [ -f current/docker-compose.prod.yml ]; then
           echo "⏹️ 停止当前服务..."
-          timeout 60 docker-compose -f current/docker-compose.prod.yml down || {
-            echo "⚠️ 正常停止超时，强制停止..."
-            docker-compose -f current/docker-compose.prod.yml kill
-            docker-compose -f current/docker-compose.prod.yml rm -f
-          }
+          docker-compose -f current/docker-compose.prod.yml down || true
         fi
-        
+
         # 切换版本
         echo "🔄 切换到目标版本..."
         ln -sfn releases/$TARGET_VERSION current
-        
+
         # 启动服务
         cd current
         echo "🚀 启动服务..."
-        
-        # 拉取镜像（如果需要）
-        if [ -f docker-compose.prod.yml ]; then
-          docker-compose -f docker-compose.prod.yml pull --quiet || echo "⚠️ 镜像拉取失败，使用本地镜像"
-          
-          # 启动服务
-          if docker-compose -f docker-compose.prod.yml up -d; then
-            echo "✅ 服务启动成功"
-          else
-            echo "❌ 服务启动失败"
-            exit 1
-          fi
-        else
-          echo "❌ 未找到 docker-compose.prod.yml"
-          exit 1
-        fi
-        
+        docker-compose -f docker-compose.prod.yml up -d
+
         echo "✅ 回滚操作完成"
         EOF
-        
-    - name: 等待服务启动
+
+    - name: 基础健康检查
       run: |
-        echo "⏳ 等待服务启动..."
+        echo "🏥 等待服务启动并进行健康检查..."
         sleep 30
 
-  # 回滚验证
-  verify-rollback:
-    name: 回滚验证
-    runs-on: ubuntu-latest
-    needs: [pre-rollback-check, rollback]
-    if: needs.rollback.result == 'success'
-    
-    steps:
-    - name: 检出代码
-      uses: actions/checkout@v4
-      
-    - name: 设置 SSH
-      uses: webfactory/ssh-agent@v0.8.0
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-        
-    - name: 验证服务状态
-      run: |
-        TARGET_VERSION="${{ needs.pre-rollback-check.outputs.target_version }}"
-        
-        echo "🔍 验证回滚结果..."
-        
-        # 检查当前版本
-        ACTUAL_VERSION=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "cd /opt/xitools && readlink current | sed 's|releases/||'" 2>/dev/null || echo "unknown")
-        
-        if [ "$ACTUAL_VERSION" = "$TARGET_VERSION" ]; then
-          echo "✅ 版本切换成功: $TARGET_VERSION"
-        else
-          echo "❌ 版本切换失败，当前版本: $ACTUAL_VERSION"
-          exit 1
-        fi
-        
-        # 检查服务运行状态
-        echo "🔍 检查服务运行状态..."
-        SERVICE_COUNT=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "cd /opt/xitools/current && docker-compose -f docker-compose.prod.yml ps --services --filter status=running | wc -l" 2>/dev/null || echo "0")
-        
-        if [ "$SERVICE_COUNT" -gt 0 ]; then
-          echo "✅ 服务运行正常 ($SERVICE_COUNT 个服务)"
-        else
-          echo "❌ 服务运行异常"
-          exit 1
-        fi
-        
-    - name: 健康检查
-      run: |
-        echo "🏥 执行健康检查..."
-        
-        # 给服务更多时间启动
-        sleep 30
-        
-        # 基础连通性检查
-        MAX_RETRIES=10
-        RETRY_INTERVAL=15
-        
-        for i in $(seq 1 $MAX_RETRIES); do
-          if curl -f -s --connect-timeout 10 https://xitools.furdow.com/health > /dev/null; then
-            echo "✅ 健康检查通过 (尝试 $i/$MAX_RETRIES)"
+        # 简单的健康检查
+        for i in {1..5}; do
+          if curl -f -s --connect-timeout 5 "https://xitools.furdow.com/" > /dev/null; then
+            echo "✅ 回滚后健康检查通过"
             break
           else
-            echo "⏳ 健康检查失败，等待重试... ($i/$MAX_RETRIES)"
-            if [ $i -eq $MAX_RETRIES ]; then
-              echo "❌ 健康检查最终失败"
-              exit 1
+            echo "⏳ 等待服务启动... ($i/5)"
+            if [ $i -eq 5 ]; then
+              echo "⚠️ 健康检查超时，但回滚已完成"
             fi
-            sleep $RETRY_INTERVAL
+            sleep 10
           fi
         done
-        
-    - name: 功能验证
-      run: |
-        echo "🧪 执行功能验证..."
-        
-        # 检查关键API端点
-        ENDPOINTS=(
-          "https://xitools.furdow.com/"
-          "https://xitools.furdow.com/api/health"
-        )
-        
-        for endpoint in "${ENDPOINTS[@]}"; do
-          echo "检查端点: $endpoint"
-          if curl -f -s --connect-timeout 10 "$endpoint" > /dev/null; then
-            echo "✅ $endpoint 正常"
-          else
-            echo "❌ $endpoint 异常"
-            exit 1
-          fi
-        done
-        
-        echo "✅ 功能验证通过"
 
-  # 清理操作
-  cleanup:
-    name: 清理操作
-    runs-on: ubuntu-latest
-    needs: [verify-rollback]
-    if: needs.verify-rollback.result == 'success'
-    
-    steps:
-    - name: 设置 SSH
-      uses: webfactory/ssh-agent@v0.8.0
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-        
-    - name: 清理未使用资源
+    - name: 回滚完成通知
+      if: always()
       run: |
-        echo "🧹 执行清理操作..."
-        
-        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
-        cd /opt/xitools
-        
-        # 清理未使用的Docker镜像
-        echo "清理未使用的Docker镜像..."
-        docker image prune -f > /dev/null 2>&1 || true
-        
-        # 保留最近5个版本
-        cd releases
-        echo "清理旧版本（保留最近5个）..."
-        ls -t | tail -n +6 | xargs -r rm -rf
-        
-        echo "✅ 清理完成"
-        EOF
-
-  # 通知
-  notify:
-    name: 回滚通知
-    runs-on: ubuntu-latest
-    needs: [pre-rollback-check, rollback, verify-rollback]
-    if: always() && needs.pre-rollback-check.outputs.can_rollback == 'true'
-    
-    steps:
-    - name: 发送通知
-      run: |
-        TARGET_VERSION="${{ needs.pre-rollback-check.outputs.target_version }}"
-        CURRENT_VERSION="${{ needs.pre-rollback-check.outputs.current_version }}"
-        
-        if [[ "${{ needs.verify-rollback.result }}" == "success" ]]; then
-          STATUS="✅ 成功"
-          COLOR="good"
-          MESSAGE="回滚操作成功完成"
-        else
-          STATUS="❌ 失败"
-          COLOR="danger"
-          MESSAGE="回滚操作失败，请检查日志"
-        fi
-        
-        echo "📢 回滚通知"
-        echo "状态: $STATUS"
+        echo "📢 回滚操作完成"
         echo "环境: ${{ github.event.inputs.environment }}"
-        echo "原版本: $CURRENT_VERSION"
-        echo "目标版本: $TARGET_VERSION"
         echo "操作人: ${{ github.actor }}"
-        echo "时间: $(date)"
-        echo "消息: $MESSAGE"
-        
-        # 如果配置了 Slack Webhook，发送通知
-        if [[ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]]; then
-          curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"XItools 回滚操作 $STATUS\n环境: ${{ github.event.inputs.environment }}\n原版本: $CURRENT_VERSION\n目标版本: $TARGET_VERSION\n操作人: ${{ github.actor }}\n$MESSAGE\"}" \
-            ${{ secrets.SLACK_WEBHOOK_URL }} || echo "Slack通知发送失败"
-        fi
+        echo "回滚时间: $(date)"

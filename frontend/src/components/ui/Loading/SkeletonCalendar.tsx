@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-01-27 20:10:00
  * @FilePath: \XItools\frontend\src\components\ui\Loading\SkeletonCalendar.tsx
  * @Description: 日历视图骨架屏组件 - 用于日历视图加载时的占位显示
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 
 import React from 'react';
@@ -57,11 +57,7 @@ const SkeletonCalendar: React.FC<SkeletonCalendarProps> = ({
       </div>
 
       {/* 日历网格 */}
-      {viewType === 'month' ? (
-        <SkeletonMonthGrid />
-      ) : (
-        <SkeletonWeekGrid />
-      )}
+      {viewType === 'month' ? <SkeletonMonthGrid /> : <SkeletonWeekGrid />}
     </div>
   );
 };
@@ -78,8 +74,8 @@ const SkeletonMonthGrid: React.FC = () => {
       {Array.from({ length: weeks }, (_, weekIndex) => (
         <div key={weekIndex} className="grid grid-cols-7 border-b border-border/10 last:border-b-0">
           {Array.from({ length: daysPerWeek }, (_, dayIndex) => (
-            <SkeletonCalendarDay 
-              key={dayIndex} 
+            <SkeletonCalendarDay
+              key={dayIndex}
               hasEvents={Math.random() > 0.6}
               isCurrentMonth={Math.random() > 0.2}
             />
@@ -97,8 +93,8 @@ const SkeletonWeekGrid: React.FC = () => {
   return (
     <div className="grid grid-cols-7 flex-1">
       {Array.from({ length: 7 }, (_, dayIndex) => (
-        <SkeletonCalendarDay 
-          key={dayIndex} 
+        <SkeletonCalendarDay
+          key={dayIndex}
           hasEvents={Math.random() > 0.4}
           isCurrentMonth={true}
           isWeekView={true}
@@ -120,26 +116,20 @@ const SkeletonCalendarDay: React.FC<{
   const opacity = isCurrentMonth ? 'opacity-100' : 'opacity-50';
 
   return (
-    <div className={classNames(
-      'border-r border-border/10 last:border-r-0 p-2',
-      dayHeight,
-      opacity
-    )}>
+    <div
+      className={classNames('border-r border-border/10 last:border-r-0 p-2', dayHeight, opacity)}
+    >
       {/* 日期数字骨架 */}
       <div className="flex justify-between items-start mb-2">
         <div className="w-6 h-6 bg-text-secondary/20 rounded-full"></div>
-        {isWeekView && (
-          <div className="w-4 h-4 bg-text-secondary/15 rounded"></div>
-        )}
+        {isWeekView && <div className="w-4 h-4 bg-text-secondary/15 rounded"></div>}
       </div>
 
       {/* 任务事件骨架 */}
       {hasEvents && (
         <div className="space-y-1">
           <div className="h-4 bg-primary/20 rounded-sm w-full"></div>
-          {Math.random() > 0.5 && (
-            <div className="h-4 bg-secondary/20 rounded-sm w-3/4"></div>
-          )}
+          {Math.random() > 0.5 && <div className="h-4 bg-secondary/20 rounded-sm w-3/4"></div>}
           {isWeekView && Math.random() > 0.7 && (
             <div className="h-4 bg-accent/20 rounded-sm w-1/2"></div>
           )}

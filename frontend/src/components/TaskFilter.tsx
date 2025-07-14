@@ -55,15 +55,11 @@ const TaskFilter: React.FC<TaskFilterProps> = ({
 
   // 获取所有可用的负责人选项
   const assigneeOptions = Array.from(
-    new Set(
-      tasks
-        .map(task => task.assignee)
-        .filter(assignee => assignee && assignee.trim())
-    )
+    new Set(tasks.map((task) => task.assignee).filter((assignee) => assignee && assignee.trim())),
   ).sort();
 
   // 检查是否有活动的筛选条件（排除搜索文本）
-  const hasActiveFilters = Object.keys(filterOptions).some(key => {
+  const hasActiveFilters = Object.keys(filterOptions).some((key) => {
     // 排除搜索文本，只检查筛选器面板中的条件
     if (key === 'searchText') return false;
 
@@ -76,13 +72,13 @@ const TaskFilter: React.FC<TaskFilterProps> = ({
 
   const handlePriorityChange = (priority: string) => {
     onFilterChange({
-      priority: priority === filterOptions.priority ? undefined : priority
+      priority: priority === filterOptions.priority ? undefined : priority,
     });
   };
 
   const handleAssigneeChange = (assignee: string) => {
     onFilterChange({
-      assignee: assignee === filterOptions.assignee ? undefined : assignee
+      assignee: assignee === filterOptions.assignee ? undefined : assignee,
     });
   };
 
@@ -95,16 +91,12 @@ const TaskFilter: React.FC<TaskFilterProps> = ({
           'flex items-center space-x-2 px-3 py-2 text-sm border rounded-lg transition-colors',
           {
             'bg-primary text-white border-primary': hasActiveFilters,
-            'bg-surface text-text-secondary border-border hover:border-primary/50': !hasActiveFilters,
-          }
+            'bg-surface text-text-secondary border-border hover:border-primary/50':
+              !hasActiveFilters,
+          },
         )}
       >
-        <svg
-          className="h-4 w-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
+        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -115,16 +107,18 @@ const TaskFilter: React.FC<TaskFilterProps> = ({
         <span>{t('common:actions.filter')}</span>
         {hasActiveFilters && (
           <span className="inline-flex items-center justify-center w-5 h-5 text-xs bg-white/20 rounded-full">
-            {Object.keys(filterOptions).filter(key => {
-              // 排除搜索文本，只计算筛选器面板中的条件
-              if (key === 'searchText') return false;
+            {
+              Object.keys(filterOptions).filter((key) => {
+                // 排除搜索文本，只计算筛选器面板中的条件
+                if (key === 'searchText') return false;
 
-              const value = filterOptions[key as keyof FilterOptions];
-              if (Array.isArray(value)) {
-                return value.length > 0;
-              }
-              return value !== undefined && value !== null && value !== '';
-            }).length}
+                const value = filterOptions[key as keyof FilterOptions];
+                if (Array.isArray(value)) {
+                  return value.length > 0;
+                }
+                return value !== undefined && value !== null && value !== '';
+              }).length
+            }
           </span>
         )}
         <svg
@@ -135,12 +129,7 @@ const TaskFilter: React.FC<TaskFilterProps> = ({
           stroke="currentColor"
           viewBox="0 0 24 24"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M19 9l-7 7-7-7"
-          />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
 
@@ -151,14 +140,11 @@ const TaskFilter: React.FC<TaskFilterProps> = ({
             {/* 筛选器头部 */}
             <div className="pb-3 border-b border-border">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-text-primary">{t('task:filters.title', { defaultValue: '筛选条件' })}</span>
+                <span className="text-sm font-medium text-text-primary">
+                  {t('task:filters.title', { defaultValue: '筛选条件' })}
+                </span>
                 {hasActiveFilters && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onClearFilters}
-                    className="text-xs"
-                  >
+                  <Button variant="ghost" size="sm" onClick={onClearFilters} className="text-xs">
                     {t('common:actions.clearAll')}
                   </Button>
                 )}
@@ -167,16 +153,20 @@ const TaskFilter: React.FC<TaskFilterProps> = ({
               {/* 任务统计 */}
               <div className="text-xs text-text-secondary">
                 {displayTasks.length !== tasks.length ? (
-                  <>{t('task:statistics.showing', {
-                    displayed: displayTasks.length,
-                    total: tasks.length,
-                    defaultValue: `显示 ${displayTasks.length} / ${tasks.length} 个任务`
-                  })}</>
+                  <>
+                    {t('task:statistics.showing', {
+                      displayed: displayTasks.length,
+                      total: tasks.length,
+                      defaultValue: `显示 ${displayTasks.length} / ${tasks.length} 个任务`,
+                    })}
+                  </>
                 ) : (
-                  <>{t('task:statistics.total', {
-                    count: tasks.length,
-                    defaultValue: `共 ${tasks.length} 个任务`
-                  })}</>
+                  <>
+                    {t('task:statistics.total', {
+                      count: tasks.length,
+                      defaultValue: `共 ${tasks.length} 个任务`,
+                    })}
+                  </>
                 )}
               </div>
             </div>
@@ -187,7 +177,7 @@ const TaskFilter: React.FC<TaskFilterProps> = ({
                 {t('task:fields.priority')}
               </label>
               <div className="flex flex-wrap gap-2">
-                {priorityOptions.map(priority => (
+                {priorityOptions.map((priority) => (
                   <button
                     key={priority}
                     onClick={() => handlePriorityChange(priority)}
@@ -195,8 +185,9 @@ const TaskFilter: React.FC<TaskFilterProps> = ({
                       'px-3 py-1 text-xs rounded-full border transition-colors',
                       {
                         'bg-primary text-white border-primary': filterOptions.priority === priority,
-                        'bg-surface text-text-secondary border-border hover:border-primary/50': filterOptions.priority !== priority,
-                      }
+                        'bg-surface text-text-secondary border-border hover:border-primary/50':
+                          filterOptions.priority !== priority,
+                      },
                     )}
                   >
                     {t(`task:priority.${priority.toLowerCase()}`)}
@@ -212,16 +203,18 @@ const TaskFilter: React.FC<TaskFilterProps> = ({
                   {t('task:fields.assignee')}
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {assigneeOptions.map(assignee => (
+                  {assigneeOptions.map((assignee) => (
                     <button
                       key={assignee}
                       onClick={() => handleAssigneeChange(assignee)}
                       className={classNames(
                         'px-3 py-1 text-xs rounded-full border transition-colors',
                         {
-                          'bg-primary text-white border-primary': filterOptions.assignee === assignee,
-                          'bg-surface text-text-secondary border-border hover:border-primary/50': filterOptions.assignee !== assignee,
-                        }
+                          'bg-primary text-white border-primary':
+                            filterOptions.assignee === assignee,
+                          'bg-surface text-text-secondary border-border hover:border-primary/50':
+                            filterOptions.assignee !== assignee,
+                        },
                       )}
                     >
                       {assignee}

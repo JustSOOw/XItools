@@ -16,7 +16,7 @@ export interface Task {
   dueDate?: string | null;
   assignee?: string | null;
   color?: string | null; // 任务卡片颜色
-  tags?: string[] | Array<{id: string; name: string; createdAt: string; updatedAt: string}>;
+  tags?: string[] | Array<{ id: string; name: string; createdAt: string; updatedAt: string }>;
   parentId?: string | null;
   subTasks?: Task[];
   acceptanceCriteria?: string;
@@ -39,4 +39,4 @@ export type PartialTask = Omit<Task, 'id' | 'createdAt' | 'updatedAt'> & {
 /**
  * 更新任务时的部分任务对象
  */
-export type TaskUpdate = Partial<Omit<Task, 'id' | 'createdAt'>>; 
+export type TaskUpdate = Partial<Omit<Task, 'id' | 'createdAt'>>;

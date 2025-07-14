@@ -15,19 +15,23 @@ declare module 'fastify' {
  */
 export default async function columnRoutes(fastify: FastifyInstance) {
   // 获取指定看板的所有列（需要验证看板所有权）
-  fastify.get('/boards/:boardId/columns', {
-    preHandler: [authMiddleware, createOwnershipVerifier('board')]
-  }, async (request, reply) => {
-    try {
-      const { boardId } = request.params as { boardId: string };
-      const columns = await columnService.getColumnsByBoard(boardId);
-      return { success: true, data: columns };
-    } catch (error) {
-      console.error('获取看板列失败:', error);
-      reply.status(500);
-      return { success: false, error: '获取看板列失败' };
-    }
-  });
+  fastify.get(
+    '/boards/:boardId/columns',
+    {
+      preHandler: [authMiddleware, createOwnershipVerifier('board')],
+    },
+    async (request, reply) => {
+      try {
+        const { boardId } = request.params as { boardId: string };
+        const columns = await columnService.getColumnsByBoard(boardId);
+        return { success: true, data: columns };
+      } catch (error) {
+        console.error('获取看板列失败:', error);
+        reply.status(500);
+        return { success: false, error: '获取看板列失败' };
+      }
+    },
+  );
 
   // 兼容性端点：获取所有列（用于单看板模式）
   fastify.get('/columns', { preHandler: authMiddleware }, async (request, reply) => {
@@ -57,25 +61,29 @@ export default async function columnRoutes(fastify: FastifyInstance) {
   });
 
   // 获取单个列（需要验证列所有权）
-  fastify.get('/columns/:id', {
-    preHandler: [authMiddleware, createOwnershipVerifier('column')]
-  }, async (request, reply) => {
-    try {
-      const { id } = request.params as { id: string };
-      const column = await columnService.getColumnById(id);
+  fastify.get(
+    '/columns/:id',
+    {
+      preHandler: [authMiddleware, createOwnershipVerifier('column')],
+    },
+    async (request, reply) => {
+      try {
+        const { id } = request.params as { id: string };
+        const column = await columnService.getColumnById(id);
 
-      if (!column) {
-        reply.status(404);
-        return { success: false, error: '列不存在' };
+        if (!column) {
+          reply.status(404);
+          return { success: false, error: '列不存在' };
+        }
+
+        return { success: true, data: column };
+      } catch (error) {
+        console.error('获取列详情失败:', error);
+        reply.status(500);
+        return { success: false, error: '获取列详情失败' };
       }
-
-      return { success: true, data: column };
-    } catch (error) {
-      console.error('获取列详情失败:', error);
-      reply.status(500);
-      return { success: false, error: '获取列详情失败' };
-    }
-  });
+    },
+  );
 
   // 创建新列
   fastify.post('/columns', { preHandler: authMiddleware }, async (request, reply) => {
@@ -96,94 +104,106 @@ export default async function columnRoutes(fastify: FastifyInstance) {
       reply.status(400);
       return {
         success: false,
-        error: error instanceof Error ? error.message : '创建列失败'
+        error: error instanceof Error ? error.message : '创建列失败',
       };
     }
   });
 
   // 更新列
-  fastify.put('/columns/:id', {
-    preHandler: [authMiddleware, createOwnershipVerifier('column')]
-  }, async (request, reply) => {
-    try {
-      const { id } = request.params as { id: string };
-      const updateData = request.body as any;
+  fastify.put(
+    '/columns/:id',
+    {
+      preHandler: [authMiddleware, createOwnershipVerifier('column')],
+    },
+    async (request, reply) => {
+      try {
+        const { id } = request.params as { id: string };
+        const updateData = request.body as any;
 
-      const updatedColumn = await columnService.updateColumn(id, updateData);
+        const updatedColumn = await columnService.updateColumn(id, updateData);
 
-      // 广播列更新事件
-      const io = fastify.io;
-      if (io) {
-        io.emit('column_updated', updatedColumn);
+        // 广播列更新事件
+        const io = fastify.io;
+        if (io) {
+          io.emit('column_updated', updatedColumn);
+        }
+
+        return { success: true, data: updatedColumn };
+      } catch (error) {
+        console.error('更新列失败:', error);
+        reply.status(400);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : '更新列失败',
+        };
       }
-
-      return { success: true, data: updatedColumn };
-    } catch (error) {
-      console.error('更新列失败:', error);
-      reply.status(400);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : '更新列失败'
-      };
-    }
-  });
+    },
+  );
 
   // 删除列
-  fastify.delete('/columns/:id', {
-    preHandler: [authMiddleware, createOwnershipVerifier('column')]
-  }, async (request, reply) => {
-    try {
-      const { id } = request.params as { id: string };
-      const result = await columnService.deleteColumn(id);
+  fastify.delete(
+    '/columns/:id',
+    {
+      preHandler: [authMiddleware, createOwnershipVerifier('column')],
+    },
+    async (request, reply) => {
+      try {
+        const { id } = request.params as { id: string };
+        const result = await columnService.deleteColumn(id);
 
-      // 广播列删除事件
-      const io = fastify.io;
-      if (io) {
-        io.emit('column_deleted', { id });
+        // 广播列删除事件
+        const io = fastify.io;
+        if (io) {
+          io.emit('column_deleted', { id });
+        }
+
+        return result;
+      } catch (error) {
+        console.error('删除列失败:', error);
+        reply.status(400);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : '删除列失败',
+        };
       }
-
-      return result;
-    } catch (error) {
-      console.error('删除列失败:', error);
-      reply.status(400);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : '删除列失败'
-      };
-    }
-  });
+    },
+  );
 
   // 重新排序指定看板的列
-  fastify.post('/boards/:boardId/columns/reorder', {
-    preHandler: [authMiddleware, createOwnershipVerifier('board')]
-  }, async (request, reply) => {
-    try {
-      const { boardId } = request.params as { boardId: string };
-      const { columnIds } = request.body as { columnIds: string[] };
+  fastify.post(
+    '/boards/:boardId/columns/reorder',
+    {
+      preHandler: [authMiddleware, createOwnershipVerifier('board')],
+    },
+    async (request, reply) => {
+      try {
+        const { boardId } = request.params as { boardId: string };
+        const { columnIds } = request.body as { columnIds: string[] };
 
-      if (!Array.isArray(columnIds)) {
+        if (!Array.isArray(columnIds)) {
+          reply.status(400);
+          return { success: false, error: 'columnIds必须是数组' };
+        }
+
+        const reorderedColumns = await columnService.reorderColumns(boardId, columnIds);
+
+        // 广播列重排序事件
+        const io = fastify.io;
+        if (io) {
+          io.emit('columns_reordered', { boardId, columns: reorderedColumns });
+        }
+
+        return { success: true, data: reorderedColumns };
+      } catch (error) {
+        console.error('重新排序列失败:', error);
         reply.status(400);
-        return { success: false, error: 'columnIds必须是数组' };
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : '重新排序列失败',
+        };
       }
-
-      const reorderedColumns = await columnService.reorderColumns(boardId, columnIds);
-
-      // 广播列重排序事件
-      const io = fastify.io;
-      if (io) {
-        io.emit('columns_reordered', { boardId, columns: reorderedColumns });
-      }
-
-      return { success: true, data: reorderedColumns };
-    } catch (error) {
-      console.error('重新排序列失败:', error);
-      reply.status(400);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : '重新排序列失败'
-      };
-    }
-  });
+    },
+  );
 
   // 兼容性端点：重新排序列（用于单看板模式）
   fastify.post('/columns/reorder', { preHandler: authMiddleware }, async (request, reply) => {
@@ -226,7 +246,7 @@ export default async function columnRoutes(fastify: FastifyInstance) {
       reply.status(400);
       return {
         success: false,
-        error: error instanceof Error ? error.message : '重新排序列失败'
+        error: error instanceof Error ? error.message : '重新排序列失败',
       };
     }
   });

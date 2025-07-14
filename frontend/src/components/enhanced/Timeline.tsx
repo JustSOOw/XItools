@@ -35,56 +35,126 @@ const Timeline: React.FC<TimelineProps> = ({
       case 'created':
         return (
           <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            <svg
+              className="w-4 h-4 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+              />
             </svg>
           </div>
         );
       case 'updated':
         return (
           <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            <svg
+              className="w-4 h-4 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+              />
             </svg>
           </div>
         );
       case 'status_changed':
         return (
           <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            <svg
+              className="w-4 h-4 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+              />
             </svg>
           </div>
         );
       case 'assigned':
         return (
           <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            <svg
+              className="w-4 h-4 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+              />
             </svg>
           </div>
         );
       case 'commented':
         return (
           <div className="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center">
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            <svg
+              className="w-4 h-4 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+              />
             </svg>
           </div>
         );
       case 'completed':
         return (
           <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            <svg
+              className="w-4 h-4 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
             </svg>
           </div>
         );
       default:
         return (
           <div className="w-8 h-8 bg-gray-500 rounded-full flex items-center justify-center">
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="w-4 h-4 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
           </div>
         );
@@ -93,13 +163,20 @@ const Timeline: React.FC<TimelineProps> = ({
 
   const getEventTypeText = (type: TimelineEvent['type']) => {
     switch (type) {
-      case 'created': return t('task:timeline.events.created');
-      case 'updated': return t('task:timeline.events.updated');
-      case 'status_changed': return t('task:timeline.events.statusChanged');
-      case 'assigned': return t('task:timeline.events.assigned');
-      case 'commented': return t('task:timeline.events.commented');
-      case 'completed': return t('task:timeline.events.completed');
-      default: return t('task:timeline.events.unknown');
+      case 'created':
+        return t('task:timeline.events.created');
+      case 'updated':
+        return t('task:timeline.events.updated');
+      case 'status_changed':
+        return t('task:timeline.events.statusChanged');
+      case 'assigned':
+        return t('task:timeline.events.assigned');
+      case 'commented':
+        return t('task:timeline.events.commented');
+      case 'completed':
+        return t('task:timeline.events.completed');
+      default:
+        return t('task:timeline.events.unknown');
     }
   };
 
@@ -134,7 +211,7 @@ const Timeline: React.FC<TimelineProps> = ({
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
       }).format(date);
     } catch (error) {
       console.warn('Error formatting date:', error);
@@ -145,8 +222,18 @@ const Timeline: React.FC<TimelineProps> = ({
   if (events.length === 0) {
     return (
       <div className={classNames('text-center py-8 text-text-secondary', className)}>
-        <svg className="w-12 h-12 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <svg
+          className="w-12 h-12 mx-auto mb-4 opacity-50"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
         </svg>
         <p>{t('task:timeline.noHistory')}</p>
       </div>
@@ -155,10 +242,7 @@ const Timeline: React.FC<TimelineProps> = ({
 
   return (
     <div className={classNames('relative', className)}>
-      <div 
-        className="overflow-y-auto"
-        style={{ maxHeight }}
-      >
+      <div className="overflow-y-auto" style={{ maxHeight }}>
         <div className="space-y-4">
           {events.map((event, index) => (
             <div key={event.id} className="relative flex items-start space-x-3">
@@ -168,16 +252,16 @@ const Timeline: React.FC<TimelineProps> = ({
               )}
 
               {/* 事件图标 */}
-              <div className="flex-shrink-0">
-                {getEventIcon(event.type)}
-              </div>
+              <div className="flex-shrink-0">{getEventIcon(event.type)}</div>
 
               {/* 事件内容 */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <h4 className="text-sm font-medium text-text-primary">
-                      {event.title && event.title.trim() ? event.title : getEventTypeText(event.type)}
+                      {event.title && event.title.trim()
+                        ? event.title
+                        : getEventTypeText(event.type)}
                     </h4>
                     {event.user && (
                       <span className="text-xs text-text-secondary">
@@ -191,9 +275,7 @@ const Timeline: React.FC<TimelineProps> = ({
                 </div>
 
                 {event.description && (
-                  <p className="mt-1 text-sm text-text-secondary">
-                    {event.description}
-                  </p>
+                  <p className="mt-1 text-sm text-text-secondary">{event.description}</p>
                 )}
 
                 {/* 元数据显示 */}
@@ -227,7 +309,10 @@ const isValidTimestamp = (timestamp: any): boolean => {
 
 // 生成示例时间线事件的工具函数
 // 注意：这个函数需要在组件内部调用以访问翻译函数
-export const generateTimelineEvents = (task: any, t?: (key: string, options?: any) => string): TimelineEvent[] => {
+export const generateTimelineEvents = (
+  task: any,
+  t?: (key: string, options?: any) => string,
+): TimelineEvent[] => {
   const events: TimelineEvent[] = [];
 
   // 获取有效的时间戳，如果无效则使用当前时间
@@ -245,7 +330,9 @@ export const generateTimelineEvents = (task: any, t?: (key: string, options?: an
       id: `created-${task.id}`,
       type: 'created',
       title: '', // 移除硬编码title，让组件使用翻译函数
-      description: t ? t('task:timeline.descriptions.created', { title: task.title }) : `创建了任务 "${task.title}"`,
+      description: t
+        ? t('task:timeline.descriptions.created', { title: task.title })
+        : `创建了任务 "${task.title}"`,
       timestamp: getValidTimestamp(task.createdAt),
       user: task.assignee || (t ? t('task:timeline.system') : '系统'),
     });
@@ -277,7 +364,7 @@ export const generateTimelineEvents = (task: any, t?: (key: string, options?: an
 
   // 过滤掉无效的事件并按时间排序（最新的在前）
   return events
-    .filter(event => isValidTimestamp(event.timestamp))
+    .filter((event) => isValidTimestamp(event.timestamp))
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 };
 

@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-01-27 22:00:00
  * @FilePath: \XItools\frontend\src\components\ui\EmptyState\EmptyState.tsx
  * @Description: 空状态组件 - 为各种空状态提供引导性的用户体验
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 
 import React from 'react';
@@ -70,21 +70,23 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   const classes = sizeClasses[size];
 
   return (
-    <div className={classNames(
-      'flex flex-col items-center justify-center text-center',
-      classes.container,
-      className
-    )}>
+    <div
+      className={classNames(
+        'flex flex-col items-center justify-center text-center',
+        classes.container,
+        className,
+      )}
+    >
       {/* 插画或图标 */}
       {illustration ? (
-        <div className="mb-6">
-          {illustration}
-        </div>
+        <div className="mb-6">{illustration}</div>
       ) : icon ? (
-        <div className={classNames(
-          'flex items-center justify-center rounded-full bg-surface border border-border/30',
-          classes.icon
-        )}>
+        <div
+          className={classNames(
+            'flex items-center justify-center rounded-full bg-surface border border-border/30',
+            classes.icon,
+          )}
+        >
           {icon}
         </div>
       ) : null}
@@ -92,19 +94,11 @@ const EmptyState: React.FC<EmptyStateProps> = ({
       {/* 内容区域 */}
       <div className={classes.spacing}>
         {/* 标题 */}
-        <h3 className={classNames(
-          'font-semibold text-text-primary',
-          classes.title
-        )}>
-          {title}
-        </h3>
+        <h3 className={classNames('font-semibold text-text-primary', classes.title)}>{title}</h3>
 
         {/* 描述 */}
         {description && (
-          <p className={classNames(
-            'text-text-secondary max-w-md',
-            classes.description
-          )}>
+          <p className={classNames('text-text-secondary max-w-md', classes.description)}>
             {description}
           </p>
         )}
@@ -119,9 +113,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
                 onClick={action.onClick}
                 className="min-w-32"
               >
-                {action.icon && (
-                  <span className="mr-2">{action.icon}</span>
-                )}
+                {action.icon && <span className="mr-2">{action.icon}</span>}
                 {action.label}
               </Button>
             ))}

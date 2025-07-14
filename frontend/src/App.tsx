@@ -20,7 +20,7 @@ import {
   sortableKeyboardCoordinates,
   SortableContext,
   horizontalListSortingStrategy,
-  verticalListSortingStrategy
+  verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import Layout from './components/Layout';
 import Button from './components/Button';
@@ -46,11 +46,7 @@ import { ViewTransition } from './components/animations';
 import NavigationOverview from './components/navigation/NavigationOverview';
 
 // 反馈组件
-import {
-  useConfirmDialog,
-  useSuccessAnimation,
-  useKeyboardShortcuts
-} from './components/feedback';
+import { useConfirmDialog, useSuccessAnimation, useKeyboardShortcuts } from './components/feedback';
 
 // 全局确认对话框服务
 import { setGlobalConfirmDialogAPI } from './services/globalConfirmDialog';
@@ -65,7 +61,6 @@ import { useI18n } from './hooks/useI18n';
 
 // 导入axios配置
 import { setupAxiosInterceptors } from './utils/axiosConfig';
-
 
 function App() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -91,11 +86,7 @@ function App() {
   // 反馈系统Hooks
   const { showConfirm, hideConfirm, ConfirmDialog } = useConfirmDialog();
   const { showSuccess, SuccessAnimation } = useSuccessAnimation();
-  const {
-    addShortcut,
-    KeyboardShortcuts,
-    KeyboardShortcutsHelp
-  } = useKeyboardShortcuts();
+  const { addShortcut, KeyboardShortcuts, KeyboardShortcutsHelp } = useKeyboardShortcuts();
 
   // 注册全局确认对话框API
   useEffect(() => {
@@ -111,12 +102,6 @@ function App() {
     activeTaskId: string | null;
   } | null>(null);
 
-
-
-
-  
-
-
   // 注意：列数据现在通过看板切换时按需加载，不再全局加载
 
   // 使用MCP连接
@@ -126,61 +111,64 @@ function App() {
   const { currentBoardId, getCurrentBoard } = useNavigationStore();
 
   // 从store获取状态 - 需要在loadBoardData之前定义
-  const tasks = useTaskStore(state => state.tasks);
-  const columns = useTaskStore(state => state.columns);
-  const isLoading = useTaskStore(state => state.isLoading);
-  const activeTaskId = useTaskStore(state => state.activeTaskId);
-  const activeColumnId = useTaskStore(state => state.activeColumnId);
-  const setActiveTaskId = useTaskStore(state => state.setActiveTaskId);
-  const setActiveColumnId = useTaskStore(state => state.setActiveColumnId);
-  const addColumn = useTaskStore(state => state.addColumn);
-  const updateColumn = useTaskStore(state => state.updateColumn);
-  const deleteColumn = useTaskStore(state => state.deleteColumn);
-  const setColumns = useTaskStore(state => state.setColumns);
-  const reorderColumns = useTaskStore(state => state.reorderColumns);
-  const setTasks = useTaskStore(state => state.setTasks);
-  const setLoading = useTaskStore(state => state.setLoading);
-  const setColumnSort = useTaskStore(state => state.setColumnSort);
-  const clearColumnSort = useTaskStore(state => state.clearColumnSort);
-  const moveTask = useTaskStore(state => state.moveTask);
-  const reorderTasksInColumn = useTaskStore(state => state.reorderTasksInColumn);
-  const currentView = useTaskStore(state => state.currentView);
-  const filterOptions = useTaskStore(state => state.filterOptions);
-  const filteredTasks = useTaskStore(state => state.filteredTasks);
-  const setFilterOptions = useTaskStore(state => state.setFilterOptions);
-  const clearFilters = useTaskStore(state => state.clearFilters);
+  const tasks = useTaskStore((state) => state.tasks);
+  const columns = useTaskStore((state) => state.columns);
+  const isLoading = useTaskStore((state) => state.isLoading);
+  const activeTaskId = useTaskStore((state) => state.activeTaskId);
+  const activeColumnId = useTaskStore((state) => state.activeColumnId);
+  const setActiveTaskId = useTaskStore((state) => state.setActiveTaskId);
+  const setActiveColumnId = useTaskStore((state) => state.setActiveColumnId);
+  const addColumn = useTaskStore((state) => state.addColumn);
+  const updateColumn = useTaskStore((state) => state.updateColumn);
+  const deleteColumn = useTaskStore((state) => state.deleteColumn);
+  const setColumns = useTaskStore((state) => state.setColumns);
+  const reorderColumns = useTaskStore((state) => state.reorderColumns);
+  const setTasks = useTaskStore((state) => state.setTasks);
+  const setLoading = useTaskStore((state) => state.setLoading);
+  const setColumnSort = useTaskStore((state) => state.setColumnSort);
+  const clearColumnSort = useTaskStore((state) => state.clearColumnSort);
+  const moveTask = useTaskStore((state) => state.moveTask);
+  const reorderTasksInColumn = useTaskStore((state) => state.reorderTasksInColumn);
+  const currentView = useTaskStore((state) => state.currentView);
+  const filterOptions = useTaskStore((state) => state.filterOptions);
+  const filteredTasks = useTaskStore((state) => state.filteredTasks);
+  const setFilterOptions = useTaskStore((state) => state.setFilterOptions);
+  const clearFilters = useTaskStore((state) => state.clearFilters);
 
   // 加载指定看板的数据
-  const loadBoardData = useCallback(async (boardId: string) => {
-    try {
-      setLoading(true);
-      console.log('开始加载看板数据:', boardId);
+  const loadBoardData = useCallback(
+    async (boardId: string) => {
+      try {
+        setLoading(true);
+        console.log('开始加载看板数据:', boardId);
 
-      // 并行加载任务和列数据
-      const [tasks, columns] = await Promise.all([
-        mcpService.getTasksByBoard(boardId),
-        columnService.getColumnsByBoard(boardId)
-      ]);
+        // 并行加载任务和列数据
+        const [tasks, columns] = await Promise.all([
+          mcpService.getTasksByBoard(boardId),
+          columnService.getColumnsByBoard(boardId),
+        ]);
 
-      console.log('看板数据加载完成:', {
-        boardId,
-        tasksCount: tasks.length,
-        columnsCount: columns.length
-      });
+        console.log('看板数据加载完成:', {
+          boardId,
+          tasksCount: tasks.length,
+          columnsCount: columns.length,
+        });
 
-      // 更新状态
-      setTasks(tasks);
-      setColumns(columns);
-    } catch (error) {
-      console.error('加载看板数据失败:', error);
-      toast.error(t('feedback:messages.loadBoardDataFailed'));
-      // 加载失败时清空数据，避免显示错误的数据
-      setTasks([]);
-      setColumns([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [t]); // 移除setState函数依赖，它们是稳定的
+        // 更新状态
+        setTasks(tasks);
+        setColumns(columns);
+      } catch (error) {
+        console.error('加载看板数据失败:', error);
+        toast.error(t('feedback:messages.loadBoardDataFailed'));
+        // 加载失败时清空数据，避免显示错误的数据
+        setTasks([]);
+        setColumns([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [t],
+  ); // 移除setState函数依赖，它们是稳定的
 
   // 监听看板切换，重新加载对应看板的数据
   useEffect(() => {
@@ -197,13 +185,13 @@ function App() {
   useEffect(() => {
     if (columns.length > 0) {
       // 检查当前的status是否属于当前看板的列
-      const currentStatusValid = newTask.status && columns.some(col => col.id === newTask.status);
+      const currentStatusValid = newTask.status && columns.some((col) => col.id === newTask.status);
 
       // 如果status无效或为空，更新为当前看板第一个列的UUID
       if (!currentStatusValid) {
-        setNewTask(prev => ({
+        setNewTask((prev) => ({
           ...prev,
-          status: columns[0].id
+          status: columns[0].id,
         }));
       }
     }
@@ -225,7 +213,9 @@ function App() {
       key: 'f',
       description: t('feedback:shortcuts.search'),
       action: () => {
-        const searchInput = document.querySelector('input[placeholder*="搜索"]') as HTMLInputElement;
+        const searchInput = document.querySelector(
+          'input[placeholder*="搜索"]',
+        ) as HTMLInputElement;
         if (searchInput) {
           searchInput.focus();
         }
@@ -283,7 +273,7 @@ function App() {
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   // 自定义碰撞检测算法 - 基于@dnd-kit官方多容器示例
@@ -295,8 +285,8 @@ function App() {
       return closestCenter({
         ...args,
         droppableContainers: Array.from(droppableContainers.values()).filter(
-          container => container.data.current?.type === 'column'
-        )
+          (container) => container.data.current?.type === 'column',
+        ),
       });
     }
 
@@ -304,26 +294,25 @@ function App() {
     if (active.data.current?.type === 'task') {
       // 首先找到指针相交的容器
       const pointerIntersections = pointerWithin(args);
-      const intersections = pointerIntersections.length > 0
-        ? pointerIntersections
-        : rectIntersection(args);
+      const intersections =
+        pointerIntersections.length > 0 ? pointerIntersections : rectIntersection(args);
 
       let overId = intersections[0]?.id;
 
       if (overId != null) {
         // 如果相交的是列容器
-        const overColumn = columns.find(col => col.id === overId);
+        const overColumn = columns.find((col) => col.id === overId);
         if (overColumn) {
           const columnTasks = tasksByColumn[overId] || [];
 
           // 如果列有任务，找到最近的任务
           if (columnTasks.length > 0) {
-            const taskIds = columnTasks.map(task => task.id);
+            const taskIds = columnTasks.map((task) => task.id);
             const taskCollisions = closestCenter({
               ...args,
-              droppableContainers: Array.from(droppableContainers.values()).filter(
-                container => taskIds.includes(container.id as string)
-              )
+              droppableContainers: Array.from(droppableContainers.values()).filter((container) =>
+                taskIds.includes(container.id as string),
+              ),
             });
 
             if (taskCollisions.length > 0) {
@@ -347,13 +336,13 @@ function App() {
     setSelectedTaskId(taskId);
     setIsTaskDetailModalOpen(true);
   };
-  
+
   // 关闭任务详情
   const handleCloseTaskDetail = () => {
     setIsTaskDetailModalOpen(false);
     setSelectedTaskId(null);
   };
-  
+
   // 创建任务
   const handleCreateTask = async () => {
     if (!newTask.title) {
@@ -370,7 +359,7 @@ function App() {
 
     // 确保状态是有效的列UUID
     let statusColumnId = newTask.status;
-    if (!statusColumnId || !columns.some(col => col.id === statusColumnId)) {
+    if (!statusColumnId || !columns.some((col) => col.id === statusColumnId)) {
       // 如果状态为空或无效，使用第一个列的ID
       const firstColumn = columns[0];
       if (firstColumn) {
@@ -386,13 +375,13 @@ function App() {
       const taskData = {
         ...newTask,
         status: statusColumnId,
-        boardId: currentBoard.id
+        boardId: currentBoard.id,
       };
 
       console.log('创建任务数据:', {
         taskData,
         currentBoardId: currentBoard.id,
-        statusColumnId
+        statusColumnId,
       });
 
       await mcpService.submitTaskDataset([taskData]);
@@ -445,7 +434,7 @@ function App() {
       });
 
       // 当用户开始拖拽任务时，清除所有列的排序状态，回到手动排序
-      const activeTask = tasks.find(task => task.id === activeTaskId);
+      const activeTask = tasks.find((task) => task.id === activeTaskId);
       if (activeTask) {
         clearColumnSort(activeTask.status);
         console.log(`任务拖拽开始，清除列 ${activeTask.status} 的排序状态`);
@@ -480,21 +469,19 @@ function App() {
     const activeData = active.data.current;
     const overData = over.data.current;
 
-
-
     // 处理列拖拽 - 使用标准sortable逻辑
     if (activeData?.type === 'column' && overData?.type === 'column') {
-      const activeColumn = columns.find(col => col.id === activeId);
-      const overColumn = columns.find(col => col.id === overId);
+      const activeColumn = columns.find((col) => col.id === activeId);
+      const overColumn = columns.find((col) => col.id === overId);
 
       if (activeColumn && overColumn && activeId !== overId) {
-        const oldIndex = columns.findIndex(col => col.id === activeId);
-        const newIndex = columns.findIndex(col => col.id === overId);
+        const oldIndex = columns.findIndex((col) => col.id === activeId);
+        const newIndex = columns.findIndex((col) => col.id === overId);
 
         if (oldIndex !== newIndex) {
           // 使用@dnd-kit的arrayMove进行重新排序
           const reorderedColumns = arrayMove(columns, oldIndex, newIndex);
-          const columnIds = reorderedColumns.map(col => col.id);
+          const columnIds = reorderedColumns.map((col) => col.id);
 
           // 更新本地状态
           reorderColumns(columnIds);
@@ -514,7 +501,7 @@ function App() {
     }
 
     // 处理任务拖拽 - 多容器逻辑
-    const activeTask = tasks.find(task => task.id === activeId);
+    const activeTask = tasks.find((task) => task.id === activeId);
     if (!activeTask || !dragStartState) {
       // 如果找不到任务或没有原始状态，恢复到拖拽开始时的状态
       if (dragStartState) {
@@ -525,7 +512,7 @@ function App() {
     }
 
     // 获取原始状态（拖拽开始时的状态）
-    const originalTask = dragStartState.tasks.find(task => task.id === activeId);
+    const originalTask = dragStartState.tasks.find((task) => task.id === activeId);
     const originalStatus = originalTask?.status || activeTask.status;
 
     // 确定最终目标列
@@ -533,7 +520,7 @@ function App() {
     if (overData?.type === 'column') {
       finalColumn = overData.columnId || overId;
     } else if (overData?.type === 'task') {
-      const overTask = tasks.find(task => task.id === overId);
+      const overTask = tasks.find((task) => task.id === overId);
       if (!overTask) {
         // 恢复到拖拽开始时的状态
         setTasks(dragStartState.tasks);
@@ -558,7 +545,7 @@ function App() {
       if (overData?.type === 'column') {
         // 拖拽到列上（空白区域）
         const targetColumnTasks = dragStartState.tasks
-          .filter(task => task.status === finalColumn && task.id !== activeId)
+          .filter((task) => task.status === finalColumn && task.id !== activeId)
           .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
 
         if (targetColumnTasks.length > 0) {
@@ -568,11 +555,10 @@ function App() {
           // 空列，立即更新本地状态
           moveTask(activeId, finalColumn);
           // 后台持久化
-          mcpService.updateTask(activeId, { status: finalColumn })
-            .catch((error) => {
-              console.error('空列移动持久化失败:', error);
-              toast.warning(t('common:messages.saveFailed'));
-            });
+          mcpService.updateTask(activeId, { status: finalColumn }).catch((error) => {
+            console.error('空列移动持久化失败:', error);
+            toast.warning(t('common:messages.saveFailed'));
+          });
           return;
         }
       } else if (overData?.type === 'task') {
@@ -580,11 +566,11 @@ function App() {
         if (originalStatus === finalColumn) {
           // 同列拖拽，计算插入位置
           const columnTasks = dragStartState.tasks
-            .filter(task => task.status === finalColumn)
+            .filter((task) => task.status === finalColumn)
             .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
 
-          const activeIndex = columnTasks.findIndex(task => task.id === activeId);
-          const overIndex = columnTasks.findIndex(task => task.id === overId);
+          const activeIndex = columnTasks.findIndex((task) => task.id === activeId);
+          const overIndex = columnTasks.findIndex((task) => task.id === overId);
 
           insertPosition = activeIndex < overIndex ? 'after' : 'before';
         }
@@ -595,11 +581,11 @@ function App() {
       if (originalStatus === finalColumn) {
         // 同列拖拽：重新排序
         const columnTasks = dragStartState.tasks
-          .filter(task => task.status === finalColumn)
+          .filter((task) => task.status === finalColumn)
           .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
 
-        const activeIndex = columnTasks.findIndex(task => task.id === activeId);
-        const overIndex = columnTasks.findIndex(task => task.id === overId);
+        const activeIndex = columnTasks.findIndex((task) => task.id === activeId);
+        const overIndex = columnTasks.findIndex((task) => task.id === overId);
 
         if (activeIndex !== -1 && overIndex !== -1) {
           // 计算新的任务顺序
@@ -614,7 +600,7 @@ function App() {
           }
 
           reorderedTasks.splice(newIndex, 0, movedTask);
-          const newTaskIds = reorderedTasks.map(task => task.id);
+          const newTaskIds = reorderedTasks.map((task) => task.id);
 
           // 立即更新本地状态
           reorderTasksInColumn(finalColumn, newTaskIds);
@@ -628,7 +614,8 @@ function App() {
 
       // 后台调用API进行数据持久化（不阻塞UI）
       console.log(`拖拽操作: ${activeId} -> ${finalColumn} (${insertPosition} ${targetTaskId})`);
-      mcpService.sortTask(activeId, targetTaskId, finalColumn, insertPosition)
+      mcpService
+        .sortTask(activeId, targetTaskId, finalColumn, insertPosition)
         .then(() => {
           console.log(`任务拖拽持久化成功: ${activeId}`);
         })
@@ -637,7 +624,6 @@ function App() {
           // 持久化失败时，可以选择显示警告但不回滚UI
           toast.warning('任务保存失败，但界面已更新');
         });
-
     } catch (error) {
       console.error('任务拖拽失败:', error);
       toast.error('任务移动失败');
@@ -662,7 +648,7 @@ function App() {
         return;
       }
 
-      const newOrder = Math.max(...columns.map(col => col.order), -1) + 1;
+      const newOrder = Math.max(...columns.map((col) => col.order), -1) + 1;
       const newColumn = await columnService.createColumn({
         name,
         order: newOrder,
@@ -704,19 +690,20 @@ function App() {
   };
 
   const handleDeleteColumn = async (columnId: string) => {
-    const column = columns.find(c => c.id === columnId);
+    const column = columns.find((c) => c.id === columnId);
     const columnName = column?.name || '该列';
-    const columnTasks = tasks.filter(task => task.status === columnId);
+    const columnTasks = tasks.filter((task) => task.status === columnId);
 
     showConfirm(
       {
         title: t('feedback:confirmation.deleteColumnTitle'),
-        message: columnTasks.length > 0
-          ? t('feedback:confirmation.deleteColumnWithTasksMessage', {
-              columnName,
-              taskCount: columnTasks.length
-            })
-          : t('feedback:confirmation.deleteColumnMessage', { columnName }),
+        message:
+          columnTasks.length > 0
+            ? t('feedback:confirmation.deleteColumnWithTasksMessage', {
+                columnName,
+                taskCount: columnTasks.length,
+              })
+            : t('feedback:confirmation.deleteColumnMessage', { columnName }),
         type: 'danger',
         confirmText: t('feedback:dialog.delete'),
         cancelText: t('feedback:dialog.cancel'),
@@ -736,14 +723,17 @@ function App() {
           toast.success(t('feedback:messages.columnDeleted'));
         } catch (error) {
           console.error('删除列失败:', error);
-          toast.error(error instanceof Error ? error.message : t('feedback:messages.columnDeleteFailed'), {
-            action: {
-              label: t('common:actions.retry'),
-              onClick: () => handleDeleteColumn(columnId),
+          toast.error(
+            error instanceof Error ? error.message : t('feedback:messages.columnDeleteFailed'),
+            {
+              action: {
+                label: t('common:actions.retry'),
+                onClick: () => handleDeleteColumn(columnId),
+              },
             },
-          });
+          );
         }
-      }
+      },
     );
   };
 
@@ -773,7 +763,7 @@ function App() {
   };
 
   const handleTaskDelete = async (taskId: string) => {
-    const task = tasks.find(t => t.id === taskId);
+    const task = tasks.find((t) => t.id === taskId);
     const taskTitle = task?.title || '该任务';
 
     showConfirm(
@@ -810,7 +800,7 @@ function App() {
             },
           });
         }
-      }
+      },
     );
   };
 
@@ -831,7 +821,6 @@ function App() {
       if (currentBoard?.id) {
         await loadBoardData(currentBoard.id);
       }
-
     } catch (error) {
       console.error('列排序失败:', error);
       toast.error(t('feedback:messages.columnSortFailed'));
@@ -840,7 +829,7 @@ function App() {
 
   // 决定使用哪个任务列表：如果有筛选条件，使用筛选后的任务，否则使用全部任务
   const { displayTasks, hasFilters } = useMemo(() => {
-    const hasFilters = Object.keys(filterOptions).some(key => {
+    const hasFilters = Object.keys(filterOptions).some((key) => {
       const value = filterOptions[key as keyof typeof filterOptions];
       if (Array.isArray(value)) {
         return value.length > 0;
@@ -856,33 +845,32 @@ function App() {
 
   // 按列组织任务 - 支持多容器拖拽
   const tasksByColumn = useMemo(() => {
-    const result = columns.reduce((acc, column) => {
-      // 仅筛选当前列的任务，按sortOrder排序
-      const columnTasks = displayTasks
-        .filter(task => task.status === column.id)
-        .sort((a, b) => {
-          // 优先按sortOrder排序，然后按创建时间倒序
-          const aSortOrder = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
-          const bSortOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
+    const result = columns.reduce(
+      (acc, column) => {
+        // 仅筛选当前列的任务，按sortOrder排序
+        const columnTasks = displayTasks
+          .filter((task) => task.status === column.id)
+          .sort((a, b) => {
+            // 优先按sortOrder排序，然后按创建时间倒序
+            const aSortOrder = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
+            const bSortOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
 
-          // 使用明确的比较，确保排序正确
-          return aSortOrder - bSortOrder; // 升序排列
-        });
+            // 使用明确的比较，确保排序正确
+            return aSortOrder - bSortOrder; // 升序排列
+          });
 
-      acc[column.id] = columnTasks;
-      return acc;
-    }, {} as Record<string, TaskType[]>);
+        acc[column.id] = columnTasks;
+        return acc;
+      },
+      {} as Record<string, TaskType[]>,
+    );
 
     return result;
   }, [columns, displayTasks]);
 
-
-
-
-
   // 获取当前拖拽的任务和列
-  const activeTask = activeTaskId ? tasks.find(task => task.id === activeTaskId) : null;
-  const activeColumn = activeColumnId ? columns.find(col => col.id === activeColumnId) : null;
+  const activeTask = activeTaskId ? tasks.find((task) => task.id === activeTaskId) : null;
+  const activeColumn = activeColumnId ? columns.find((col) => col.id === activeColumnId) : null;
 
   // 渲染视图内容
   const renderViewContent = () => {
@@ -895,7 +883,7 @@ function App() {
             onTaskClick={handleTaskClick}
             onTaskUpdate={(taskId, updates) => {
               // 通过MCP服务更新任务
-              mcpService.updateTask(taskId, updates).catch(error => {
+              mcpService.updateTask(taskId, updates).catch((error) => {
                 console.error('更新任务失败:', error);
                 toast.error(t('feedback:messages.taskUpdateFailed'));
               });
@@ -919,7 +907,7 @@ function App() {
             onTaskClick={handleTaskClick}
             onTaskUpdate={(taskId, updates) => {
               // 通过MCP服务更新任务
-              mcpService.updateTask(taskId, updates).catch(error => {
+              mcpService.updateTask(taskId, updates).catch((error) => {
                 console.error('更新任务失败:', error);
                 toast.error('更新任务失败，请重试');
               });
@@ -962,12 +950,12 @@ function App() {
               {/* 显示空的列结构 */}
               <div className="flex min-w-max gap-1">
                 <SortableContext
-                  items={columns.map(col => col.id)}
+                  items={columns.map((col) => col.id)}
                   strategy={horizontalListSortingStrategy}
                 >
                   {columns.map((column) => {
                     const columnTasks = tasksByColumn[column.id] || [];
-                    const taskIds = columnTasks.map(task => task.id);
+                    const taskIds = columnTasks.map((task) => task.id);
                     const sortableItems = taskIds;
 
                     return (
@@ -976,7 +964,7 @@ function App() {
                         column={column}
                         taskIds={taskIds}
                         onAddCard={() => {
-                          setNewTask({...newTask, status: column.id});
+                          setNewTask({ ...newTask, status: column.id });
                           setIsCreateModalOpen(true);
                         }}
                         onTitleEdit={(newTitle) => handleUpdateColumnTitle(column.id, newTitle)}
@@ -1040,10 +1028,7 @@ function App() {
                       size="lg"
                     />
                   ) : (
-                    <EmptyTasks
-                      onAction={() => setIsCreateModalOpen(true)}
-                      size="lg"
-                    />
+                    <EmptyTasks onAction={() => setIsCreateModalOpen(true)} size="lg" />
                   )}
                 </div>
               </div>
@@ -1055,12 +1040,12 @@ function App() {
         return (
           <div className="flex min-w-max gap-1">
             <SortableContext
-              items={columns.map(col => col.id)}
+              items={columns.map((col) => col.id)}
               strategy={horizontalListSortingStrategy}
             >
               {columns.map((column) => {
                 const columnTasks = tasksByColumn[column.id] || [];
-                const taskIds = columnTasks.map(task => task.id);
+                const taskIds = columnTasks.map((task) => task.id);
                 const sortableItems = taskIds;
 
                 return (
@@ -1069,7 +1054,7 @@ function App() {
                     column={column}
                     taskIds={taskIds}
                     onAddCard={() => {
-                      setNewTask({...newTask, status: column.id});
+                      setNewTask({ ...newTask, status: column.id });
                       setIsCreateModalOpen(true);
                     }}
                     onTitleEdit={(newTitle) => handleUpdateColumnTitle(column.id, newTitle)}
@@ -1082,10 +1067,7 @@ function App() {
                     isDraggingTask={!!activeTaskId}
                     isColumnDragging={!!activeColumnId}
                   >
-                    <SortableContext
-                      items={sortableItems}
-                      strategy={verticalListSortingStrategy}
-                    >
+                    <SortableContext items={sortableItems} strategy={verticalListSortingStrategy}>
                       {columnTasks.map((task, index) => (
                         <div key={`${column.id}-${task.id}-${index}`} className="mb-1.5">
                           <DraggableTaskCard
@@ -1112,10 +1094,6 @@ function App() {
     }
   };
 
-
-
-
-
   // 拖拽悬停事件 - 基于@dnd-kit官方多容器示例
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
@@ -1139,7 +1117,7 @@ function App() {
       const overId = over.id as string;
 
       // 找到活动任务
-      const activeTask = tasks.find(task => task.id === activeId);
+      const activeTask = tasks.find((task) => task.id === activeId);
       if (!activeTask) return;
 
       // 确定目标容器
@@ -1147,14 +1125,14 @@ function App() {
       if (overData?.type === 'column') {
         overContainer = overData.columnId || overId;
       } else if (overData?.type === 'task') {
-        const overTask = tasks.find(task => task.id === overId);
+        const overTask = tasks.find((task) => task.id === overId);
         overContainer = overTask?.status || null;
       }
 
       // 如果是跨列拖拽，实时移动任务
       if (overContainer && activeTask.status !== overContainer) {
-        const activeIndex = tasks.findIndex(task => task.id === activeId);
-        const overIndex = tasks.findIndex(task => task.id === overId);
+        const activeIndex = tasks.findIndex((task) => task.id === activeId);
+        const overIndex = tasks.findIndex((task) => task.id === overId);
 
         // 创建新的任务列表
         const newTasks = [...tasks];
@@ -1173,8 +1151,9 @@ function App() {
           insertIndex = adjustedOverIndex + 1;
         } else {
           // 如果拖拽到列上，插入到该列的末尾
-          const targetColumnTasks = newTasks.filter(task => task.status === overContainer);
-          insertIndex = newTasks.findIndex(task => task.status === overContainer) + targetColumnTasks.length;
+          const targetColumnTasks = newTasks.filter((task) => task.status === overContainer);
+          insertIndex =
+            newTasks.findIndex((task) => task.status === overContainer) + targetColumnTasks.length;
         }
 
         // 插入任务到新位置
@@ -1205,7 +1184,9 @@ function App() {
                 <SearchBox
                   value={filterOptions.searchText || ''}
                   placeholder={t('task:placeholders.searchTasks')}
-                  onSearch={(searchText: string) => setFilterOptions({ searchText: searchText || undefined })}
+                  onSearch={(searchText: string) =>
+                    setFilterOptions({ searchText: searchText || undefined })
+                  }
                   onClear={() => setFilterOptions({ searchText: undefined })}
                 />
               </div>
@@ -1230,10 +1211,15 @@ function App() {
                     'flex items-center px-3 py-2 rounded-md text-sm font-medium transition-all duration-200',
                     currentView === 'board'
                       ? 'bg-primary text-white shadow-sm'
-                      : 'text-text-secondary hover:text-text-primary hover:bg-surface/80'
+                      : 'text-text-secondary hover:text-text-primary hover:bg-surface/80',
                   )}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 mr-2"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
                     <path d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1zM14 9a1 1 0 100 2h2a1 1 0 100-2h-2zM3 16a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1zM14 15a1 1 0 100 2h2a1 1 0 100-2h-2z" />
                   </svg>
                   {t('common:navigation.board')}
@@ -1244,11 +1230,20 @@ function App() {
                     'flex items-center px-3 py-2 rounded-md text-sm font-medium transition-all duration-200',
                     currentView === 'list'
                       ? 'bg-primary text-white shadow-sm'
-                      : 'text-text-secondary hover:text-text-primary hover:bg-surface/80'
+                      : 'text-text-secondary hover:text-text-primary hover:bg-surface/80',
                   )}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 mr-2"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                   {t('common:navigation.list')}
                 </button>
@@ -1258,11 +1253,20 @@ function App() {
                     'flex items-center px-3 py-2 rounded-md text-sm font-medium transition-all duration-200',
                     currentView === 'calendar'
                       ? 'bg-primary text-white shadow-sm'
-                      : 'text-text-secondary hover:text-text-primary hover:bg-surface/80'
+                      : 'text-text-secondary hover:text-text-primary hover:bg-surface/80',
                   )}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 mr-2"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                   {t('common:navigation.calendar')}
                 </button>
@@ -1273,18 +1277,16 @@ function App() {
             <div className="flex items-center space-x-4">
               {/* 连接状态指示器 - 小点样式 */}
               <div className="flex items-center">
-                <span className={`w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                <span
+                  className={`w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}
+                ></span>
                 <span className="text-xs text-text-secondary">
                   {isConnected ? t('common:status.connected') : t('common:status.disconnected')}
                 </span>
               </div>
 
               {!isConnected && (
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={reconnect}
-                >
+                <Button variant="danger" size="sm" onClick={reconnect}>
                   {t('common:actions.reconnect', { defaultValue: '重新连接' })}
                 </Button>
               )}
@@ -1297,10 +1299,12 @@ function App() {
                   onClick={async () => {
                     showConfirm(
                       {
-                        title: t('task:actions.deleteAllTasks', { defaultValue: '确认删除所有任务' }),
+                        title: t('task:actions.deleteAllTasks', {
+                          defaultValue: '确认删除所有任务',
+                        }),
                         message: t('task:messages.confirmDeleteAll', {
                           count: tasks.length,
-                          defaultValue: `确定要删除所有 ${tasks.length} 个任务吗？此操作无法撤销。`
+                          defaultValue: `确定要删除所有 ${tasks.length} 个任务吗？此操作无法撤销。`,
                         }),
                         type: 'danger',
                         confirmText: t('task:actions.deleteAll', { defaultValue: '删除全部' }),
@@ -1320,17 +1324,21 @@ function App() {
 
                           // 显示成功动画
                           showSuccess({
-                            message: t('task:messages.allTasksDeleted', { defaultValue: '所有任务已删除' }),
+                            message: t('task:messages.allTasksDeleted', {
+                              defaultValue: '所有任务已删除',
+                            }),
                             variant: 'simple',
                             duration: 2000,
                           });
 
-                          toast.success(t('task:messages.allTasksDeleted', { defaultValue: '所有任务已删除' }));
+                          toast.success(
+                            t('task:messages.allTasksDeleted', { defaultValue: '所有任务已删除' }),
+                          );
                         } catch (error) {
                           console.error('删除任务失败:', error);
                           toast.error(t('task:messages.deleteFailed'));
                         }
-                      }
+                      },
                     );
                   }}
                   className="text-xs"
@@ -1342,11 +1350,7 @@ function App() {
 
               {/* 只有在选中看板时才显示创建任务按钮 */}
               {currentBoardId && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setIsCreateModalOpen(true)}
-                >
+                <Button variant="secondary" size="sm" onClick={() => setIsCreateModalOpen(true)}>
                   {t('task:actions.createTask')}
                 </Button>
               )}
@@ -1354,203 +1358,202 @@ function App() {
               <BoardColorPicker />
             </div>
           </header>
-        
 
+          {/* 连接状态提示 */}
+          {!isConnected && (
+            <div className="modern-card mx-4 mt-4 bg-warning/10 border border-warning text-warning px-4 py-2">
+              <p>未连接到MCP服务，部分功能可能不可用</p>
+            </div>
+          )}
 
-        {/* 连接状态提示 */}
-        {!isConnected && (
-          <div className="modern-card mx-4 mt-4 bg-warning/10 border border-warning text-warning px-4 py-2">
-            <p>未连接到MCP服务，部分功能可能不可用</p>
-          </div>
-        )}
-
-        {/* 主要内容区 */}
-        <ViewTransition viewKey={currentView} mode="scale" className="flex-1 p-4 flex flex-col min-h-0">
-          {/* 如果选中了看板，显示看板内容；否则显示导航概览 */}
-          {currentBoardId ? (
-            // 显示看板内容
-            <>
-              {isLoading ? (
-                <>
-                  {currentView === 'board' ? (
-                    <div className="modern-container h-full board-content">
-                      <div className="h-full overflow-x-auto overflow-y-hidden p-6">
-                        <div className="flex space-x-4 h-full">
-                          {/* 渲染3个列的骨架屏 */}
-                          {[1, 2, 3].map((index) => (
-                            <div key={index} className="flex-shrink-0 w-80">
-                              <div className="bg-surface rounded-card p-4 h-full">
-                                <div className="h-6 bg-text-secondary/20 rounded-md w-24 mb-4 animate-pulse"></div>
-                                <div className="space-y-3">
-                                  <SkeletonCard />
-                                  <SkeletonCard />
-                                  <SkeletonCard />
+          {/* 主要内容区 */}
+          <ViewTransition
+            viewKey={currentView}
+            mode="scale"
+            className="flex-1 p-4 flex flex-col min-h-0"
+          >
+            {/* 如果选中了看板，显示看板内容；否则显示导航概览 */}
+            {currentBoardId ? (
+              // 显示看板内容
+              <>
+                {isLoading ? (
+                  <>
+                    {currentView === 'board' ? (
+                      <div className="modern-container h-full board-content">
+                        <div className="h-full overflow-x-auto overflow-y-hidden p-6">
+                          <div className="flex space-x-4 h-full">
+                            {/* 渲染3个列的骨架屏 */}
+                            {[1, 2, 3].map((index) => (
+                              <div key={index} className="flex-shrink-0 w-80">
+                                <div className="bg-surface rounded-card p-4 h-full">
+                                  <div className="h-6 bg-text-secondary/20 rounded-md w-24 mb-4 animate-pulse"></div>
+                                  <div className="space-y-3">
+                                    <SkeletonCard />
+                                    <SkeletonCard />
+                                    <SkeletonCard />
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ) : currentView === 'list' ? (
-                    <div className="flex-1 min-h-0">
-                      <SkeletonList rows={8} />
-                    </div>
-                  ) : (
-                    <div className="flex-1 min-h-0">
-                      <SkeletonCalendar />
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  {currentView === 'board' ? (
-                    <div className="modern-container h-full board-content">
-                      <div className="h-full overflow-x-auto overflow-y-hidden p-6 custom-scrollbar">
+                    ) : currentView === 'list' ? (
+                      <div className="flex-1 min-h-0">
+                        <SkeletonList rows={8} />
+                      </div>
+                    ) : (
+                      <div className="flex-1 min-h-0">
+                        <SkeletonCalendar />
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {currentView === 'board' ? (
+                      <div className="modern-container h-full board-content">
+                        <div className="h-full overflow-x-auto overflow-y-hidden p-6 custom-scrollbar">
+                          <ErrorBoundary fallback={SimpleErrorFallback}>
+                            {renderViewContent()}
+                          </ErrorBoundary>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex-1 min-h-0">
                         <ErrorBoundary fallback={SimpleErrorFallback}>
                           {renderViewContent()}
                         </ErrorBoundary>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="flex-1 min-h-0">
-                      <ErrorBoundary fallback={SimpleErrorFallback}>
-                        {renderViewContent()}
-                      </ErrorBoundary>
-                    </div>
-                  )}
-                </>
-              )}
+                    )}
+                  </>
+                )}
+              </>
+            ) : (
+              // 显示导航概览
+              <NavigationOverview />
+            )}
+          </ViewTransition>
+        </div>
+
+        {/* 新建任务模态框 */}
+        <Modal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          title={t('task:actions.createTask')}
+          size="md"
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setIsCreateModalOpen(false)}>
+                {t('common:actions.cancel')}
+              </Button>
+              <Button variant="primary" onClick={handleCreateTask} disabled={!isConnected}>
+                {t('common:actions.create')}
+              </Button>
             </>
-          ) : (
-            // 显示导航概览
-            <NavigationOverview />
-          )}
-        </ViewTransition>
-        </div>
-      
-      {/* 新建任务模态框 */}
-      <Modal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        title={t('task:actions.createTask')}
-        size="md"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setIsCreateModalOpen(false)}>
-              {t('common:actions.cancel')}
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleCreateTask}
-              disabled={!isConnected}
-            >
-              {t('common:actions.create')}
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          {!isConnected && (
-            <div className="bg-warning/10 border border-warning text-warning px-4 py-2 rounded-md text-sm">
-              {t('common:messages.noConnection')}
+          }
+        >
+          <div className="space-y-4">
+            {!isConnected && (
+              <div className="bg-warning/10 border border-warning text-warning px-4 py-2 rounded-md text-sm">
+                {t('common:messages.noConnection')}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-text-primary mb-1">
+                {t('task:fields.title')}
+              </label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
+                placeholder={t('task:placeholders.taskTitle')}
+                value={newTask.title}
+                onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                disabled={!isConnected}
+              />
             </div>
-          )}
-          
-          <div>
-            <label className="block text-sm font-medium text-text-primary mb-1">
-              {t('task:fields.title')}
-            </label>
-            <input
-              type="text"
-              className="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
-              placeholder={t('task:placeholders.taskTitle')}
-              value={newTask.title}
-              onChange={(e) => setNewTask({...newTask, title: e.target.value})}
-              disabled={!isConnected}
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-text-primary mb-1">
-              {t('task:fields.description')}
-            </label>
-            <textarea
-              className="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 min-h-[100px]"
-              placeholder={t('task:placeholders.taskDescription')}
-              value={newTask.description || ''}
-              onChange={(e) => setNewTask({...newTask, description: e.target.value})}
-              disabled={!isConnected}
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-text-primary mb-1">
-              {t('task:fields.status')}
-            </label>
-            <select
-              className="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
-              value={newTask.status}
-              onChange={(e) => setNewTask({...newTask, status: e.target.value})}
-              disabled={!isConnected}
-            >
-              {columns.map(column => (
-                <option key={column.id} value={column.id}>{column.name}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-text-primary mb-1">
-              {t('task:fields.priority')}
-            </label>
-            <select
-              className="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
-              value={newTask.priority || ''}
-              onChange={(e) => setNewTask({...newTask, priority: (e.target.value || null) as any})}
-              disabled={!isConnected}
-            >
-              <option value="">{t('task:placeholders.selectPriority')}</option>
-              <option value="High">{t('task:priority.high')}</option>
-              <option value="Medium">{t('task:priority.medium')}</option>
-              <option value="Low">{t('task:priority.low')}</option>
-            </select>
-          </div>
-        </div>
-      </Modal>
-      
-      {/* 任务详情模态框 */}
-      <TaskDetailModal
-        isOpen={isTaskDetailModalOpen}
-        taskId={selectedTaskId}
-        onClose={handleCloseTaskDetail}
-      />
 
-      {/* 拖拽预览层 */}
-      <DragOverlay
-        dropAnimation={{
-          duration: 200,
-          easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
-        }}
-      >
-        {activeTask ? (
-          <TaskDragOverlay task={activeTask} />
-        ) : activeColumn ? (
-          <ColumnDragOverlay
-            column={activeColumn}
-            tasks={tasksByColumn[activeColumn.id] || []}
-          />
-        ) : null}
-      </DragOverlay>
+            <div>
+              <label className="block text-sm font-medium text-text-primary mb-1">
+                {t('task:fields.description')}
+              </label>
+              <textarea
+                className="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 min-h-[100px]"
+                placeholder={t('task:placeholders.taskDescription')}
+                value={newTask.description || ''}
+                onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                disabled={!isConnected}
+              />
+            </div>
 
-      {/* 反馈组件 */}
-      {KeyboardShortcuts}
-      {KeyboardShortcutsHelp}
-      {ConfirmDialog}
-      {SuccessAnimation}
-    </Layout>
-  </DndContext>
+            <div>
+              <label className="block text-sm font-medium text-text-primary mb-1">
+                {t('task:fields.status')}
+              </label>
+              <select
+                className="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
+                value={newTask.status}
+                onChange={(e) => setNewTask({ ...newTask, status: e.target.value })}
+                disabled={!isConnected}
+              >
+                {columns.map((column) => (
+                  <option key={column.id} value={column.id}>
+                    {column.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text-primary mb-1">
+                {t('task:fields.priority')}
+              </label>
+              <select
+                className="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
+                value={newTask.priority || ''}
+                onChange={(e) =>
+                  setNewTask({ ...newTask, priority: (e.target.value || null) as any })
+                }
+                disabled={!isConnected}
+              >
+                <option value="">{t('task:placeholders.selectPriority')}</option>
+                <option value="High">{t('task:priority.high')}</option>
+                <option value="Medium">{t('task:priority.medium')}</option>
+                <option value="Low">{t('task:priority.low')}</option>
+              </select>
+            </div>
+          </div>
+        </Modal>
+
+        {/* 任务详情模态框 */}
+        <TaskDetailModal
+          isOpen={isTaskDetailModalOpen}
+          taskId={selectedTaskId}
+          onClose={handleCloseTaskDetail}
+        />
+
+        {/* 拖拽预览层 */}
+        <DragOverlay
+          dropAnimation={{
+            duration: 200,
+            easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+          }}
+        >
+          {activeTask ? (
+            <TaskDragOverlay task={activeTask} />
+          ) : activeColumn ? (
+            <ColumnDragOverlay column={activeColumn} tasks={tasksByColumn[activeColumn.id] || []} />
+          ) : null}
+        </DragOverlay>
+
+        {/* 反馈组件 */}
+        {KeyboardShortcuts}
+        {KeyboardShortcutsHelp}
+        {ConfirmDialog}
+        {SuccessAnimation}
+      </Layout>
+    </DndContext>
   );
 }
 
-export default App; 
+export default App;

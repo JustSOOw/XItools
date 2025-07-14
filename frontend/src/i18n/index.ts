@@ -12,7 +12,7 @@ import enUS from './locales/en-US';
 
 // 支持的语言列表
 export const supportedLanguages = ['zh-CN', 'en-US'] as const;
-export type SupportedLanguage = typeof supportedLanguages[number];
+export type SupportedLanguage = (typeof supportedLanguages)[number];
 
 // 默认语言
 export const defaultLanguage: SupportedLanguage = 'zh-CN';
@@ -22,19 +22,19 @@ const inlineAuthResources = {
   'zh-CN': {
     common: {
       loading: {
-        text: '加载中...'
+        text: '加载中...',
       },
       app: {
         name: 'XItools',
-        title: '智能任务看板'
+        title: '智能任务看板',
       },
       feedback: {
         success: '成功',
         error: '错误',
         warning: '警告',
-        info: '信息'
+        info: '信息',
       },
-      settings: '设置'
+      settings: '设置',
     },
     auth: {
       brand: {
@@ -46,21 +46,21 @@ const inlineAuthResources = {
         feature3: '数据分析',
         highlight1: {
           title: 'MCP智能集成',
-          desc: 'AI编辑器直连，智能任务管理'
+          desc: 'AI编辑器直连，智能任务管理',
         },
         highlight2: {
           title: '实时协作看板',
-          desc: 'WebSocket同步，多人协作'
+          desc: 'WebSocket同步，多人协作',
         },
         highlight3: {
           title: '多视图管理',
-          desc: '看板、列表、日历三种视图'
+          desc: '看板、列表、日历三种视图',
         },
         stats: {
           tools: 'MCP工具',
           views: '视图模式',
-          sync: '实时同步'
-        }
+          sync: '实时同步',
+        },
       },
       login: {
         title: '登录',
@@ -74,7 +74,7 @@ const inlineAuthResources = {
         loggingIn: '登录中...',
         noAccount: '还没有账号？',
         switchToRegister: '立即注册',
-        forgotPassword: '忘记密码？'
+        forgotPassword: '忘记密码？',
       },
       register: {
         title: '注册',
@@ -91,7 +91,7 @@ const inlineAuthResources = {
         submit: '注册',
         registering: '注册中...',
         hasAccount: '已有账号？',
-        switchToLogin: '立即登录'
+        switchToLogin: '立即登录',
       },
       forgotPassword: {
         title: '忘记密码',
@@ -114,14 +114,14 @@ const inlineAuthResources = {
         emailResent: '邮件已重新发送',
         sendFailed: '发送失败，请稍后重试',
         resendFailed: '重新发送失败，请稍后重试',
-        error: '发送失败'
+        error: '发送失败',
       },
       password: {
         strength: '密码强度',
         weak: '弱',
         medium: '中等',
         strong: '强',
-        veryStrong: '很强'
+        veryStrong: '很强',
       },
       profile: {
         title: '个人资料',
@@ -143,12 +143,12 @@ const inlineAuthResources = {
         passwordChangeSuccess: '密码修改成功',
         logoutConfirm: '确定要退出登录吗？',
         notLoggedIn: '请先登录',
-        lastLogin: '最后登录'
+        lastLogin: '最后登录',
       },
       roles: {
         admin: '管理员',
         user: '用户',
-        guest: '访客'
+        guest: '访客',
       },
       validation: {
         identifierRequired: '请输入用户名或邮箱',
@@ -169,13 +169,13 @@ const inlineAuthResources = {
         passwordStrength: '密码强度较弱，建议使用更复杂的密码',
         passwordSameAsCurrent: '新密码不能与当前密码相同',
         confirmPasswordRequired: '请确认密码',
-        passwordMismatch: '两次输入的密码不一致'
+        passwordMismatch: '两次输入的密码不一致',
       },
       footer: {
         privacy: '隐私政策',
         terms: '服务条款',
         help: '帮助中心',
-        copyright: '保留所有权利'
+        copyright: '保留所有权利',
       },
       feedback: {
         welcome: '欢迎',
@@ -199,7 +199,7 @@ const inlineAuthResources = {
         relogin: '重新登录',
         networkError: '网络连接失败',
         connectionProblem: '连接问题',
-        retry: '重试'
+        retry: '重试',
       },
       errors: {
         unknown: '未知错误，请稍后重试',
@@ -209,7 +209,7 @@ const inlineAuthResources = {
           failed: '登录失败，请重试',
           invalidCredentials: '用户名或密码错误',
           userNotFound: '用户不存在',
-          userInactive: '账户已被禁用'
+          userInactive: '账户已被禁用',
         },
         register: {
           failed: '注册失败，请重试',
@@ -219,58 +219,58 @@ const inlineAuthResources = {
           emailTaken: '邮箱已被注册',
           weakPassword: '密码强度不足',
           invalidData: '输入数据无效',
-          serverError: '服务器错误，请稍后重试'
+          serverError: '服务器错误，请稍后重试',
         },
         token: {
           expired: '登录已过期，请重新登录',
           invalid: '登录状态无效，请重新登录',
-          missing: '缺少认证信息，请重新登录'
+          missing: '缺少认证信息，请重新登录',
         },
         session: {
-          revoked: '会话已被撤销，请重新登录'
+          revoked: '会话已被撤销，请重新登录',
         },
         permission: {
           insufficient: '权限不足',
           forbidden: '禁止访问',
-          accessDenied: '访问被拒绝'
+          accessDenied: '访问被拒绝',
         },
         profile: {
           updateFailed: '资料更新失败',
           currentPasswordIncorrect: '当前密码错误',
           passwordSameAsCurrent: '新密码不能与当前密码相同',
           passwordChangeFailed: '密码修改失败',
-          avatarUploadFailed: '头像上传失败'
-        }
+          avatarUploadFailed: '头像上传失败',
+        },
       },
       loading: {
-        checking: '正在检查认证状态...'
+        checking: '正在检查认证状态...',
       },
       unauthorized: {
         title: '访问被拒绝',
         message: '您需要 {{requiredRole}} 权限才能访问此页面，当前权限：{{currentRole}}',
-        goBack: '返回'
+        goBack: '返回',
       },
       roleGuard: {
-        accessDenied: '访问被拒绝'
-      }
-    }
+        accessDenied: '访问被拒绝',
+      },
+    },
   },
   'en-US': {
     common: {
       loading: {
-        text: 'Loading...'
+        text: 'Loading...',
       },
       app: {
         name: 'XItools',
-        title: 'Smart Task Board'
+        title: 'Smart Task Board',
       },
       feedback: {
         success: 'Success',
         error: 'Error',
         warning: 'Warning',
-        info: 'Info'
+        info: 'Info',
       },
-      settings: 'Settings'
+      settings: 'Settings',
     },
     auth: {
       brand: {
@@ -282,21 +282,21 @@ const inlineAuthResources = {
         feature3: 'Data Analytics',
         highlight1: {
           title: 'MCP AI Integration',
-          desc: 'Direct AI editor connection, smart task management'
+          desc: 'Direct AI editor connection, smart task management',
         },
         highlight2: {
           title: 'Real-time Kanban',
-          desc: 'WebSocket sync, multi-user collaboration'
+          desc: 'WebSocket sync, multi-user collaboration',
         },
         highlight3: {
           title: 'Multi-view Management',
-          desc: 'Board, list, and calendar views'
+          desc: 'Board, list, and calendar views',
         },
         stats: {
           tools: 'MCP Tools',
           views: 'View Modes',
-          sync: 'Real-time Sync'
-        }
+          sync: 'Real-time Sync',
+        },
       },
       login: {
         title: 'Login',
@@ -310,7 +310,7 @@ const inlineAuthResources = {
         loggingIn: 'Logging in...',
         noAccount: "Don't have an account?",
         switchToRegister: 'Sign up now',
-        forgotPassword: 'Forgot password?'
+        forgotPassword: 'Forgot password?',
       },
       register: {
         title: 'Register',
@@ -327,7 +327,7 @@ const inlineAuthResources = {
         submit: 'Register',
         registering: 'Registering...',
         hasAccount: 'Already have an account?',
-        switchToLogin: 'Sign in now'
+        switchToLogin: 'Sign in now',
       },
       forgotPassword: {
         title: 'Forgot Password',
@@ -350,14 +350,14 @@ const inlineAuthResources = {
         emailResent: 'Email resent successfully',
         sendFailed: 'Failed to send, please try again later',
         resendFailed: 'Failed to resend, please try again later',
-        error: 'Send Failed'
+        error: 'Send Failed',
       },
       password: {
         strength: 'Password Strength',
         weak: 'Weak',
         medium: 'Medium',
         strong: 'Strong',
-        veryStrong: 'Very Strong'
+        veryStrong: 'Very Strong',
       },
       profile: {
         title: 'Profile',
@@ -379,12 +379,12 @@ const inlineAuthResources = {
         passwordChangeSuccess: 'Password changed successfully',
         logoutConfirm: 'Are you sure you want to logout?',
         notLoggedIn: 'Please login first',
-        lastLogin: 'Last Login'
+        lastLogin: 'Last Login',
       },
       roles: {
         admin: 'Administrator',
         user: 'User',
-        guest: 'Guest'
+        guest: 'Guest',
       },
       validation: {
         identifierRequired: 'Please enter username or email',
@@ -405,13 +405,13 @@ const inlineAuthResources = {
         passwordStrength: 'Password is weak, consider using a more complex password',
         passwordSameAsCurrent: 'New password cannot be the same as current password',
         confirmPasswordRequired: 'Please confirm password',
-        passwordMismatch: 'Passwords do not match'
+        passwordMismatch: 'Passwords do not match',
       },
       footer: {
         privacy: 'Privacy Policy',
         terms: 'Terms of Service',
         help: 'Help Center',
-        copyright: 'All rights reserved'
+        copyright: 'All rights reserved',
       },
       feedback: {
         welcome: 'Welcome',
@@ -435,7 +435,7 @@ const inlineAuthResources = {
         relogin: 'Log in again',
         networkError: 'Network connection failed',
         connectionProblem: 'Connection Problem',
-        retry: 'Retry'
+        retry: 'Retry',
       },
       errors: {
         unknown: 'Unknown error, please try again later',
@@ -445,7 +445,7 @@ const inlineAuthResources = {
           failed: 'Login failed, please try again',
           invalidCredentials: 'Invalid username or password',
           userNotFound: 'User not found',
-          userInactive: 'Account has been disabled'
+          userInactive: 'Account has been disabled',
         },
         register: {
           failed: 'Registration failed, please try again',
@@ -455,42 +455,43 @@ const inlineAuthResources = {
           emailTaken: 'Email already registered',
           weakPassword: 'Password is too weak',
           invalidData: 'Invalid input data',
-          serverError: 'Server error, please try again later'
+          serverError: 'Server error, please try again later',
         },
         token: {
           expired: 'Login has expired, please log in again',
           invalid: 'Invalid login status, please log in again',
-          missing: 'Missing authentication information, please log in again'
+          missing: 'Missing authentication information, please log in again',
         },
         session: {
-          revoked: 'Session has been revoked, please log in again'
+          revoked: 'Session has been revoked, please log in again',
         },
         permission: {
           insufficient: 'Insufficient permissions',
           forbidden: 'Access forbidden',
-          accessDenied: 'Access denied'
+          accessDenied: 'Access denied',
         },
         profile: {
           updateFailed: 'Profile update failed',
           currentPasswordIncorrect: 'Current password is incorrect',
           passwordSameAsCurrent: 'New password cannot be the same as current password',
           passwordChangeFailed: 'Password change failed',
-          avatarUploadFailed: 'Avatar upload failed'
-        }
+          avatarUploadFailed: 'Avatar upload failed',
+        },
       },
       loading: {
-        checking: 'Checking authentication status...'
+        checking: 'Checking authentication status...',
       },
       unauthorized: {
         title: 'Access Denied',
-        message: 'You need {{requiredRole}} permission to access this page. Current permission: {{currentRole}}',
-        goBack: 'Go Back'
+        message:
+          'You need {{requiredRole}} permission to access this page. Current permission: {{currentRole}}',
+        goBack: 'Go Back',
       },
       roleGuard: {
-        accessDenied: 'Access Denied'
-      }
-    }
-  }
+        accessDenied: 'Access Denied',
+      },
+    },
+  },
 };
 
 // 合并翻译资源：深度合并JSON文件与内联的认证资源
@@ -500,39 +501,37 @@ const resources = {
     // 深度合并common命名空间，避免覆盖
     common: {
       ...zhCN.common,
-      ...inlineAuthResources['zh-CN'].common
+      ...inlineAuthResources['zh-CN'].common,
     },
     // 添加auth命名空间（来自内联资源）
-    auth: inlineAuthResources['zh-CN'].auth
+    auth: inlineAuthResources['zh-CN'].auth,
   },
   'en-US': {
     ...enUS,
     // 深度合并common命名空间，避免覆盖
     common: {
       ...enUS.common,
-      ...inlineAuthResources['en-US'].common
+      ...inlineAuthResources['en-US'].common,
     },
     // 添加auth命名空间（来自内联资源）
-    auth: inlineAuthResources['en-US'].auth
-  }
+    auth: inlineAuthResources['en-US'].auth,
+  },
 };
 
 // 初始化 i18next
-i18n
-  .use(initReactI18next)
-  .init({
-    resources,
-    lng: 'zh-CN',
-    fallbackLng: 'zh-CN',
-    defaultNS: 'common',
-    ns: ['common', 'auth', 'task', 'board', 'calendar', 'settings', 'feedback', 'error'],
-    interpolation: {
-      escapeValue: false,
-    },
-    react: {
-      useSuspense: false,
-    },
-  });
+i18n.use(initReactI18next).init({
+  resources,
+  lng: 'zh-CN',
+  fallbackLng: 'zh-CN',
+  defaultNS: 'common',
+  ns: ['common', 'auth', 'task', 'board', 'calendar', 'settings', 'feedback', 'error'],
+  interpolation: {
+    escapeValue: false,
+  },
+  react: {
+    useSuspense: false,
+  },
+});
 
 // 语言规范化函数
 const normalizeLanguage = (lng: string): SupportedLanguage => {

@@ -1,6 +1,6 @@
 /**
  * API密钥管理相关的类型定义
- * 
+ *
  * 包含API密钥模型、请求/响应、权限等类型定义
  */
 
@@ -62,10 +62,9 @@ export interface McpUsageLog {
  * 创建API密钥请求Schema
  */
 export const createApiKeySchema = z.object({
-  name: z.string()
-    .min(1, 'API密钥名称不能为空')
-    .max(100, 'API密钥名称不能超过100个字符'),
-  permissions: z.array(z.enum(['mcp:read', 'mcp:write', 'mcp:admin']))
+  name: z.string().min(1, 'API密钥名称不能为空').max(100, 'API密钥名称不能超过100个字符'),
+  permissions: z
+    .array(z.enum(['mcp:read', 'mcp:write', 'mcp:admin']))
     .min(1, '至少需要选择一个权限')
     .default(['mcp:read', 'mcp:write']),
   expiresAt: z.string().datetime().nullable().optional(),
@@ -196,11 +195,7 @@ export enum ApiKeyErrorCode {
  * API密钥错误类
  */
 export class ApiKeyError extends Error {
-  constructor(
-    public code: ApiKeyErrorCode,
-    message: string,
-    public statusCode: number = 401
-  ) {
+  constructor(public code: ApiKeyErrorCode, message: string, public statusCode: number = 401) {
     super(message);
     this.name = 'ApiKeyError';
   }
@@ -233,17 +228,4 @@ export interface ApiKeyValidationResult {
 // 导出所有类型
 // ================================
 
-export type {
-  UserApiKey,
-  McpUsageLog,
-  CreateApiKeyRequest,
-  ApiKeyListResponse,
-  ApiKeyInfo,
-  CreateApiKeyResponse,
-  DeleteApiKeyResponse,
-  ApiKeyUsageStats,
-  McpUserContext,
-  McpLogParams,
-  ApiKeyGenerateOptions,
-  ApiKeyValidationResult,
-};
+// 所有类型已经通过 export interface 和 export type 定义导出，无需重复导出

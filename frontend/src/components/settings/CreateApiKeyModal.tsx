@@ -1,6 +1,6 @@
 /**
  * 创建API密钥模态框组件
- * 
+ *
  * 提供创建新API密钥的表单界面，包括名称、描述、权限和过期时间设置
  */
 
@@ -26,7 +26,7 @@ interface CreateApiKeyForm {
 export const CreateApiKeyModal: React.FC<CreateApiKeyModalProps> = ({
   isOpen,
   onClose,
-  onSuccess
+  onSuccess,
 }) => {
   const { t } = useTranslation();
   const [, toastAPI] = useToast();
@@ -35,13 +35,13 @@ export const CreateApiKeyModal: React.FC<CreateApiKeyModalProps> = ({
     name: '',
     description: '',
     permissions: ['read', 'write'],
-    expiresIn: '90d'
+    expiresIn: '90d',
   });
 
   // 可用权限选项
   const permissionOptions = [
     { value: 'read', label: '读取权限', description: '获取看板、任务等数据' },
-    { value: 'write', label: '写入权限', description: '创建、更新、删除任务和看板' }
+    { value: 'write', label: '写入权限', description: '创建、更新、删除任务和看板' },
   ];
 
   // 过期时间选项
@@ -50,20 +50,20 @@ export const CreateApiKeyModal: React.FC<CreateApiKeyModalProps> = ({
     { value: '30d', label: '30天' },
     { value: '90d', label: '90天' },
     { value: '1y', label: '1年' },
-    { value: 'never', label: '永不过期' }
+    { value: 'never', label: '永不过期' },
   ];
 
   // 处理表单输入变化
   const handleInputChange = (field: keyof CreateApiKeyForm, value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
   // 处理权限选择变化
   const handlePermissionChange = (permission: string, checked: boolean) => {
-    setFormData(prev => {
+    setFormData((prev) => {
       let newPermissions = [...prev.permissions];
 
       if (checked) {
@@ -73,12 +73,12 @@ export const CreateApiKeyModal: React.FC<CreateApiKeyModalProps> = ({
         }
       } else {
         // 移除权限
-        newPermissions = newPermissions.filter(p => p !== permission);
+        newPermissions = newPermissions.filter((p) => p !== permission);
       }
 
       return {
         ...prev,
-        permissions: newPermissions
+        permissions: newPermissions,
       };
     });
   };
@@ -86,7 +86,7 @@ export const CreateApiKeyModal: React.FC<CreateApiKeyModalProps> = ({
   // 提交表单
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.name.trim()) {
       toastAPI.error('请输入密钥名称');
       return;
@@ -98,12 +98,12 @@ export const CreateApiKeyModal: React.FC<CreateApiKeyModalProps> = ({
     }
 
     setIsLoading(true);
-    
+
     try {
       // 转换权限格式 - 去重并映射到后端权限
       const permissionSet = new Set<string>();
 
-      formData.permissions.forEach(perm => {
+      formData.permissions.forEach((perm) => {
         switch (perm) {
           case 'read':
             permissionSet.add('mcp:read');
@@ -136,7 +136,7 @@ export const CreateApiKeyModal: React.FC<CreateApiKeyModalProps> = ({
       const result = await apiKeyService.createApiKey({
         name: formData.name.trim(),
         permissions: mcpPermissions,
-        expiresAt: expiresAt
+        expiresAt: expiresAt,
       });
 
       // 检查结果是否有效，防止访问undefined属性
@@ -149,14 +149,13 @@ export const CreateApiKeyModal: React.FC<CreateApiKeyModalProps> = ({
         name: '',
         description: '',
         permissions: ['read', 'write'],
-        expiresIn: '90d'
+        expiresIn: '90d',
       });
 
       // 调用成功回调，触发父组件刷新列表
       onSuccess(result.apiKey, result.name);
 
       // 不在这里显示成功提示，因为会有专门的成功模态框
-
     } catch (error) {
       console.error('创建API密钥失败:', error);
 
@@ -211,19 +210,14 @@ export const CreateApiKeyModal: React.FC<CreateApiKeyModalProps> = ({
         name: '',
         description: '',
         permissions: ['read', 'write'],
-        expiresIn: '90d'
+        expiresIn: '90d',
       });
       onClose();
     }
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={handleClose}
-      title="创建API密钥"
-      size="md"
-    >
+    <Modal isOpen={isOpen} onClose={handleClose} title="创建API密钥" size="md">
       <form onSubmit={handleSubmit} className="create-api-key-form">
         {/* 基本信息 */}
         <div className="form-section">
@@ -241,9 +235,7 @@ export const CreateApiKeyModal: React.FC<CreateApiKeyModalProps> = ({
               maxLength={50}
               required
             />
-            <div className="form-hint">
-              用于识别此API密钥的用途，例如"移动应用"或"数据同步脚本"
-            </div>
+            <div className="form-hint">用于识别此API密钥的用途，例如"移动应用"或"数据同步脚本"</div>
           </div>
 
           <div className="form-group">
@@ -266,11 +258,9 @@ export const CreateApiKeyModal: React.FC<CreateApiKeyModalProps> = ({
         <div className="form-section">
           <div className="section-header">
             <h4 className="section-title">权限设置</h4>
-            <p className="section-description">
-              选择此API密钥可以执行的操作类型
-            </p>
+            <p className="section-description">选择此API密钥可以执行的操作类型</p>
           </div>
-          
+
           <div className="permissions-grid">
             {permissionOptions.map((option) => (
               <div key={option.value} className="permission-item">
@@ -310,10 +300,9 @@ export const CreateApiKeyModal: React.FC<CreateApiKeyModalProps> = ({
               ))}
             </select>
             <div className="form-hint">
-              {formData.expiresIn === 'never' 
+              {formData.expiresIn === 'never'
                 ? '此密钥将永不过期，请确保妥善保管'
-                : '密钥过期后将自动失效，需要重新创建'
-              }
+                : '密钥过期后将自动失效，需要重新创建'}
             </div>
           </div>
         </div>

@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-06-30 15:00:00
  * @FilePath: \XItools\frontend\src\components\auth\LoginForm.tsx
  * @Description: 用户登录表单组件
- * 
- * Copyright (c) 2025 by XItools Team, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -22,7 +22,7 @@ import {
   UserIcon,
   LockClosedIcon,
   EyeIcon,
-  EyeSlashIcon
+  EyeSlashIcon,
 } from '@heroicons/react/24/outline';
 
 interface LoginFormProps {
@@ -39,7 +39,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   onSuccess,
   onSwitchToRegister,
   onForgotPassword,
-  className = ''
+  className = '',
 }) => {
   const { t } = useTranslation('auth');
   const { login, isLoading, error, clearError, checkAuthStatus } = useUserStore();
@@ -49,7 +49,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   const [formData, setFormData] = useState<UserLoginRequest>({
     identifier: '',
     password: '',
-    rememberMe: false
+    rememberMe: false,
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -61,11 +61,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       const rememberedData = localStorage.getItem(REMEMBER_ME_KEY);
       if (rememberedData) {
         const parsed = JSON.parse(rememberedData);
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           identifier: parsed.identifier || '',
           password: parsed.password || '',
-          rememberMe: true
+          rememberMe: true,
         }));
       }
     } catch (error) {
@@ -78,7 +78,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   // 表单验证
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
-    
+
     if (!formData.identifier.trim()) {
       errors.identifier = t('validation.identifierRequired');
     }
@@ -88,7 +88,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     } else if (formData.password.length < 6) {
       errors.password = t('validation.passwordMinLength');
     }
-    
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -96,20 +96,20 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   // 处理输入变化
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
-    
-    setFormData(prev => ({
+
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : value,
     }));
-    
+
     // 清除对应字段的验证错误
     if (validationErrors[name]) {
-      setValidationErrors(prev => ({
+      setValidationErrors((prev) => ({
         ...prev,
-        [name]: ''
+        [name]: '',
       }));
     }
-    
+
     // 清除全局错误
     if (error) {
       clearError();
@@ -134,10 +134,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       if (formData.rememberMe) {
         // 保存账户和密码到localStorage
         try {
-          localStorage.setItem(REMEMBER_ME_KEY, JSON.stringify({
-            identifier: formData.identifier,
-            password: formData.password
-          }));
+          localStorage.setItem(
+            REMEMBER_ME_KEY,
+            JSON.stringify({
+              identifier: formData.identifier,
+              password: formData.password,
+            }),
+          );
           console.log('已保存登录信息到localStorage');
         } catch (error) {
           console.warn('保存登录信息失败:', error);
@@ -182,138 +185,138 @@ export const LoginForm: React.FC<LoginFormProps> = ({
           <p className="form-subtitle">{t('login.subtitle')}</p>
         </div>
 
-      <form onSubmit={handleSubmit} className="form-content">
-        {/* 全局错误提示 */}
-        {error && (
-          <div className="error-message global-error">
-            <ExclamationTriangleIcon className="w-5 h-5" />
-            <span>{handleLoginError({ response: { data: { error } } })}</span>
-          </div>
-        )}
-
-        {/* 用户名/邮箱输入 */}
-        <div className="form-group">
-          <label htmlFor="identifier" className="form-label">
-            {t('login.identifier')}
-          </label>
-          <div className="input-wrapper">
-            <input
-              type="text"
-              id="identifier"
-              name="identifier"
-              value={formData.identifier}
-              onChange={handleInputChange}
-              placeholder={t('login.identifierPlaceholder')}
-              className={`form-input ${validationErrors.identifier ? 'error' : ''}`}
-              disabled={isLoading}
-              autoComplete="username"
-            />
-            <UserIcon className="input-icon w-5 h-5" />
-          </div>
-          {validationErrors.identifier && (
-            <span className="error-message">{validationErrors.identifier}</span>
+        <form onSubmit={handleSubmit} className="form-content">
+          {/* 全局错误提示 */}
+          {error && (
+            <div className="error-message global-error">
+              <ExclamationTriangleIcon className="w-5 h-5" />
+              <span>{handleLoginError({ response: { data: { error } } })}</span>
+            </div>
           )}
-        </div>
 
-        {/* 密码输入 */}
-        <div className="form-group">
-          <label htmlFor="password" className="form-label">
-            {t('login.password')}
-          </label>
-          <div className="input-wrapper">
-            <input
-              type={showPassword ? 'text' : 'password'}
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleInputChange}
-              placeholder={t('login.passwordPlaceholder')}
-              className={`form-input ${validationErrors.password ? 'error' : ''}`}
-              disabled={isLoading}
-              autoComplete="current-password"
-            />
-            <LockClosedIcon className="input-icon w-5 h-5" />
-            <button
-              type="button"
-              className="password-toggle"
-              onClick={() => setShowPassword(!showPassword)}
-              disabled={isLoading}
-            >
-              {showPassword ? (
-                <EyeSlashIcon className="w-5 h-5" />
-              ) : (
-                <EyeIcon className="w-5 h-5" />
-              )}
-            </button>
+          {/* 用户名/邮箱输入 */}
+          <div className="form-group">
+            <label htmlFor="identifier" className="form-label">
+              {t('login.identifier')}
+            </label>
+            <div className="input-wrapper">
+              <input
+                type="text"
+                id="identifier"
+                name="identifier"
+                value={formData.identifier}
+                onChange={handleInputChange}
+                placeholder={t('login.identifierPlaceholder')}
+                className={`form-input ${validationErrors.identifier ? 'error' : ''}`}
+                disabled={isLoading}
+                autoComplete="username"
+              />
+              <UserIcon className="input-icon w-5 h-5" />
+            </div>
+            {validationErrors.identifier && (
+              <span className="error-message">{validationErrors.identifier}</span>
+            )}
           </div>
-          {validationErrors.password && (
-            <span className="error-message">{validationErrors.password}</span>
-          )}
-        </div>
 
-        {/* 记住我选项 */}
-        <div className="form-group">
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              name="rememberMe"
-              checked={formData.rememberMe}
-              onChange={handleInputChange}
-              disabled={isLoading}
-              className="checkbox-input"
-            />
-            <span className="checkbox-custom"></span>
-            <span className="checkbox-text">{t('login.rememberMe')}</span>
-          </label>
-        </div>
-
-        {/* 提交按钮 */}
-        <button
-          type="submit"
-          className={`submit-button ${isLoading ? 'loading' : ''}`}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <>
-              <LoadingSpinner size="small" type="spinner" />
-              <span>{t('login.loggingIn')}</span>
-            </>
-          ) : (
-            <span>{t('login.submit')}</span>
-          )}
-        </button>
-
-        {/* 底部链接区域 */}
-        <div className="form-footer">
-          <div className="footer-links-row">
-            {onForgotPassword && (
+          {/* 密码输入 */}
+          <div className="form-group">
+            <label htmlFor="password" className="form-label">
+              {t('login.password')}
+            </label>
+            <div className="input-wrapper">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleInputChange}
+                placeholder={t('login.passwordPlaceholder')}
+                className={`form-input ${validationErrors.password ? 'error' : ''}`}
+                disabled={isLoading}
+                autoComplete="current-password"
+              />
+              <LockClosedIcon className="input-icon w-5 h-5" />
               <button
                 type="button"
-                className="forgot-password-link"
-                onClick={onForgotPassword}
+                className="password-toggle"
+                onClick={() => setShowPassword(!showPassword)}
                 disabled={isLoading}
               >
-                {t('login.forgotPassword')}
+                {showPassword ? (
+                  <EyeSlashIcon className="w-5 h-5" />
+                ) : (
+                  <EyeIcon className="w-5 h-5" />
+                )}
               </button>
-            )}
-
-            {onSwitchToRegister && (
-              <div className="switch-form-text">
-                {t('login.noAccount')}
-                <button
-                  type="button"
-                  className="switch-form-link"
-                  onClick={onSwitchToRegister}
-                  disabled={isLoading}
-                >
-                  {t('login.switchToRegister')}
-                </button>
-              </div>
+            </div>
+            {validationErrors.password && (
+              <span className="error-message">{validationErrors.password}</span>
             )}
           </div>
-        </div>
-      </form>
-    </div>
+
+          {/* 记住我选项 */}
+          <div className="form-group">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                name="rememberMe"
+                checked={formData.rememberMe}
+                onChange={handleInputChange}
+                disabled={isLoading}
+                className="checkbox-input"
+              />
+              <span className="checkbox-custom"></span>
+              <span className="checkbox-text">{t('login.rememberMe')}</span>
+            </label>
+          </div>
+
+          {/* 提交按钮 */}
+          <button
+            type="submit"
+            className={`submit-button ${isLoading ? 'loading' : ''}`}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <LoadingSpinner size="small" type="spinner" />
+                <span>{t('login.loggingIn')}</span>
+              </>
+            ) : (
+              <span>{t('login.submit')}</span>
+            )}
+          </button>
+
+          {/* 底部链接区域 */}
+          <div className="form-footer">
+            <div className="footer-links-row">
+              {onForgotPassword && (
+                <button
+                  type="button"
+                  className="forgot-password-link"
+                  onClick={onForgotPassword}
+                  disabled={isLoading}
+                >
+                  {t('login.forgotPassword')}
+                </button>
+              )}
+
+              {onSwitchToRegister && (
+                <div className="switch-form-text">
+                  {t('login.noAccount')}
+                  <button
+                    type="button"
+                    className="switch-form-link"
+                    onClick={onSwitchToRegister}
+                    disabled={isLoading}
+                  >
+                    {t('login.switchToRegister')}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </form>
+      </div>
     </>
   );
 };

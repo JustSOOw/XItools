@@ -26,15 +26,15 @@ const server = fastify({
     customOptions: {
       removeAdditional: false,
       useDefaults: true,
-      coerceTypes: 'array'
-    }
-  }
+      coerceTypes: 'array',
+    },
+  },
 });
 
 // 注册插件
 server.register(fastifyCors, {
   origin: config.cors.allowedOrigins,
-  credentials: true
+  credentials: true,
 });
 
 server.register(fastifySwagger, {
@@ -42,7 +42,7 @@ server.register(fastifySwagger, {
     info: {
       title: 'XItools API Documentation',
       description: 'API documentation for XItools MCP Service',
-      version: '0.1.0'
+      version: '0.1.0',
     },
   },
 });
@@ -57,8 +57,8 @@ const start = async () => {
     const io = new Server(server.server, {
       cors: {
         origin: config.cors.allowedOrigins,
-        credentials: true
-      }
+        credentials: true,
+      },
     });
 
     // 将io实例附加到server上，以便在路由中使用
@@ -66,24 +66,23 @@ const start = async () => {
 
     // 设置MCP服务
     await setupMCPService(server, io);
-    
+
     // 设置带认证的MCP服务
     await setupAuthenticatedMCPService(server, io);
-    
+
     // 启动API密钥过期管理器
     apiKeyExpirationManager.start();
-    
+
     // 启动HTTP服务器
     const address = await server.listen({ port: config.server.port, host: config.server.host });
     console.log(`服务器运行在 ${address}`);
     console.log(`API文档：${address}/documentation`);
     console.log(`MCP端点：${address}/mcp`);
     console.log(`Socket.IO端点：${address}`);
-
   } catch (err) {
     server.log.error(err);
     process.exit(1);
   }
 };
 
-start(); 
+start();

@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-01-27 22:30:00
  * @FilePath: \XItools\frontend\src\components\SmartEmptyState.tsx
  * @Description: 智能空状态组件 - 根据不同情况显示相应的空状态
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 
 import React from 'react';
@@ -41,13 +41,7 @@ const SmartEmptyState: React.FC<SmartEmptyStateProps> = ({
 }) => {
   // 如果完全没有任务，显示创建任务的空状态
   if (totalTasks === 0) {
-    return (
-      <EmptyTasks
-        onAction={onCreateTask}
-        size={size}
-        className={className}
-      />
-    );
+    return <EmptyTasks onAction={onCreateTask} size={size} className={className} />;
   }
 
   // 如果有任务但搜索无结果
@@ -64,24 +58,12 @@ const SmartEmptyState: React.FC<SmartEmptyStateProps> = ({
 
   // 如果有任务但筛选无结果
   if (displayTasks === 0 && hasFilters) {
-    return (
-      <EmptyFilterResults
-        onAction={onClearFilters}
-        size={size}
-        className={className}
-      />
-    );
+    return <EmptyFilterResults onAction={onClearFilters} size={size} className={className} />;
   }
 
   // 如果有任务但显示为空（其他情况）
   if (displayTasks === 0) {
-    return (
-      <EmptyTasks
-        onAction={onCreateTask}
-        size={size}
-        className={className}
-      />
-    );
+    return <EmptyTasks onAction={onCreateTask} size={size} className={className} />;
   }
 
   // 如果有任务显示，则不显示空状态

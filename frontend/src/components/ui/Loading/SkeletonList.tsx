@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-01-27 20:05:00
  * @FilePath: \XItools\frontend\src\components\ui\Loading\SkeletonList.tsx
  * @Description: 列表视图骨架屏组件 - 用于列表视图加载时的占位显示
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 
 import React from 'react';
@@ -71,10 +71,12 @@ const SkeletonList: React.FC<SkeletonListProps> = ({
  */
 const SkeletonListRow: React.FC<{ isEven: boolean }> = ({ isEven }) => {
   return (
-    <div className={classNames(
-      'p-4 hover:bg-surface/50 transition-colors',
-      isEven ? 'bg-surface/20' : 'bg-transparent'
-    )}>
+    <div
+      className={classNames(
+        'p-4 hover:bg-surface/50 transition-colors',
+        isEven ? 'bg-surface/20' : 'bg-transparent',
+      )}
+    >
       <div className="grid grid-cols-12 gap-4 items-center">
         {/* 任务标题列 */}
         <div className="col-span-4">

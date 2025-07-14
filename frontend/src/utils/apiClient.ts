@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-06-30 16:00:00
  * @FilePath: \XItools\frontend\src\utils\apiClient.ts
  * @Description: 统一的API客户端配置
- * 
- * Copyright (c) 2025 by XItools Team, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
@@ -52,8 +52,8 @@ export function createApiClient(baseURL?: string): AxiosInstance {
     timeout: getApiTimeout(),
     headers: {
       'Content-Type': 'application/json',
-      'Accept': 'application/json'
-    }
+      Accept: 'application/json',
+    },
   });
 
   // 请求拦截器
@@ -74,7 +74,7 @@ export function createApiClient(baseURL?: string): AxiosInstance {
         url: config.url,
         baseURL: config.baseURL,
         headers: config.headers,
-        data: config.data
+        data: config.data,
       });
 
       return config;
@@ -82,7 +82,7 @@ export function createApiClient(baseURL?: string): AxiosInstance {
     (error) => {
       log.error('请求拦截器错误:', error);
       return Promise.reject(error);
-    }
+    },
   );
 
   // 响应拦截器
@@ -92,20 +92,20 @@ export function createApiClient(baseURL?: string): AxiosInstance {
       log.debug('API响应:', {
         status: response.status,
         url: response.config.url,
-        data: response.data
+        data: response.data,
       });
 
       return response;
     },
     async (error) => {
       const config = error.config as RequestConfig;
-      
+
       // 记录错误日志
       log.error('API响应错误:', {
         status: error.response?.status,
         url: error.config?.url,
         message: error.message,
-        data: error.response?.data
+        data: error.response?.data,
       });
 
       // 如果跳过错误处理，直接抛出
@@ -116,56 +116,42 @@ export function createApiClient(baseURL?: string): AxiosInstance {
       // 处理认证错误
       if (error.response?.status === 401 && !config?.skipAuth) {
         // 这里不处理token刷新，由全局拦截器处理
-        return Promise.reject(new ApiError(
-          '认证失败，请重新登录',
-          401,
-          'UNAUTHORIZED'
-        ));
+        return Promise.reject(new ApiError('认证失败，请重新登录', 401, 'UNAUTHORIZED'));
       }
 
       // 处理权限错误
       if (error.response?.status === 403) {
-        return Promise.reject(new ApiError(
-          '权限不足',
-          403,
-          'FORBIDDEN'
-        ));
+        return Promise.reject(new ApiError('权限不足', 403, 'FORBIDDEN'));
       }
 
       // 处理服务器错误
       if (error.response?.status >= 500) {
-        return Promise.reject(new ApiError(
-          '服务器内部错误',
-          error.response.status,
-          'SERVER_ERROR',
-          error.response.data
-        ));
+        return Promise.reject(
+          new ApiError(
+            '服务器内部错误',
+            error.response.status,
+            'SERVER_ERROR',
+            error.response.data,
+          ),
+        );
       }
 
       // 处理客户端错误
       if (error.response?.status >= 400) {
-        const errorMessage = error.response.data?.error || 
-                           error.response.data?.message || 
-                           '请求失败';
-        return Promise.reject(new ApiError(
-          errorMessage,
-          error.response.status,
-          'CLIENT_ERROR',
-          error.response.data
-        ));
+        const errorMessage =
+          error.response.data?.error || error.response.data?.message || '请求失败';
+        return Promise.reject(
+          new ApiError(errorMessage, error.response.status, 'CLIENT_ERROR', error.response.data),
+        );
       }
 
       // 处理网络错误
       if (!error.response) {
-        return Promise.reject(new ApiError(
-          '网络连接失败',
-          0,
-          'NETWORK_ERROR'
-        ));
+        return Promise.reject(new ApiError('网络连接失败', 0, 'NETWORK_ERROR'));
       }
 
       return Promise.reject(error);
-    }
+    },
   );
 
   return client;
@@ -239,14 +225,14 @@ export class ApiService {
    */
   private handleResponse<T>(response: AxiosResponse<ApiResponse<T>>): T {
     const { data } = response;
-    
+
     // 检查业务逻辑成功状态
     if (data.success === false) {
       throw new ApiError(
         data.error || data.message || '请求失败',
         response.status,
         'BUSINESS_ERROR',
-        data
+        data,
       );
     }
 
@@ -262,10 +248,10 @@ export class ApiService {
     url: string,
     dataOrConfig?: any,
     config?: RequestConfig,
-    maxRetries: number = 3
+    maxRetries: number = 3,
   ): Promise<T> {
     let lastError: any;
-    
+
     for (let i = 0; i <= maxRetries; i++) {
       try {
         switch (method) {
@@ -284,22 +270,22 @@ export class ApiService {
         }
       } catch (error) {
         lastError = error;
-        
+
         // 如果是认证错误或客户端错误，不重试
         if (error instanceof ApiError && error.status < 500) {
           break;
         }
-        
+
         // 如果是最后一次重试，直接抛出错误
         if (i === maxRetries) {
           break;
         }
-        
+
         // 等待一段时间后重试
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+        await new Promise((resolve) => setTimeout(resolve, Math.pow(2, i) * 1000));
       }
     }
-    
+
     throw lastError;
   }
 }

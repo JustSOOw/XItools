@@ -5,26 +5,26 @@
  * @LastEditTime: 2025-06-15 11:29:22
  * @FilePath: \XItools\frontend\src\components\animations\AnimationDemo.tsx
  * @Description: 动画演示组件 - 用于测试和展示各种动画效果
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 
 import React, { useState } from 'react';
-import { 
-  PageTransition, 
-  ViewTransition, 
-  CardAnimation, 
+import {
+  PageTransition,
+  ViewTransition,
+  CardAnimation,
   CardListAnimation,
   ListAnimation,
   ListItemAnimation,
-  ModalAnimation 
+  ModalAnimation,
 } from './index';
-import { 
-  ConfirmDialog, 
-  SuccessAnimation, 
-  useConfirmDialog, 
+import {
+  ConfirmDialog,
+  SuccessAnimation,
+  useConfirmDialog,
   useSuccessAnimation,
-  StatusIndicator 
+  StatusIndicator,
 } from '../feedback';
 import Button from '../Button';
 
@@ -36,7 +36,7 @@ const AnimationDemo: React.FC = () => {
   const [currentView, setCurrentView] = useState('demo1');
   const [showModal, setShowModal] = useState(false);
   const [items, setItems] = useState(['项目 1', '项目 2', '项目 3']);
-  
+
   const { showConfirm, ConfirmDialog } = useConfirmDialog();
   const { showSuccess, SuccessAnimation } = useSuccessAnimation();
 
@@ -58,7 +58,7 @@ const AnimationDemo: React.FC = () => {
           message: '删除成功！',
           variant: 'simple',
         });
-      }
+      },
     );
   };
 
@@ -88,7 +88,7 @@ const AnimationDemo: React.FC = () => {
             演示 3
           </Button>
         </div>
-        
+
         <div className="h-32 bg-surface rounded-lg p-4">
           <ViewTransition viewKey={currentView} mode="slideUp">
             {currentView === 'demo1' && (
@@ -123,14 +123,14 @@ const AnimationDemo: React.FC = () => {
               <p className="text-sm text-text-secondary">鼠标悬停查看效果</p>
             </div>
           </CardAnimation>
-          
+
           <CardAnimation variant="tap">
             <div className="bg-surface rounded-lg p-4 border border-border">
               <h3 className="font-medium text-text-primary">点击动画</h3>
               <p className="text-sm text-text-secondary">点击查看效果</p>
             </div>
           </CardAnimation>
-          
+
           <CardAnimation variant="drag">
             <div className="bg-surface rounded-lg p-4 border border-border">
               <h3 className="font-medium text-text-primary">拖拽动画</h3>
@@ -148,17 +148,13 @@ const AnimationDemo: React.FC = () => {
             添加项目
           </Button>
         </div>
-        
+
         <ListAnimation className="space-y-2">
           {items.map((item, index) => (
             <ListItemAnimation key={item} itemKey={item} variant="slide">
               <div className="bg-surface rounded-lg p-3 border border-border flex justify-between items-center">
                 <span className="text-text-primary">{item}</span>
-                <Button 
-                  variant="danger" 
-                  size="sm" 
-                  onClick={() => handleRemoveItem(index)}
-                >
+                <Button variant="danger" size="sm" onClick={() => handleRemoveItem(index)}>
                   删除
                 </Button>
               </div>
@@ -183,12 +179,8 @@ const AnimationDemo: React.FC = () => {
       <section className="space-y-4">
         <h2 className="text-xl font-semibold text-text-primary">反馈组件</h2>
         <div className="flex space-x-2">
-          <Button onClick={() => setShowModal(true)}>
-            显示模态框
-          </Button>
-          <Button onClick={handleShowSuccess}>
-            显示成功动画
-          </Button>
+          <Button onClick={() => setShowModal(true)}>显示模态框</Button>
+          <Button onClick={handleShowSuccess}>显示成功动画</Button>
         </div>
       </section>
 
@@ -200,19 +192,13 @@ const AnimationDemo: React.FC = () => {
         onOverlayClick={() => setShowModal(false)}
         className="bg-background rounded-lg shadow-xl max-w-md w-full mx-4 p-6"
       >
-        <h3 className="text-lg font-medium text-text-primary mb-4">
-          模态框动画演示
-        </h3>
-        <p className="text-text-secondary mb-6">
-          这是一个带有缩放动画的模态框示例。
-        </p>
+        <h3 className="text-lg font-medium text-text-primary mb-4">模态框动画演示</h3>
+        <p className="text-text-secondary mb-6">这是一个带有缩放动画的模态框示例。</p>
         <div className="flex justify-end space-x-2">
           <Button variant="ghost" onClick={() => setShowModal(false)}>
             取消
           </Button>
-          <Button onClick={() => setShowModal(false)}>
-            确定
-          </Button>
+          <Button onClick={() => setShowModal(false)}>确定</Button>
         </div>
       </ModalAnimation>
 

@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-01-27 15:30:00
  * @FilePath: \XItools\frontend\src\store\themeStore.ts
  * @Description: 主题状态管理
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 
 import { create } from 'zustand';
@@ -83,7 +83,8 @@ export const themeConfigs: Record<ThemeType, ThemeConfig> = {
       background: '#F0F8FF',
       surface: '#E0F2F1',
     },
-    defaultBoardBackground: 'linear-gradient(135deg, #FFFFFF 0%, #F0F8FF 30%, #E0F2F1 70%, #B2EBF2 100%)',
+    defaultBoardBackground:
+      'linear-gradient(135deg, #FFFFFF 0%, #F0F8FF 30%, #E0F2F1 70%, #B2EBF2 100%)',
   },
 };
 
@@ -95,7 +96,7 @@ interface ThemeState {
   followSystemTheme: boolean;
   // 主题配置
   configs: Record<ThemeType, ThemeConfig>;
-  
+
   // 操作方法
   setTheme: (theme: ThemeType) => void;
   toggleTheme: () => void;
@@ -119,7 +120,7 @@ class ThemeEventEmitter {
   }
 
   emit(theme: ThemeType, themeConfig: ThemeConfig) {
-    this.listeners.forEach(callback => {
+    this.listeners.forEach((callback) => {
       try {
         callback(theme, themeConfig);
       } catch (error) {
@@ -185,13 +186,13 @@ export const useThemeStore = create<ThemeState>()(
       currentTheme: 'light',
       followSystemTheme: false,
       configs: themeConfigs,
-      
+
       // 设置主题
       setTheme: (theme: ThemeType) => {
         set({ currentTheme: theme, followSystemTheme: false });
         applyThemeToDOM(theme);
       },
-      
+
       // 切换到下一个主题
       toggleTheme: () => {
         const themeOrder: ThemeType[] = ['light', 'dark', 'cherry', 'ocean'];
@@ -202,24 +203,24 @@ export const useThemeStore = create<ThemeState>()(
         set({ currentTheme: nextTheme, followSystemTheme: false });
         applyThemeToDOM(nextTheme);
       },
-      
+
       // 设置是否跟随系统主题
       setFollowSystemTheme: (follow: boolean) => {
         set({ followSystemTheme: follow });
-        
+
         if (follow) {
           const systemTheme = getSystemTheme();
           set({ currentTheme: systemTheme });
           applyThemeToDOM(systemTheme);
         }
       },
-      
+
       // 获取主题配置
       getThemeConfig: (theme?: ThemeType) => {
         const targetTheme = theme || get().currentTheme;
         return get().configs[targetTheme];
       },
-      
+
       // 应用主题
       applyTheme: (theme: ThemeType) => {
         applyThemeToDOM(theme);
@@ -257,14 +258,14 @@ export const useThemeStore = create<ThemeState>()(
           applyThemeToDOM(state.currentTheme);
         }
       },
-    }
-  )
+    },
+  ),
 );
 
 // 监听系统主题变化
 if (typeof window !== 'undefined' && window.matchMedia) {
   const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-  
+
   mediaQuery.addEventListener('change', (e) => {
     const store = useThemeStore.getState();
     if (store.followSystemTheme) {

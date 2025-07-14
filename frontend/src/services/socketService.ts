@@ -29,13 +29,13 @@ class SocketService {
       log.error('创建Socket连接失败:', error);
     }
   }
-  
+
   /**
    * 设置WebSocket事件监听器
    */
   private setupEventListeners(): void {
     if (!this.socket) return;
-    
+
     // 连接事件
     this.socket.on('connect', () => {
       log.info('已连接到MCP服务');
@@ -51,31 +51,31 @@ class SocketService {
       console.error('连接MCP服务失败:', error);
       this.isConnected = false;
     });
-    
+
     // MCP服务事件监听
     this.setupTaskEventListeners();
   }
-  
+
   /**
    * 设置任务相关的事件监听器
    * 根据MCP服务设计文档，监听tasks_added, task_updated, task_deleted事件
    */
   private setupTaskEventListeners(): void {
     if (!this.socket) return;
-    
+
     // 添加任务事件
     this.socket.on('tasks_added', (tasks: Task[]) => {
       console.log('收到新增任务:', tasks);
       useTaskStore.getState().addTasks(tasks);
     });
-    
+
     // 更新任务事件 - 重新启用，支持任务颜色等属性更新
     this.socket.on('task_updated', (task: Task) => {
       console.log('收到任务更新:', task.id);
       // 启用WebSocket自动更新，确保任务颜色等属性能正确同步
       useTaskStore.getState().updateTask(task);
     });
-    
+
     // 删除任务事件
     this.socket.on('task_deleted', ({ taskId }: { taskId: string }) => {
       console.log('收到任务删除:', taskId);
@@ -83,26 +83,38 @@ class SocketService {
     });
 
     // 清空所有任务事件
-    this.socket.on('tasks_cleared', ({ deletedTaskIds, deletedCount }: { deletedTaskIds: string[]; deletedCount: number }) => {
-      console.log('收到任务清空事件:', { deletedCount, deletedTaskIds: deletedTaskIds.slice(0, 3) });
-      // 清空所有任务
-      useTaskStore.getState().setTasks([]);
-    });
+    this.socket.on(
+      'tasks_cleared',
+      ({ deletedTaskIds, deletedCount }: { deletedTaskIds: string[]; deletedCount: number }) => {
+        console.log('收到任务清空事件:', {
+          deletedCount,
+          deletedTaskIds: deletedTaskIds.slice(0, 3),
+        });
+        // 清空所有任务
+        useTaskStore.getState().setTasks([]);
+      },
+    );
 
     // 列任务重排序事件 - 完全禁用，避免干扰乐观更新
-    this.socket.on('column_tasks_reordered', ({ columnId, taskIds }: { columnId: string; taskIds: string[] }) => {
-      console.log('收到列任务重排序（已忽略）:', { columnId, taskCount: taskIds.length });
-      // 完全禁用，让乐观更新生效
-    });
+    this.socket.on(
+      'column_tasks_reordered',
+      ({ columnId, taskIds }: { columnId: string; taskIds: string[] }) => {
+        console.log('收到列任务重排序（已忽略）:', { columnId, taskCount: taskIds.length });
+        // 完全禁用，让乐观更新生效
+      },
+    );
 
     // 列任务排序事件
-    this.socket.on('column_tasks_sorted', ({ columnId, sortOption, tasks }: { columnId: string; sortOption: string; tasks: any[] }) => {
-      console.log('收到列任务排序:', { columnId, sortOption, tasksCount: tasks.length });
-      // 延迟刷新，避免与其他操作冲突
-      setTimeout(() => {
-        this.refreshTasks();
-      }, 100);
-    });
+    this.socket.on(
+      'column_tasks_sorted',
+      ({ columnId, sortOption, tasks }: { columnId: string; sortOption: string; tasks: any[] }) => {
+        console.log('收到列任务排序:', { columnId, sortOption, tasksCount: tasks.length });
+        // 延迟刷新，避免与其他操作冲突
+        setTimeout(() => {
+          this.refreshTasks();
+        }, 100);
+      },
+    );
 
     // 列管理事件
     this.socket.on('column_created', (column: any) => {
@@ -120,7 +132,7 @@ class SocketService {
       useTaskStore.getState().deleteColumn(columnId);
     });
   }
-  
+
   /**
    * 添加连接成功事件监听
    */
@@ -153,7 +165,7 @@ class SocketService {
       console.error('刷新任务列表失败:', error);
     }
   }
-  
+
   /**
    * 移除连接成功事件监听
    */
@@ -162,7 +174,7 @@ class SocketService {
       this.socket.off('connect', callback);
     }
   }
-  
+
   /**
    * 添加断开连接事件监听
    */
@@ -171,7 +183,7 @@ class SocketService {
       this.socket.on('disconnect', callback);
     }
   }
-  
+
   /**
    * 移除断开连接事件监听
    */
@@ -180,7 +192,7 @@ class SocketService {
       this.socket.off('disconnect', callback);
     }
   }
-  
+
   /**
    * 添加连接错误事件监听
    */
@@ -189,7 +201,7 @@ class SocketService {
       this.socket.on('connect_error', callback);
     }
   }
-  
+
   /**
    * 移除连接错误事件监听
    */
@@ -198,7 +210,7 @@ class SocketService {
       this.socket.off('connect_error', callback);
     }
   }
-  
+
   /**
    * 断开WebSocket连接
    */
@@ -209,14 +221,14 @@ class SocketService {
       this.isConnected = false;
     }
   }
-  
+
   /**
    * 检查连接状态
    */
   isConnectedToServer(): boolean {
     return this.isConnected;
   }
-  
+
   /**
    * 获取Socket实例
    */
@@ -227,4 +239,4 @@ class SocketService {
 
 // 创建单例实例
 const socketService = new SocketService();
-export default socketService; 
+export default socketService;

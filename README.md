@@ -190,37 +190,69 @@ XItools/
 项目的详细文档位于 `docs/` 目录，覆盖了产品、设计、架构和开发指南。关键文档包括：
 
 ### CI/CD 部署文档
-- **[CI/CD 总览](./docs/cicd/README.md)** - 企业级 CI/CD 方案介绍
-- **[设置和使用指南](./docs/cicd/setup-guide.md)** - 完整的配置和使用说明
+- **[环境配置指南](./docs/cicd/environment-setup.md)** - 多环境部署配置详解
+- **[GitHub环境配置清单](./docs/cicd/github-environments-checklist.md)** - GitHub环境变量配置步骤
+- **[简化设置指南](./docs/cicd/setup-guide-simplified.md)** - 快速配置和使用说明
+
 
 ### 产品与技术文档
 - **产品与设计**: `docs/product/PROJECT_PRD.md`, `docs/design/API_KEY_MANAGEMENT_UI_DESIGN.md`
 - **技术与架构**: `docs/design/mcp_service_design.md`, `docs/design/DATABASE_MIGRATION_PLAN.md`
 - **指南与参考**: `docs/design/USER_SYSTEM_MIGRATION_GUIDE.md`, `docs/mcp/mcp_tools_specification.md`
 
-## 🚀 企业级 CI/CD 部署
+## 🌿 Git Flow 分支模型
 
-XItools 采用现代化的 CI/CD 部署方案，基于 GitHub Actions 实现自动化构建、测试和部署。
+XItools 采用简化版 Git Flow 分支模型，在复杂性和实用性之间取得完美平衡：
+
+### 分支架构
+```
+main (生产环境) ← develop (预发布环境) ← feature/* (功能开发)
+```
+
+### 分支说明
+- **main**: 生产就绪代码，触发生产环境部署 (https://xitools.furdow.com)
+- **develop**: 集成分支，触发预发布环境部署 (http://xitools.furdow.com:8081)
+- **feature/***: 功能开发分支，触发 CI 检查，完成后删除
+
+### 工作流程
+1. 从 `develop` 创建 `feature/功能名` 分支
+2. 开发完成后创建 PR 到 `develop`
+3. 代码审查通过后合并，自动部署到预发布环境
+4. 测试通过后创建 PR 从 `develop` 到 `main`
+5. 合并后自动部署到生产环境
+
+📋 **详细规则**: 查看 [Git Flow 规则文档](.augment/rules/gitflow.md)
+
+## 🚀 简化版 CI/CD 部署
+
+XItools 采用简化的 CI/CD 部署方案，基于 GitHub Actions 实现自动化构建和部署，专注于实用性和可靠性。
 
 ### 部署架构
 
 ```
-GitHub → CI/CD Pipeline → Docker Registry → Production Server
+GitHub → 简化 CI/CD → Docker Registry → Production Server
    ↓           ↓              ↓                    ↓
-代码推送 → 自动构建测试 → 镜像存储 → 自动部署更新
+代码推送 → 代码检查构建 → 镜像存储 → 自动部署更新
 ```
 
-### 部署流程
+### 工作流程
 
-#### 自动部署
-- **生产环境**: 推送到 `main` 分支自动触发部署
-- **预生产环境**: 推送到 `develop` 分支自动触发部署
-- **代码检查**: 创建 Pull Request 自动触发 CI 检查
+#### 持续集成 (CI)
+- **代码检查**: ESLint + TypeScript 类型检查
+- **构建验证**: 前端和后端构建测试
+- **基础安全检查**: npm audit 依赖漏洞扫描
+- **Docker构建验证**: 仅在 PR 时验证 Docker 构建
+- **触发条件**: PR 到 main/develop 分支，或推送到 main/develop 分支
 
-#### 手动部署
-1. 进入 GitHub 仓库的 **Actions** 页面
-2. 选择对应的部署工作流
-3. 点击 **Run workflow** 手动触发
+#### 自动部署 (双环境部署)
+- **预生产环境**: 仅在PR合并到 `develop` 分支时触发部署
+- **生产环境**: 仅在PR合并到 `main` 分支时触发部署
+- **安全机制**: 禁止直接push触发部署，强制代码审查流程
+
+#### 紧急回滚
+- **手动触发**: GitHub Actions 手动回滚工作流
+- **自动回滚**: 回滚到上一个稳定版本
+- **基础验证**: 简单的健康检查
 
 ### 部署监控
 
@@ -233,26 +265,15 @@ ssh root@8.140.237.185 "docker-compose -f /opt/xitools/current/docker-compose.pr
 
 # 查看应用日志
 ssh root@8.140.237.185 "docker-compose -f /opt/xitools/current/docker-compose.prod.yml logs -f"
+
+# 验证所有环境部署状态
+npm run verify:deployment
+
+# 快速检查环境可访问性
+npm run verify:deployment:quick
 ```
 
-### 回滚操作
-
-#### 自动回滚
-系统在部署失败时会自动回滚到上一个稳定版本
-
-#### 手动回滚
-```bash
-# 交互式回滚
-npm run rollback
-
-# 快速回滚到上一版本
-npm run rollback:auto
-
-# 回滚到指定版本
-bash scripts/rollback.sh 20250110-143022-abc123
-```
-
-### 备份管理
+### 手动操作
 
 ```bash
 # 完整备份
@@ -261,8 +282,8 @@ npm run backup
 # 仅备份数据库
 npm run backup:database
 
-# 自定义保留期
-bash scripts/backup.sh -r 7
+# 快速回滚到上一版本
+npm run rollback:auto
 ```
 
 ### 访问地址
@@ -271,6 +292,15 @@ bash scripts/backup.sh -r 7
 - **预生产环境**: http://xitools.furdow.com:8081
 - **健康检查**: https://xitools.furdow.com/health
 - **API文档**: https://xitools.furdow.com/api/documentation
+
+### 环境对应关系
+
+| 环境 | 分支 | 访问地址 | 数据库端口 | 用途 |
+|------|------|----------|------------|------|
+| 生产环境 | `main` | https://xitools.furdow.com | 5432 | 正式发布版本 |
+| 预生产环境 | `develop` | http://xitools.furdow.com:8081 | 5433 | 发布前测试 |
+
+**注意**: `feature/*` 分支仅进行CI检查（代码质量、构建验证），不进行远程部署。开发者使用本地环境 (`npm run dev`) 进行功能开发和测试。
 
 ## 🔧 MCP工具使用
 

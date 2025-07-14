@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-01-27 21:15:00
  * @FilePath: \XItools\frontend\src\components\ui\Toast\ToastProvider.tsx
  * @Description: Toast提供者组件 - 在应用根部提供Toast功能
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 
 import React, { useEffect } from 'react';
@@ -32,10 +32,7 @@ const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   return (
     <>
       {children}
-      <ToastContainer
-        toasts={toasts}
-        onClose={toastAPI.dismiss}
-      />
+      <ToastContainer toasts={toasts} onClose={toastAPI.dismiss} />
     </>
   );
 };

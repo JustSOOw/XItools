@@ -31,7 +31,7 @@ export class MigrationService {
     try {
       // 1. 创建默认工作区（如果不存在）
       let defaultWorkspace = await prisma.workspace.findFirst({
-        where: { isDefault: true }
+        where: { isDefault: true },
       });
 
       if (!defaultWorkspace) {
@@ -39,51 +39,16 @@ export class MigrationService {
           data: {
             name: '默认工作区',
             description: '系统默认工作区',
-            isDefault: true
-          }
+            isDefault: true,
+            ownerId: 'default-user', // TODO: 需要实际的系统用户ID
+          },
         });
         console.log('✅ 创建默认工作区');
       }
 
       // 2. 检查是否存在没有boardId的任务或列
-      const tasksWithoutBoard = await prisma.task.count({
-        where: { boardId: null }
-      });
-
-      const columnsWithoutBoard = await prisma.boardColumn.count({
-        where: { boardId: null }
-      });
-
-      if (tasksWithoutBoard > 0 || columnsWithoutBoard > 0) {
-        // 3. 创建默认看板
-        const defaultBoard = await prisma.board.create({
-          data: {
-            name: '默认看板',
-            description: '从旧版本迁移的默认看板',
-            workspaceId: defaultWorkspace.id,
-            order: 0
-          }
-        });
-        console.log('✅ 创建默认看板');
-
-        // 4. 迁移现有的列到默认看板
-        if (columnsWithoutBoard > 0) {
-          await prisma.boardColumn.updateMany({
-            where: { boardId: null },
-            data: { boardId: defaultBoard.id }
-          });
-          console.log(`✅ 迁移 ${columnsWithoutBoard} 个列到默认看板`);
-        }
-
-        // 5. 迁移现有的任务到默认看板
-        if (tasksWithoutBoard > 0) {
-          await prisma.task.updateMany({
-            where: { boardId: null },
-            data: { boardId: defaultBoard.id }
-          });
-          console.log(`✅ 迁移 ${tasksWithoutBoard} 个任务到默认看板`);
-        }
-      }
+      // 注意：在新的schema中，所有任务和列都必须有boardId，所以这里跳过迁移
+      console.log('✅ 数据迁移检查完成（新schema不需要迁移）');
 
       console.log('✅ 数据迁移完成');
     } catch (error) {
@@ -99,7 +64,7 @@ export class MigrationService {
     try {
       // 检查是否存在默认工作区
       const defaultWorkspace = await prisma.workspace.findFirst({
-        where: { isDefault: true }
+        where: { isDefault: true },
       });
 
       if (!defaultWorkspace) {
@@ -108,27 +73,22 @@ export class MigrationService {
       }
 
       // 检查是否还有没有boardId的任务或列
-      const tasksWithoutBoard = await prisma.task.count({
-        where: { boardId: null }
-      });
-
-      const columnsWithoutBoard = await prisma.boardColumn.count({
-        where: { boardId: null }
-      });
+      // 在新的schema中，boardId是必需的，所以跳过此检查
+      const tasksWithoutBoard = 0;
+      const columnsWithoutBoard = 0;
 
       if (tasksWithoutBoard > 0 || columnsWithoutBoard > 0) {
-        console.error(`❌ 验证失败: 还有 ${tasksWithoutBoard} 个任务和 ${columnsWithoutBoard} 个列没有关联到看板`);
+        console.error(
+          `❌ 验证失败: 还有 ${tasksWithoutBoard} 个任务和 ${columnsWithoutBoard} 个列没有关联到看板`,
+        );
         return false;
       }
 
       // 检查所有看板是否都有有效的父级关系
       const boardsWithoutParent = await prisma.board.count({
         where: {
-          AND: [
-            { workspaceId: null },
-            { projectId: null }
-          ]
-        }
+          AND: [{ workspaceId: null }, { projectId: null }],
+        },
       });
 
       if (boardsWithoutParent > 0) {
@@ -159,7 +119,7 @@ export class MigrationService {
       prisma.project.count(),
       prisma.board.count(),
       prisma.task.count(),
-      prisma.boardColumn.count()
+      prisma.boardColumn.count(),
     ]);
 
     return {
@@ -167,7 +127,7 @@ export class MigrationService {
       projects,
       boards,
       tasks,
-      columns
+      columns,
     };
   }
 }

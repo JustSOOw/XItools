@@ -53,12 +53,7 @@ const DraggableTaskCard: React.FC<DraggableTaskCardProps> = ({
 
       `}
     >
-      <TaskCard
-        task={task}
-        onClick={onClick}
-        onColorChange={onColorChange}
-        onDelete={onDelete}
-      />
+      <TaskCard task={task} onClick={onClick} onColorChange={onColorChange} onDelete={onDelete} />
     </div>
   );
 };

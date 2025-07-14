@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-07-01 16:30:00
  * @FilePath: \XItools\frontend\src\components\auth\FormValidationFeedback.tsx
  * @Description: 表单验证反馈组件 - 提供优雅的表单验证视觉反馈
- * 
- * Copyright (c) 2025 by XItools Team, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
 import React from 'react';
@@ -14,7 +14,7 @@ import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
   InformationCircleIcon,
-  XCircleIcon
+  XCircleIcon,
 } from '@heroicons/react/24/outline';
 
 interface FormValidationFeedbackProps {
@@ -38,7 +38,7 @@ export const FormValidationFeedback: React.FC<FormValidationFeedbackProps> = ({
   showIcon = true,
   animated = true,
   className = '',
-  onClose
+  onClose,
 }) => {
   const getIcon = () => {
     switch (type) {
@@ -71,7 +71,7 @@ export const FormValidationFeedback: React.FC<FormValidationFeedbackProps> = ({
   };
 
   return (
-    <div 
+    <div
       className={`
         form-validation-feedback 
         ${getTypeClass()} 
@@ -79,23 +79,14 @@ export const FormValidationFeedback: React.FC<FormValidationFeedbackProps> = ({
         ${className}
       `}
     >
-      {showIcon && (
-        <div className="feedback-icon">
-          {getIcon()}
-        </div>
-      )}
-      
+      {showIcon && <div className="feedback-icon">{getIcon()}</div>}
+
       <div className="feedback-content">
         <p className="feedback-message">{message}</p>
       </div>
-      
+
       {onClose && (
-        <button
-          type="button"
-          className="feedback-close"
-          onClick={onClose}
-          aria-label="关闭"
-        >
+        <button type="button" className="feedback-close" onClick={onClose} aria-label="关闭">
           <XCircleIcon className="w-4 h-4" />
         </button>
       )}

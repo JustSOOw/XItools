@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-07-01 10:30:00
  * @FilePath: \XItools\frontend\src\pages\LoginPage.tsx
  * @Description: 独立登录页面组件
- * 
- * Copyright (c) 2025 by XItools Team, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
 import React, { useEffect } from 'react';
@@ -19,9 +19,7 @@ interface LoginPageProps {
   className?: string;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ 
-  className = '' 
-}) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ className = '' }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -34,7 +32,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   useEffect(() => {
     const checkAuth = async () => {
       await checkAuthStatus();
-      
+
       // 如果已经登录，重定向到目标页面
       if (userStoreHelpers.isLoggedIn()) {
         navigate(from, { replace: true });
@@ -51,11 +49,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
   return (
     <div className={`login-page auth-page full-screen ${className}`}>
-      <AuthLayout
-        initialMode="login"
-        onAuthSuccess={handleAuthSuccess}
-        className="full-height"
-      />
+      <AuthLayout initialMode="login" onAuthSuccess={handleAuthSuccess} className="full-height" />
     </div>
   );
 };

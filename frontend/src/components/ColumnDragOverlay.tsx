@@ -4,9 +4,9 @@
  * @LastEditors: Furdow wang22338014@gmail.com
  * @LastEditTime: 2025-06-10 22:56:28
  * @FilePath: \XItools\frontend\src\components\ColumnDragOverlay.tsx
- * @Description: 
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ * @Description:
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 import React from 'react';
 import { BoardColumn } from '../store/taskStore';
@@ -17,10 +17,7 @@ interface ColumnDragOverlayProps {
   tasks: Task[];
 }
 
-const ColumnDragOverlay: React.FC<ColumnDragOverlayProps> = ({
-  column,
-  tasks
-}) => {
+const ColumnDragOverlay: React.FC<ColumnDragOverlayProps> = ({ column, tasks }) => {
   return (
     <div className="transform rotate-2 scale-105 shadow-2xl opacity-95" style={{ width: '224px' }}>
       <div
@@ -30,7 +27,7 @@ const ColumnDragOverlay: React.FC<ColumnDragOverlayProps> = ({
           minWidth: '224px',
           maxWidth: '224px',
           boxSizing: 'border-box',
-          background: column.color || 'var(--color-surface)'
+          background: column.color || 'var(--color-surface)',
         }}
       >
         {/* 列标题 */}
@@ -43,7 +40,12 @@ const ColumnDragOverlay: React.FC<ColumnDragOverlayProps> = ({
               {/* 拖拽手柄图标 */}
               <div className="mr-2 p-1 text-text-secondary">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 8h16M4 16h16"
+                  />
                 </svg>
               </div>
 
@@ -57,8 +59,17 @@ const ColumnDragOverlay: React.FC<ColumnDragOverlayProps> = ({
 
             <div className="flex items-center space-x-1">
               <div className="p-1 rounded-md text-text-secondary opacity-50">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 3a1 1 0 00-1 1v5H4a1 1 0 100 2h5v5a1 1 0 102 0v-5h5a1 1 0 100-2h-5V4a1 1 0 00-1-1z" clipRule="evenodd" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 3a1 1 0 00-1 1v5H4a1 1 0 100 2h5v5a1 1 0 102 0v-5h5a1 1 0 100-2h-5V4a1 1 0 00-1-1z"
+                    clipRule="evenodd"
+                  />
                 </svg>
               </div>
             </div>
@@ -76,7 +87,7 @@ const ColumnDragOverlay: React.FC<ColumnDragOverlayProps> = ({
                   style={{
                     maxWidth: '100%',
                     overflow: 'hidden',
-                    background: task.color || 'var(--color-surface)'
+                    background: task.color || 'var(--color-surface)',
                   }}
                 >
                   <div className="flex items-start justify-between">
@@ -92,12 +103,14 @@ const ColumnDragOverlay: React.FC<ColumnDragOverlayProps> = ({
                     </div>
 
                     {task.priority && (
-                      <span className={`
+                      <span
+                        className={`
                         ml-1 px-1 py-0.5 text-xs rounded-full font-medium flex-shrink-0
                         ${task.priority === 'High' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' : ''}
                         ${task.priority === 'Medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' : ''}
                         ${task.priority === 'Low' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : ''}
-                      `}>
+                      `}
+                      >
                         {task.priority === 'High' ? '高' : task.priority === 'Medium' ? '中' : '低'}
                       </span>
                     )}

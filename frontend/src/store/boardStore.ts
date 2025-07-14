@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-01-27 16:30:00
  * @FilePath: \XItools\frontend\src\store\boardStore.ts
  * @Description: 看板设置状态管理
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 
 import { create } from 'zustand';
@@ -46,11 +46,36 @@ export const colorOptions: ColorOption[] = [
   { id: 'rose', name: '玫瑰粉', value: '#FBCFE8', category: 'medium' },
 
   // 渐变色背景
-  { id: 'gradient-blue-purple', name: '蓝紫渐变', value: 'linear-gradient(135deg, #4F46E5 0%, #A78BFA 100%)', category: 'gradient' },
-  { id: 'gradient-green-cyan', name: '绿青渐变', value: 'linear-gradient(135deg, #10B981 0%, #22D3EE 100%)', category: 'gradient' },
-  { id: 'gradient-orange-red', name: '橙红渐变', value: 'linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)', category: 'gradient' },
-  { id: 'gradient-pink-purple', name: '粉紫渐变', value: 'linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%)', category: 'gradient' },
-  { id: 'gradient-yellow-green', name: '黄绿渐变', value: 'linear-gradient(135deg, #FBBF24 0%, #34D399 100%)', category: 'gradient' },
+  {
+    id: 'gradient-blue-purple',
+    name: '蓝紫渐变',
+    value: 'linear-gradient(135deg, #4F46E5 0%, #A78BFA 100%)',
+    category: 'gradient',
+  },
+  {
+    id: 'gradient-green-cyan',
+    name: '绿青渐变',
+    value: 'linear-gradient(135deg, #10B981 0%, #22D3EE 100%)',
+    category: 'gradient',
+  },
+  {
+    id: 'gradient-orange-red',
+    name: '橙红渐变',
+    value: 'linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)',
+    category: 'gradient',
+  },
+  {
+    id: 'gradient-pink-purple',
+    name: '粉紫渐变',
+    value: 'linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%)',
+    category: 'gradient',
+  },
+  {
+    id: 'gradient-yellow-green',
+    name: '黄绿渐变',
+    value: 'linear-gradient(135deg, #FBBF24 0%, #34D399 100%)',
+    category: 'gradient',
+  },
 ];
 
 // 看板设置状态接口
@@ -81,31 +106,31 @@ export const useBoardStore = create<BoardState>()(
       backgroundColor: DEFAULT_BACKGROUND_COLOR,
       backgroundColorId: DEFAULT_BACKGROUND_COLOR_ID,
       followTheme: true, // 默认跟随主题
-      
+
       // 设置背景颜色
       setBackgroundColor: (colorId: string, colorValue: string) => {
         set({
           backgroundColor: colorValue,
           backgroundColorId: colorId,
-          followTheme: false // 手动设置时取消跟随主题
+          followTheme: false, // 手动设置时取消跟随主题
         });
 
         // 应用到DOM
         const root = document.documentElement;
         root.style.setProperty('--board-background-color', colorValue);
       },
-      
+
       // 获取颜色选项
       getColorOption: (colorId: string) => {
-        return colorOptions.find(option => option.id === colorId);
+        return colorOptions.find((option) => option.id === colorId);
       },
-      
+
       // 重置为默认
       resetToDefault: () => {
         set({
           backgroundColor: DEFAULT_BACKGROUND_COLOR,
           backgroundColorId: DEFAULT_BACKGROUND_COLOR_ID,
-          followTheme: true // 重置时恢复跟随主题
+          followTheme: true, // 重置时恢复跟随主题
         });
 
         // 应用到DOM
@@ -136,7 +161,7 @@ export const useBoardStore = create<BoardState>()(
 
             set({
               backgroundColor: currentBoardBackground,
-              backgroundColorId: themeId
+              backgroundColorId: themeId,
             });
           }
         }
@@ -151,7 +176,7 @@ export const useBoardStore = create<BoardState>()(
         if (state.followTheme) {
           set({
             backgroundColor: themeBackground,
-            backgroundColorId: themeId
+            backgroundColorId: themeId,
           });
           root.style.setProperty('--board-background-color', themeBackground);
         }
@@ -174,8 +199,8 @@ export const useBoardStore = create<BoardState>()(
           root.style.setProperty('--board-background-color', state.backgroundColor);
         }
       },
-    }
-  )
+    },
+  ),
 );
 
 // 监听主题变化事件

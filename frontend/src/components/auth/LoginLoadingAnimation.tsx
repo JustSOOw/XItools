@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-07-01 16:00:00
  * @FilePath: \XItools\frontend\src\components\auth\LoginLoadingAnimation.tsx
  * @Description: 登录页面加载动画组件 - 提供优雅的登录过程动画效果
- * 
- * Copyright (c) 2025 by XItools Team, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
 import React from 'react';
@@ -27,7 +27,7 @@ export const LoginLoadingAnimation: React.FC<LoginLoadingAnimationProps> = ({
   isVisible,
   loadingText,
   type = 'login',
-  className = ''
+  className = '',
 }) => {
   const { t } = useTranslation('auth');
 
@@ -52,7 +52,7 @@ export const LoginLoadingAnimation: React.FC<LoginLoadingAnimationProps> = ({
           <div className="loading-logo">
             <img src="/logo.svg" alt="XItools" className="logo-pulse" />
           </div>
-          
+
           {/* 环形进度指示器 */}
           <div className="loading-ring">
             <div className="ring-segment ring-1"></div>
@@ -78,10 +78,12 @@ export const LoginLoadingAnimation: React.FC<LoginLoadingAnimationProps> = ({
             <div
               key={index}
               className={`particle particle-${index + 1}`}
-              style={{
-                '--delay': `${index * 0.1}s`,
-                '--duration': `${2 + (index % 3)}s`
-              } as React.CSSProperties}
+              style={
+                {
+                  '--delay': `${index * 0.1}s`,
+                  '--duration': `${2 + (index % 3)}s`,
+                } as React.CSSProperties
+              }
             />
           ))}
         </div>

@@ -5,12 +5,12 @@
 
 import { useTranslation } from 'react-i18next';
 import { useCallback, useMemo } from 'react';
-import type { 
-  SupportedLanguage, 
-  TranslationKey, 
-  Namespace, 
+import type {
+  SupportedLanguage,
+  TranslationKey,
+  Namespace,
   InterpolationOptions,
-  TranslationFunction 
+  TranslationFunction,
 } from '../i18n/types';
 
 /**
@@ -28,7 +28,7 @@ export function useI18n(namespace?: Namespace) {
       }
       return originalT(key, options);
     },
-    [originalT]
+    [originalT],
   );
 
   // 语言切换函数
@@ -37,28 +37,24 @@ export function useI18n(namespace?: Namespace) {
       try {
         await i18n.changeLanguage(language);
         // 触发自定义事件，通知其他组件语言已切换
-        window.dispatchEvent(new CustomEvent('languageChanged', { 
-          detail: { language } 
-        }));
+        window.dispatchEvent(
+          new CustomEvent('languageChanged', {
+            detail: { language },
+          }),
+        );
       } catch (error) {
         console.error('语言切换失败:', error);
         throw error;
       }
     },
-    [i18n]
+    [i18n],
   );
 
   // 当前语言
-  const currentLanguage = useMemo(
-    () => i18n.language as SupportedLanguage,
-    [i18n.language]
-  );
+  const currentLanguage = useMemo(() => i18n.language as SupportedLanguage, [i18n.language]);
 
   // 检查翻译键是否存在
-  const exists = useCallback(
-    (key: TranslationKey) => i18n.exists(key),
-    [i18n]
-  );
+  const exists = useCallback((key: TranslationKey) => i18n.exists(key), [i18n]);
 
   // 获取固定语言的翻译函数
   const getFixedT = useCallback(
@@ -66,7 +62,7 @@ export function useI18n(namespace?: Namespace) {
       const fixedT = i18n.getFixedT(language, ns);
       return (key: TranslationKey, options?: InterpolationOptions) => fixedT(key, options);
     },
-    [i18n]
+    [i18n],
   );
 
   // 格式化相对时间
@@ -74,7 +70,7 @@ export function useI18n(namespace?: Namespace) {
     (date: Date) => {
       const now = new Date();
       const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-      
+
       if (diffInSeconds < 60) {
         return t('common:time.now');
       } else if (diffInSeconds < 3600) {
@@ -97,7 +93,7 @@ export function useI18n(namespace?: Namespace) {
         return t('common:time.yearsAgo', { count: years });
       }
     },
-    [t]
+    [t],
   );
 
   // 格式化日期
@@ -112,7 +108,7 @@ export function useI18n(namespace?: Namespace) {
 
       return new Intl.DateTimeFormat(currentLanguage, options).format(date);
     },
-    [currentLanguage]
+    [currentLanguage],
   );
 
   // 格式化时间
@@ -125,7 +121,7 @@ export function useI18n(namespace?: Namespace) {
 
       return new Intl.DateTimeFormat(currentLanguage, options).format(date);
     },
-    [currentLanguage]
+    [currentLanguage],
   );
 
   // 格式化数字
@@ -133,7 +129,7 @@ export function useI18n(namespace?: Namespace) {
     (number: number, options?: Intl.NumberFormatOptions) => {
       return new Intl.NumberFormat(currentLanguage, options).format(number);
     },
-    [currentLanguage]
+    [currentLanguage],
   );
 
   // 格式化货币
@@ -144,7 +140,7 @@ export function useI18n(namespace?: Namespace) {
         currency,
       }).format(amount);
     },
-    [currentLanguage]
+    [currentLanguage],
   );
 
   // 获取语言方向
@@ -156,26 +152,26 @@ export function useI18n(namespace?: Namespace) {
   return {
     // 核心翻译功能
     t,
-    
+
     // 语言管理
     currentLanguage,
     changeLanguage,
     isRTL,
-    
+
     // 工具函数
     exists,
     getFixedT,
-    
+
     // 格式化函数
     formatRelativeTime,
     formatDate,
     formatTime,
     formatNumber,
     formatCurrency,
-    
+
     // 状态
     ready,
-    
+
     // 原始 i18n 实例（用于高级用法）
     i18n,
   };
@@ -214,18 +210,16 @@ export function useLanguageDetection() {
     // 检测浏览器语言
     const browserLanguage = navigator.language;
     const supportedLanguages: SupportedLanguage[] = ['zh-CN', 'en-US'];
-    
+
     // 精确匹配
     if (supportedLanguages.includes(browserLanguage as SupportedLanguage)) {
       return browserLanguage as SupportedLanguage;
     }
-    
+
     // 语言代码匹配（如 'zh' 匹配 'zh-CN'）
     const languageCode = browserLanguage.split('-')[0];
-    const matchedLanguage = supportedLanguages.find(lang => 
-      lang.startsWith(languageCode)
-    );
-    
+    const matchedLanguage = supportedLanguages.find((lang) => lang.startsWith(languageCode));
+
     return matchedLanguage || 'zh-CN';
   }, []);
 
@@ -248,7 +242,7 @@ export function useLanguageDetection() {
  */
 export function useTranslationLoading() {
   const { ready } = useI18n();
-  
+
   return {
     isLoading: !ready,
     isReady: ready,

@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-01-27 21:30:00
  * @FilePath: \XItools\frontend\src\components\ui\Toast\index.ts
  * @Description: Toast组件库统一导出文件
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 
 // Toast组件

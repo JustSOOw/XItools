@@ -226,9 +226,10 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
                 className={`
                   w-full px-3 py-2 text-left flex items-center gap-2
                   transition-colors duration-150
-                  ${code === currentLanguage 
-                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' 
-                    : 'text-gray-700 dark:text-gray-300'
+                  ${
+                    code === currentLanguage
+                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                      : 'text-gray-700 dark:text-gray-300'
                   }
                 `}
               >

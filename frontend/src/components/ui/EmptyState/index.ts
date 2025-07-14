@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-01-27 22:15:00
  * @FilePath: \XItools\frontend\src\components\ui\EmptyState\index.ts
  * @Description: 空状态组件库统一导出文件
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 
 // 基础空状态组件

@@ -1,6 +1,6 @@
 /**
  * API密钥管理服务
- * 
+ *
  * 提供API密钥的创建、验证、管理等功能
  */
 
@@ -15,7 +15,7 @@ import {
   ApiKeyError,
   ApiKeyErrorCode,
   ApiKeyValidationResult,
-  McpLogParams
+  McpLogParams,
 } from '../types/apiKeyTypes';
 
 export class ApiKeyService {
@@ -49,16 +49,12 @@ export class ApiKeyService {
         where: {
           userId,
           name: request.name,
-          isActive: true
-        }
+          isActive: true,
+        },
       });
 
       if (existingKey) {
-        throw new ApiKeyError(
-          ApiKeyErrorCode.DUPLICATE_API_KEY_NAME,
-          '该名称的API密钥已存在',
-          400
-        );
+        throw new ApiKeyError(ApiKeyErrorCode.DUPLICATE_API_KEY_NAME, '该名称的API密钥已存在', 400);
       }
 
       // 生成API密钥
@@ -69,11 +65,7 @@ export class ApiKeyService {
 
       // 验证过期时间格式
       if (request.expiresAt && isNaN(expiresAt!.getTime())) {
-        throw new ApiKeyError(
-          ApiKeyErrorCode.INVALID_API_KEY,
-          '过期时间格式无效',
-          400
-        );
+        throw new ApiKeyError(ApiKeyErrorCode.INVALID_API_KEY, '过期时间格式无效', 400);
       }
 
       // 创建API密钥记录
@@ -85,11 +77,14 @@ export class ApiKeyService {
           keyPrefix,
           permissions: request.permissions,
           expiresAt,
-          isActive: true
-        }
+          isActive: true,
+        },
       });
 
-      return createdKey;
+      return {
+        ...createdKey,
+        permissions: createdKey.permissions as ApiKeyPermission[],
+      } as UserApiKey;
     });
   }
 
@@ -100,7 +95,7 @@ export class ApiKeyService {
     const apiKeys = await this.prisma.userApiKey.findMany({
       where: {
         userId,
-        isActive: true
+        isActive: true,
       },
       select: {
         id: true,
@@ -112,16 +107,16 @@ export class ApiKeyService {
         expiresAt: true,
         isActive: true,
         createdAt: true,
-        updatedAt: true
+        updatedAt: true,
       },
       orderBy: {
-        createdAt: 'desc'
-      }
+        createdAt: 'desc',
+      },
     });
 
-    return apiKeys.map(key => ({
+    return apiKeys.map((key) => ({
       ...key,
-      permissions: key.permissions as ApiKeyPermission[]
+      permissions: key.permissions as ApiKeyPermission[],
     }));
   }
 
@@ -133,22 +128,22 @@ export class ApiKeyService {
       const keyData = await this.prisma.userApiKey.findUnique({
         where: {
           apiKey,
-          isActive: true
+          isActive: true,
         },
         include: {
           user: {
             select: {
               id: true,
-              isActive: true
-            }
-          }
-        }
+              isActive: true,
+            },
+          },
+        },
       });
 
       if (!keyData) {
         return {
           isValid: false,
-          error: 'API密钥无效'
+          error: 'API密钥无效',
         };
       }
 
@@ -156,7 +151,7 @@ export class ApiKeyService {
       if (!keyData.user.isActive) {
         return {
           isValid: false,
-          error: '用户账户已被禁用'
+          error: '用户账户已被禁用',
         };
       }
 
@@ -164,7 +159,7 @@ export class ApiKeyService {
       if (keyData.expiresAt && keyData.expiresAt <= new Date()) {
         return {
           isValid: false,
-          error: 'API密钥已过期'
+          error: 'API密钥已过期',
         };
       }
 
@@ -172,13 +167,13 @@ export class ApiKeyService {
         isValid: true,
         userId: keyData.userId,
         apiKeyId: keyData.id,
-        permissions: keyData.permissions as ApiKeyPermission[]
+        permissions: keyData.permissions as ApiKeyPermission[],
       };
     } catch (error) {
       console.error('验证API密钥时出错:', error);
       return {
         isValid: false,
-        error: '验证失败'
+        error: '验证失败',
       };
     }
   }
@@ -193,8 +188,8 @@ export class ApiKeyService {
         data: {
           lastUsedAt: new Date(),
           lastUsedIp: ipAddress || null,
-          updatedAt: new Date()
-        }
+          updatedAt: new Date(),
+        },
       });
     } catch (error) {
       console.error('更新API密钥使用记录失败:', error);
@@ -211,16 +206,12 @@ export class ApiKeyService {
       where: {
         id: apiKeyId,
         userId,
-        isActive: true
-      }
+        isActive: true,
+      },
     });
 
     if (!apiKey) {
-      throw new ApiKeyError(
-        ApiKeyErrorCode.API_KEY_NOT_FOUND,
-        'API密钥不存在或无权删除',
-        404
-      );
+      throw new ApiKeyError(ApiKeyErrorCode.API_KEY_NOT_FOUND, 'API密钥不存在或无权删除', 404);
     }
 
     // 软删除：设置为非激活状态
@@ -228,8 +219,8 @@ export class ApiKeyService {
       where: { id: apiKeyId },
       data: {
         isActive: false,
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     });
   }
 
@@ -248,8 +239,8 @@ export class ApiKeyService {
           errorMessage: params.errorMessage,
           ipAddress: params.ipAddress,
           userAgent: params.userAgent,
-          executionTimeMs: params.executionTimeMs
-        }
+          executionTimeMs: params.executionTimeMs,
+        },
       });
     } catch (error) {
       console.error('记录MCP使用日志失败:', error);
@@ -265,16 +256,18 @@ export class ApiKeyService {
       by: ['responseStatus'],
       where: {
         apiKeyId,
-        userId
+        userId,
       },
       _count: {
-        id: true
-      }
+        id: true,
+      },
     });
 
     const totalRequests = stats.reduce((sum, stat) => sum + stat._count.id, 0);
     const successRequests = stats
-      .filter(stat => stat.responseStatus && stat.responseStatus >= 200 && stat.responseStatus < 300)
+      .filter(
+        (stat) => stat.responseStatus && stat.responseStatus >= 200 && stat.responseStatus < 300,
+      )
       .reduce((sum, stat) => sum + stat._count.id, 0);
     const failedRequests = totalRequests - successRequests;
 
@@ -282,15 +275,15 @@ export class ApiKeyService {
     const recentLog = await this.prisma.mcpUsageLog.findFirst({
       where: {
         apiKeyId,
-        userId
+        userId,
       },
       orderBy: {
-        createdAt: 'desc'
+        createdAt: 'desc',
       },
       select: {
         toolName: true,
-        createdAt: true
-      }
+        createdAt: true,
+      },
     });
 
     // 获取最常用的工具
@@ -298,17 +291,17 @@ export class ApiKeyService {
       by: ['toolName'],
       where: {
         apiKeyId,
-        userId
+        userId,
       },
       _count: {
-        id: true
+        id: true,
       },
       orderBy: {
         _count: {
-          id: 'desc'
-        }
+          id: 'desc',
+        },
       },
-      take: 1
+      take: 1,
     });
 
     return {
@@ -316,7 +309,7 @@ export class ApiKeyService {
       successRequests,
       failedRequests,
       lastUsedAt: recentLog?.createdAt || null,
-      mostUsedTool: mostUsedTool[0]?.toolName || null
+      mostUsedTool: mostUsedTool[0]?.toolName || null,
     };
   }
 
@@ -327,14 +320,14 @@ export class ApiKeyService {
     const result = await this.prisma.userApiKey.updateMany({
       where: {
         expiresAt: {
-          lt: new Date()
+          lt: new Date(),
         },
-        isActive: true
+        isActive: true,
       },
       data: {
         isActive: false,
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     });
 
     return result.count;
@@ -343,8 +336,14 @@ export class ApiKeyService {
   /**
    * 检查权限
    */
-  checkPermission(userPermissions: ApiKeyPermission[], requiredPermission: ApiKeyPermission): boolean {
-    return userPermissions.includes(requiredPermission) || userPermissions.includes(ApiKeyPermission.MCP_ADMIN);
+  checkPermission(
+    userPermissions: ApiKeyPermission[],
+    requiredPermission: ApiKeyPermission,
+  ): boolean {
+    return (
+      userPermissions.includes(requiredPermission) ||
+      userPermissions.includes(ApiKeyPermission.MCP_ADMIN)
+    );
   }
 }
 

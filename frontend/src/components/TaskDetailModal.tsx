@@ -4,7 +4,13 @@ import Modal from './Modal';
 import mcpService from '../services/mcpService';
 import useTaskStore from '../store/taskStore';
 import { toast } from './ui/Toast';
-import { InlineEdit, MarkdownEditor, Timeline, QuickActions, generateTimelineEvents } from './enhanced';
+import {
+  InlineEdit,
+  MarkdownEditor,
+  Timeline,
+  QuickActions,
+  generateTimelineEvents,
+} from './enhanced';
 import { useI18n } from '../hooks/useI18n';
 
 interface TaskDetailModalProps {
@@ -83,9 +89,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
           <span className="ml-2 text-text-secondary">{t('common:loading')}</span>
         </div>
       ) : !task ? (
-        <div className="py-8 text-center text-text-secondary">
-          {t('task:detail.notFound')}
-        </div>
+        <div className="py-8 text-center text-text-secondary">{t('task:detail.notFound')}</div>
       ) : (
         <div className="flex flex-col max-h-[80vh]">
           {/* 标签页导航 */}
@@ -120,9 +124,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
                 isSaving={isSaving}
               />
             )}
-            {activeTab === 'timeline' && (
-              <TimelineTab task={task} />
-            )}
+            {activeTab === 'timeline' && <TimelineTab task={task} />}
             {activeTab === 'actions' && (
               <ActionsTab
                 task={task}
@@ -158,7 +160,9 @@ const TaskDetailsTab: React.FC<{
     <div className="space-y-6 overflow-y-auto pr-2 pb-4">
       {/* 基本信息区域 */}
       <div className="bg-accent/5 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-text-primary mb-4">{t('task:detail.sections.basicInfo')}</h3>
+        <h3 className="text-lg font-semibold text-text-primary mb-4">
+          {t('task:detail.sections.basicInfo')}
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* 标题 */}
           <div className="md:col-span-2">
@@ -182,9 +186,9 @@ const TaskDetailsTab: React.FC<{
             </label>
             <InlineEdit
               key={`status-${task.id}-${task.status}`}
-              value={columns.find(col => col.id === task.status)?.name || task.status}
+              value={columns.find((col) => col.id === task.status)?.name || task.status}
               onSave={(value) => {
-                const column = columns.find(col => col.name === value);
+                const column = columns.find((col) => col.name === value);
                 const newStatusId = column?.id || value;
                 // 只有当状态真的发生变化时才更新
                 if (newStatusId !== task.status) {
@@ -193,7 +197,7 @@ const TaskDetailsTab: React.FC<{
                 return Promise.resolve();
               }}
               type="select"
-              options={columns.map(col => ({ value: col.name, label: col.name }))}
+              options={columns.map((col) => ({ value: col.name, label: col.name }))}
             />
           </div>
 
@@ -204,13 +208,21 @@ const TaskDetailsTab: React.FC<{
             </label>
             <InlineEdit
               key={`priority-${task.id}-${task.priority}`}
-              value={task.priority === 'High' ? t('task:priority.high') : task.priority === 'Medium' ? t('task:priority.medium') : task.priority === 'Low' ? t('task:priority.low') : t('task:priority.none')}
+              value={
+                task.priority === 'High'
+                  ? t('task:priority.high')
+                  : task.priority === 'Medium'
+                    ? t('task:priority.medium')
+                    : task.priority === 'Low'
+                      ? t('task:priority.low')
+                      : t('task:priority.none')
+              }
               onSave={(value) => {
                 const priorityMap: Record<string, string | null> = {
                   [t('task:priority.high')]: 'High',
                   [t('task:priority.medium')]: 'Medium',
                   [t('task:priority.low')]: 'Low',
-                  [t('task:priority.none')]: null
+                  [t('task:priority.none')]: null,
                 };
                 const newPriority = priorityMap[value];
                 // 只有当优先级真的发生变化时才更新
@@ -224,7 +236,7 @@ const TaskDetailsTab: React.FC<{
                 { value: t('task:priority.high'), label: t('task:priority.high') },
                 { value: t('task:priority.medium'), label: t('task:priority.medium') },
                 { value: t('task:priority.low'), label: t('task:priority.low') },
-                { value: t('task:priority.none'), label: t('task:priority.none') }
+                { value: t('task:priority.none'), label: t('task:priority.none') },
               ]}
             />
           </div>
@@ -257,7 +269,9 @@ const TaskDetailsTab: React.FC<{
       </div>
       {/* 描述区域 */}
       <div className="bg-accent/5 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-text-primary mb-4">{t('task:detail.sections.description')}</h3>
+        <h3 className="text-lg font-semibold text-text-primary mb-4">
+          {t('task:detail.sections.description')}
+        </h3>
         <MarkdownEditor
           key={`description-${task.id}`}
           value={localDescription}
@@ -281,7 +295,9 @@ const TaskDetailsTab: React.FC<{
 
       {/* 验收标准 */}
       <div className="bg-accent/5 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-text-primary mb-4">{t('task:detail.sections.acceptanceCriteria')}</h3>
+        <h3 className="text-lg font-semibold text-text-primary mb-4">
+          {t('task:detail.sections.acceptanceCriteria')}
+        </h3>
         <InlineEdit
           value={task.acceptanceCriteria || ''}
           onSave={(value) => onUpdate('acceptanceCriteria', value)}
@@ -296,7 +312,9 @@ const TaskDetailsTab: React.FC<{
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* 工时信息 */}
         <div className="bg-accent/5 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-text-primary mb-4">{t('task:detail.sections.timeTracking')}</h3>
+          <h3 className="text-lg font-semibold text-text-primary mb-4">
+            {t('task:detail.sections.timeTracking')}
+          </h3>
           <div className="space-y-3">
             <div>
               <label className="block text-sm font-medium text-text-primary mb-2">
@@ -328,9 +346,16 @@ const TaskDetailsTab: React.FC<{
           <h3 className="text-lg font-semibold text-text-primary mb-4">{t('task:fields.tags')}</h3>
           <div className="space-y-3">
             <InlineEdit
-              value={(task.tags || []).map(tag => typeof tag === 'string' ? tag : tag.name).join(', ')}
+              value={(task.tags || [])
+                .map((tag) => (typeof tag === 'string' ? tag : tag.name))
+                .join(', ')}
               onSave={(value) => {
-                const tags = value ? value.split(',').map(tag => tag.trim()).filter(Boolean) : [];
+                const tags = value
+                  ? value
+                      .split(',')
+                      .map((tag) => tag.trim())
+                      .filter(Boolean)
+                  : [];
                 return onUpdate('tags', tags);
               }}
               placeholder={t('task:placeholders.tags')}
@@ -353,7 +378,9 @@ const TaskDetailsTab: React.FC<{
 
       {/* 元数据信息 */}
       <div className="bg-accent/5 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-text-primary mb-4">{t('task:detail.sections.metadata')}</h3>
+        <h3 className="text-lg font-semibold text-text-primary mb-4">
+          {t('task:detail.sections.metadata')}
+        </h3>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <span className="text-text-secondary">{t('task:fields.id')}:</span>
@@ -361,15 +388,21 @@ const TaskDetailsTab: React.FC<{
           </div>
           <div>
             <span className="text-text-secondary">{t('task:fields.createdAt')}:</span>
-            <span className="ml-2 text-text-primary">{new Date(task.createdAt).toLocaleString()}</span>
+            <span className="ml-2 text-text-primary">
+              {new Date(task.createdAt).toLocaleString()}
+            </span>
           </div>
           <div>
             <span className="text-text-secondary">{t('task:fields.updatedAt')}:</span>
-            <span className="ml-2 text-text-primary">{new Date(task.updatedAt).toLocaleString()}</span>
+            <span className="ml-2 text-text-primary">
+              {new Date(task.updatedAt).toLocaleString()}
+            </span>
           </div>
           <div>
             <span className="text-text-secondary">{t('task:fields.sortOrder')}:</span>
-            <span className="ml-2 text-text-primary">{task.sortOrder || t('task:fields.notSet')}</span>
+            <span className="ml-2 text-text-primary">
+              {task.sortOrder || t('task:fields.notSet')}
+            </span>
           </div>
         </div>
       </div>
@@ -385,14 +418,12 @@ const TimelineTab: React.FC<{ task: Task }> = ({ task }) => {
   return (
     <div className="h-full overflow-hidden">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-text-primary">{t('task:detail.tabs.timeline')}</h3>
+        <h3 className="text-lg font-semibold text-text-primary">
+          {t('task:detail.tabs.timeline')}
+        </h3>
         <p className="text-sm text-text-secondary">{t('task:detail.timelineDescription')}</p>
       </div>
-      <Timeline
-        events={timelineEvents}
-        maxHeight="50vh"
-        showUserAvatars
-      />
+      <Timeline events={timelineEvents} maxHeight="50vh" showUserAvatars />
     </div>
   );
 };

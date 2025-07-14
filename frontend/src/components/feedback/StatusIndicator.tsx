@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-01-27 22:00:00
  * @FilePath: \XItools\frontend\src\components\feedback\StatusIndicator.tsx
  * @Description: 状态指示器组件 - 提供各种状态的视觉指示
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 
 import React from 'react';
@@ -112,7 +112,7 @@ const StatusIndicator: React.FC<StatusIndicatorProps> = ({
     <motion.div
       className={`inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full ${config.color}`}
       animate={{ rotate: 360 }}
-      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
     />
   );
 
@@ -136,7 +136,7 @@ const StatusIndicator: React.FC<StatusIndicatorProps> = ({
         config.bgColor,
         config.borderColor,
         config.color,
-        className
+        className,
       )}
       initial={animated ? { opacity: 0, scale: 0.9 } : {}}
       animate={animated ? { opacity: 1, scale: 1 } : {}}
@@ -144,19 +144,11 @@ const StatusIndicator: React.FC<StatusIndicatorProps> = ({
     >
       {showIcon && (
         <span className="flex-shrink-0">
-          {status === 'loading' ? (
-            <LoadingSpinner />
-          ) : (
-            <PulseIcon>{config.icon}</PulseIcon>
-          )}
+          {status === 'loading' ? <LoadingSpinner /> : <PulseIcon>{config.icon}</PulseIcon>}
         </span>
       )}
-      
-      {showMessage && displayMessage && (
-        <span className="font-medium">
-          {displayMessage}
-        </span>
-      )}
+
+      {showMessage && displayMessage && <span className="font-medium">{displayMessage}</span>}
     </motion.div>
   );
 };
@@ -190,36 +182,15 @@ export const OperationStatus: React.FC<{
   className?: string;
 }> = ({ isLoading, error, success, className = '' }) => {
   if (isLoading) {
-    return (
-      <StatusIndicator
-        status="loading"
-        message="处理中..."
-        size="sm"
-        className={className}
-      />
-    );
+    return <StatusIndicator status="loading" message="处理中..." size="sm" className={className} />;
   }
 
   if (error) {
-    return (
-      <StatusIndicator
-        status="error"
-        message={error}
-        size="sm"
-        className={className}
-      />
-    );
+    return <StatusIndicator status="error" message={error} size="sm" className={className} />;
   }
 
   if (success) {
-    return (
-      <StatusIndicator
-        status="success"
-        message="操作成功"
-        size="sm"
-        className={className}
-      />
-    );
+    return <StatusIndicator status="success" message="操作成功" size="sm" className={className} />;
   }
 
   return null;

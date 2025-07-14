@@ -59,10 +59,30 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
 
   // 排序选项定义 - 精简为最常用的几种
   const sortOptions = [
-    { value: 'manual', label: t('board:sorting.manual'), icon: '🔧', desc: t('board:sorting.manualDesc') },
-    { value: 'priority', label: t('board:sorting.priority'), icon: '⭐', desc: t('board:sorting.priorityDesc') },
-    { value: 'created_desc', label: t('board:sorting.createdAt'), icon: '🆕', desc: t('board:sorting.createdDesc') },
-    { value: 'title_asc', label: t('board:sorting.title'), icon: '🔤', desc: t('board:sorting.titleDesc') },
+    {
+      value: 'manual',
+      label: t('board:sorting.manual'),
+      icon: '🔧',
+      desc: t('board:sorting.manualDesc'),
+    },
+    {
+      value: 'priority',
+      label: t('board:sorting.priority'),
+      icon: '⭐',
+      desc: t('board:sorting.priorityDesc'),
+    },
+    {
+      value: 'created_desc',
+      label: t('board:sorting.createdAt'),
+      icon: '🆕',
+      desc: t('board:sorting.createdDesc'),
+    },
+    {
+      value: 'title_asc',
+      label: t('board:sorting.title'),
+      icon: '🔤',
+      desc: t('board:sorting.titleDesc'),
+    },
   ];
 
   // 更多按钮菜单项 - 简化菜单
@@ -72,7 +92,12 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
       label: t('board:column.color'),
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z"
+          />
         </svg>
       ),
       onClick: () => {
@@ -84,24 +109,38 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
       label: t('board:column.sort'),
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"
+          />
         </svg>
       ),
       onClick: () => {
         setShowSortMenu(true);
       },
     },
-    ...(isDeletable ? [{
-      id: 'delete',
-      label: t('board:actions.deleteColumn'),
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
-      ),
-      onClick: () => setShowDeleteConfirm(true),
-      danger: true,
-    }] : []),
+    ...(isDeletable
+      ? [
+          {
+            id: 'delete',
+            label: t('board:actions.deleteColumn'),
+            icon: (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            ),
+            onClick: () => setShowDeleteConfirm(true),
+            danger: true,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -113,7 +152,7 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
           'ring-2 ring-primary ring-opacity-50': isOver,
           'scale-105': isOver,
         },
-        className
+        className,
       )}
       style={{
         minHeight: '120px', // 最小高度
@@ -133,8 +172,18 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
                 className="mr-2 p-1 cursor-grab active:cursor-grabbing hover:bg-black/5 dark:hover:bg-white/5 rounded-small transition-colors"
                 title={t('board:actions.dragColumn')}
               >
-                <svg className="w-4 h-4 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                <svg
+                  className="w-4 h-4 text-text-secondary"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 8h16M4 16h16"
+                  />
                 </svg>
               </div>
             )}
@@ -160,18 +209,23 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
                 aria-label={t('board:actions.createCard')}
                 title={t('board:actions.createCard')}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 3a1 1 0 00-1 1v5H4a1 1 0 100 2h5v5a1 1 0 102 0v-5h5a1 1 0 100-2h-5V4a1 1 0 00-1-1z" clipRule="evenodd" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 3a1 1 0 00-1 1v5H4a1 1 0 100 2h5v5a1 1 0 102 0v-5h5a1 1 0 100-2h-5V4a1 1 0 00-1-1z"
+                    clipRule="evenodd"
+                  />
                 </svg>
               </button>
             )}
 
             {/* 更多按钮 */}
-            <MoreButton
-              items={moreMenuItems}
-              size="sm"
-              placement="bottom-right"
-            />
+            <MoreButton items={moreMenuItems} size="sm" placement="bottom-right" />
           </div>
         </div>
 
@@ -199,13 +253,16 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
           </div>
         )}
       </div>
-      
+
       {/* 列内容区 */}
       <div className="flex-1 min-h-0 flex flex-col">
-        <div className="flex-1 overflow-y-auto p-1.5" style={{
-          scrollbarWidth: 'none', /* Firefox隐藏滚动条 */
-          msOverflowStyle: 'none' /* IE隐藏滚动条 */
-        }}>
+        <div
+          className="flex-1 overflow-y-auto p-1.5"
+          style={{
+            scrollbarWidth: 'none' /* Firefox隐藏滚动条 */,
+            msOverflowStyle: 'none' /* IE隐藏滚动条 */,
+          }}
+        >
           {/* 移除内部SortableContext，现在由App.tsx中的多容器架构管理 */}
           {/* 如果列为空，显示提示 - 确保有足够的拖拽区域 */}
           {React.Children.count(children) === 0 ? (
@@ -215,10 +272,12 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
                 {
                   'border-primary bg-primary/5': isOver && isDraggingTask,
                   'border-gray-200 dark:border-gray-700': !isOver || !isDraggingTask,
-                }
+                },
               )}
             >
-              {isOver && isDraggingTask ? t('board:placeholders.dragCard') : t('board:placeholders.emptyColumn')}
+              {isOver && isDraggingTask
+                ? t('board:placeholders.dragCard')
+                : t('board:placeholders.emptyColumn')}
             </div>
           ) : (
             /* 卡片容器 */
@@ -254,7 +313,12 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
@@ -286,8 +350,16 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({
                       </div>
                     </div>
                     {sortOption === option.value && (
-                      <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      <svg
+                        className="w-5 h-5 text-blue-500"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                     )}
                   </div>

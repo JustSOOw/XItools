@@ -4,15 +4,22 @@
  * @LastEditors: Furdow wang22338014@gmail.com
  * @LastEditTime: 2025-06-11 18:00:54
  * @FilePath: \XItools\frontend\src\store\taskStore.ts
- * @Description: 
- * 
- * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ * @Description:
+ *
+ * Copyright (c) 2025 by Furdow, All Rights Reserved.
  */
 import { create } from 'zustand';
 import { Task } from '../types/Task';
 
 // 定义排序选项类型
-export type SortOption = 'manual' | 'priority' | 'created_asc' | 'created_desc' | 'title_asc' | 'title_desc' | 'due_date';
+export type SortOption =
+  | 'manual'
+  | 'priority'
+  | 'created_asc'
+  | 'created_desc'
+  | 'title_asc'
+  | 'title_desc'
+  | 'due_date';
 
 // 定义视图类型
 export type ViewType = 'board' | 'list' | 'calendar';
@@ -90,7 +97,7 @@ interface TaskState {
 
 // 筛选任务的辅助函数
 const filterTasks = (tasks: Task[], filterOptions: FilterOptions): Task[] => {
-  return tasks.filter(task => {
+  return tasks.filter((task) => {
     // 按状态筛选
     if (filterOptions.status && task.status !== filterOptions.status) {
       return false;
@@ -109,11 +116,9 @@ const filterTasks = (tasks: Task[], filterOptions: FilterOptions): Task[] => {
     // 按标签筛选
     if (filterOptions.tags && filterOptions.tags.length > 0) {
       const taskTags = task.tags || [];
-      const taskTagNames = taskTags.map(tag =>
-        typeof tag === 'string' ? tag : tag.name
-      );
-      const hasMatchingTag = filterOptions.tags.some(filterTag =>
-        taskTagNames.includes(filterTag)
+      const taskTagNames = taskTags.map((tag) => (typeof tag === 'string' ? tag : tag.name));
+      const hasMatchingTag = filterOptions.tags.some((filterTag) =>
+        taskTagNames.includes(filterTag),
       );
       if (!hasMatchingTag) {
         return false;
@@ -152,141 +157,158 @@ const useTaskStore = create<TaskState>((set, get) => ({
   filteredTasks: [],
 
   // 操作方法实现
-  setTasks: (tasks) => set((state) => {
-    const filteredTasks = filterTasks(tasks, state.filterOptions);
-    return { tasks, filteredTasks };
-  }),
+  setTasks: (tasks) =>
+    set((state) => {
+      const filteredTasks = filterTasks(tasks, state.filterOptions);
+      return { tasks, filteredTasks };
+    }),
 
-  addTasks: (newTasks) => set((state) => {
-    // 过滤掉已存在的任务（基于ID）
-    const uniqueNewTasks = newTasks.filter(
-      (newTask) => !state.tasks.some((task) => task.id === newTask.id)
-    );
+  addTasks: (newTasks) =>
+    set((state) => {
+      // 过滤掉已存在的任务（基于ID）
+      const uniqueNewTasks = newTasks.filter(
+        (newTask) => !state.tasks.some((task) => task.id === newTask.id),
+      );
 
-    const updatedTasks = [...state.tasks, ...uniqueNewTasks];
-    const filteredTasks = filterTasks(updatedTasks, state.filterOptions);
+      const updatedTasks = [...state.tasks, ...uniqueNewTasks];
+      const filteredTasks = filterTasks(updatedTasks, state.filterOptions);
 
-    return { tasks: updatedTasks, filteredTasks };
-  }),
+      return { tasks: updatedTasks, filteredTasks };
+    }),
 
-  updateTask: (updatedTask) => set((state) => {
-    const updatedTasks = state.tasks.map((task) =>
-      task.id === updatedTask.id ? updatedTask : task
-    );
-    const filteredTasks = filterTasks(updatedTasks, state.filterOptions);
+  updateTask: (updatedTask) =>
+    set((state) => {
+      const updatedTasks = state.tasks.map((task) =>
+        task.id === updatedTask.id ? updatedTask : task,
+      );
+      const filteredTasks = filterTasks(updatedTasks, state.filterOptions);
 
-    return { tasks: updatedTasks, filteredTasks };
-  }),
-  
-  deleteTask: (taskId) => set((state) => {
-    const updatedTasks = state.tasks.filter((task) => task.id !== taskId);
-    const filteredTasks = filterTasks(updatedTasks, state.filterOptions);
-    return { tasks: updatedTasks, filteredTasks };
-  }),
-  
+      return { tasks: updatedTasks, filteredTasks };
+    }),
+
+  deleteTask: (taskId) =>
+    set((state) => {
+      const updatedTasks = state.tasks.filter((task) => task.id !== taskId);
+      const filteredTasks = filterTasks(updatedTasks, state.filterOptions);
+      return { tasks: updatedTasks, filteredTasks };
+    }),
+
   setColumns: (columns) => set({ columns }),
-  
+
   setLoading: (isLoading) => set({ isLoading }),
 
   // 拖拽相关方法实现
   setActiveTaskId: (taskId) => set({ activeTaskId: taskId }),
   setActiveColumnId: (columnId) => set({ activeColumnId: columnId }),
 
-  moveTask: (taskId, newStatus, newSortOrder) => set((state) => {
-    // 找到并更新任务
-    const updatedTasks = state.tasks.map((task) => {
-      if (task.id === taskId) {
-        return {
-          ...task,
-          status: newStatus,
-          sortOrder: newSortOrder ?? task.sortOrder,
-          updatedAt: new Date().toISOString()
-        };
-      }
-      return task;
-    });
-    const filteredTasks = filterTasks(updatedTasks, state.filterOptions);
-
-    return { tasks: updatedTasks, filteredTasks };
-  }),
-
-  // 重新排序列内的任务
-  reorderTasksInColumn: (columnId, taskIds) => set((state) => {
-    const updatedTasks = state.tasks.map(task => {
-      if (task.status === columnId) {
-        const newIndex = taskIds.indexOf(task.id);
-        if (newIndex !== -1) {
+  moveTask: (taskId, newStatus, newSortOrder) =>
+    set((state) => {
+      // 找到并更新任务
+      const updatedTasks = state.tasks.map((task) => {
+        if (task.id === taskId) {
           return {
             ...task,
-            sortOrder: newIndex,
-            updatedAt: new Date().toISOString()
+            status: newStatus,
+            sortOrder: newSortOrder ?? task.sortOrder,
+            updatedAt: new Date().toISOString(),
           };
         }
-      }
-      return task;
-    });
-    const filteredTasks = filterTasks(updatedTasks, state.filterOptions);
-    return { tasks: updatedTasks, filteredTasks };
-  }),
+        return task;
+      });
+      const filteredTasks = filterTasks(updatedTasks, state.filterOptions);
+
+      return { tasks: updatedTasks, filteredTasks };
+    }),
+
+  // 重新排序列内的任务
+  reorderTasksInColumn: (columnId, taskIds) =>
+    set((state) => {
+      const updatedTasks = state.tasks.map((task) => {
+        if (task.status === columnId) {
+          const newIndex = taskIds.indexOf(task.id);
+          if (newIndex !== -1) {
+            return {
+              ...task,
+              sortOrder: newIndex,
+              updatedAt: new Date().toISOString(),
+            };
+          }
+        }
+        return task;
+      });
+      const filteredTasks = filterTasks(updatedTasks, state.filterOptions);
+      return { tasks: updatedTasks, filteredTasks };
+    }),
 
   // 列管理方法实现
-  addColumn: (column) => set((state) => ({
-    columns: [...state.columns, column].sort((a, b) => a.order - b.order)
-  })),
+  addColumn: (column) =>
+    set((state) => ({
+      columns: [...state.columns, column].sort((a, b) => a.order - b.order),
+    })),
 
-  updateColumn: (columnId, updates) => set((state) => ({
-    columns: state.columns.map(column =>
-      column.id === columnId ? { ...column, ...updates } : column
-    ).sort((a, b) => a.order - b.order)
-  })),
+  updateColumn: (columnId, updates) =>
+    set((state) => ({
+      columns: state.columns
+        .map((column) => (column.id === columnId ? { ...column, ...updates } : column))
+        .sort((a, b) => a.order - b.order),
+    })),
 
-  deleteColumn: (columnId) => set((state) => ({
-    columns: state.columns.filter(column => column.id !== columnId)
-  })),
+  deleteColumn: (columnId) =>
+    set((state) => ({
+      columns: state.columns.filter((column) => column.id !== columnId),
+    })),
 
-  reorderColumns: (columnIds) => set((state) => {
-    const reorderedColumns = columnIds.map((id, index) => {
-      const column = state.columns.find(col => col.id === id);
-      return column ? { ...column, order: index } : null;
-    }).filter(Boolean) as BoardColumn[];
+  reorderColumns: (columnIds) =>
+    set((state) => {
+      const reorderedColumns = columnIds
+        .map((id, index) => {
+          const column = state.columns.find((col) => col.id === id);
+          return column ? { ...column, order: index } : null;
+        })
+        .filter(Boolean) as BoardColumn[];
 
-    return { columns: reorderedColumns };
-  }),
+      return { columns: reorderedColumns };
+    }),
 
   // 列排序方法实现
-  setColumnSort: (columnId, sortOption) => set((state) => ({
-    columns: state.columns.map(column =>
-      column.id === columnId ? { ...column, sortOption } : column
-    )
-  })),
+  setColumnSort: (columnId, sortOption) =>
+    set((state) => ({
+      columns: state.columns.map((column) =>
+        column.id === columnId ? { ...column, sortOption } : column,
+      ),
+    })),
 
-  clearColumnSort: (columnId) => set((state) => ({
-    columns: state.columns.map(column =>
-      column.id === columnId ? { ...column, sortOption: 'manual' } : column
-    )
-  })),
+  clearColumnSort: (columnId) =>
+    set((state) => ({
+      columns: state.columns.map((column) =>
+        column.id === columnId ? { ...column, sortOption: 'manual' } : column,
+      ),
+    })),
 
   // 筛选和搜索方法实现
-  setFilterOptions: (options) => set((state) => {
-    const newFilterOptions = { ...state.filterOptions, ...options };
-    const newFilteredTasks = filterTasks(state.tasks, newFilterOptions);
-    return {
-      filterOptions: newFilterOptions,
-      filteredTasks: newFilteredTasks
-    };
-  }),
+  setFilterOptions: (options) =>
+    set((state) => {
+      const newFilterOptions = { ...state.filterOptions, ...options };
+      const newFilteredTasks = filterTasks(state.tasks, newFilterOptions);
+      return {
+        filterOptions: newFilterOptions,
+        filteredTasks: newFilteredTasks,
+      };
+    }),
 
-  clearFilters: () => set((state) => ({
-    filterOptions: {},
-    filteredTasks: state.tasks
-  })),
+  clearFilters: () =>
+    set((state) => ({
+      filterOptions: {},
+      filteredTasks: state.tasks,
+    })),
 
-  applyFilters: () => set((state) => ({
-    filteredTasks: filterTasks(state.tasks, state.filterOptions)
-  })),
+  applyFilters: () =>
+    set((state) => ({
+      filteredTasks: filterTasks(state.tasks, state.filterOptions),
+    })),
 
   // 视图切换方法实现
   setCurrentView: (view) => set({ currentView: view }),
 }));
 
-export default useTaskStore; 
+export default useTaskStore;

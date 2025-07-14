@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-07-01 13:50:58
  * @FilePath: \XItools\frontend\src\utils\errorHandler.ts
  * @Description: 错误处理工具函数，提供统一的错误消息处理和多语言支持
- * 
- * Copyright (c) 2025 by XItools Team, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
 import { TFunction } from 'i18next';
@@ -20,7 +20,7 @@ export enum ErrorType {
   VALIDATION = 'validation',
   AUTH = 'auth',
   PERMISSION = 'permission',
-  UNKNOWN = 'unknown'
+  UNKNOWN = 'unknown',
 }
 
 /**
@@ -80,7 +80,7 @@ export class ErrorHandler {
       return {
         type: ErrorType.NETWORK,
         message: this.t('errors.network'),
-        statusCode: 0
+        statusCode: 0,
       };
     }
 
@@ -116,7 +116,7 @@ export class ErrorHandler {
       code: errorResponse.code,
       message: this.t('auth:errors.validation'),
       details: errorResponse.details,
-      statusCode: 400
+      statusCode: 400,
     };
   }
 
@@ -157,13 +157,25 @@ export class ErrorHandler {
         break;
       default:
         // 如果没有匹配的错误代码，使用原始错误消息或默认消息
-        if (errorResponse.error.includes('用户不存在') || errorResponse.error.includes('User does not exist')) {
+        if (
+          errorResponse.error.includes('用户不存在') ||
+          errorResponse.error.includes('User does not exist')
+        ) {
           translationKey = 'errors.login.userNotFound';
-        } else if (errorResponse.error.includes('密码错误') || errorResponse.error.includes('password')) {
+        } else if (
+          errorResponse.error.includes('密码错误') ||
+          errorResponse.error.includes('password')
+        ) {
           translationKey = 'errors.login.invalidCredentials';
-        } else if (errorResponse.error.includes('用户名已') || errorResponse.error.includes('username')) {
+        } else if (
+          errorResponse.error.includes('用户名已') ||
+          errorResponse.error.includes('username')
+        ) {
           translationKey = 'errors.register.usernameExists';
-        } else if (errorResponse.error.includes('邮箱已') || errorResponse.error.includes('email')) {
+        } else if (
+          errorResponse.error.includes('邮箱已') ||
+          errorResponse.error.includes('email')
+        ) {
           translationKey = 'errors.register.emailExists';
         }
         break;
@@ -173,7 +185,7 @@ export class ErrorHandler {
       type: ErrorType.AUTH,
       code,
       message: this.t(translationKey),
-      statusCode: 401
+      statusCode: 401,
     };
   }
 
@@ -186,7 +198,10 @@ export class ErrorHandler {
 
     if (code === AuthErrorCode.INSUFFICIENT_PERMISSIONS) {
       translationKey = 'auth:errors.permission.insufficient';
-    } else if (errorResponse.error.includes('无权访问') || errorResponse.error.includes('forbidden')) {
+    } else if (
+      errorResponse.error.includes('无权访问') ||
+      errorResponse.error.includes('forbidden')
+    ) {
       translationKey = 'auth:errors.permission.forbidden';
     }
 
@@ -194,7 +209,7 @@ export class ErrorHandler {
       type: ErrorType.PERMISSION,
       code,
       message: this.t(translationKey),
-      statusCode: 403
+      statusCode: 403,
     };
   }
 
@@ -214,7 +229,7 @@ export class ErrorHandler {
       type: ErrorType.AUTH,
       code: AuthErrorCode.RATE_LIMITED,
       message: this.t(translationKey),
-      statusCode: 429
+      statusCode: 429,
     };
   }
 
@@ -227,7 +242,7 @@ export class ErrorHandler {
       code: errorResponse.code,
       message: this.t('errors.server'),
       details: errorResponse.details,
-      statusCode
+      statusCode,
     };
   }
 
@@ -240,7 +255,7 @@ export class ErrorHandler {
       code: errorResponse.code,
       message: this.t('errors.unknown'),
       details: errorResponse.details,
-      statusCode
+      statusCode,
     };
   }
 

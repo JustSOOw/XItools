@@ -5,8 +5,8 @@
  * @LastEditTime: 2025-06-30 15:00:00
  * @FilePath: \XItools\frontend\src\components\auth\UserProfile.tsx
  * @Description: 用户资料组件
- * 
- * Copyright (c) 2025 by XItools Team, All Rights Reserved. 
+ *
+ * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -22,27 +22,28 @@ interface UserProfileProps {
 
 export const UserProfile: React.FC<UserProfileProps> = ({ className = '' }) => {
   const { t } = useTranslation('auth');
-  const { user, updateProfile, changePassword, logout, isLoading, error, clearError } = useUserStore();
+  const { user, updateProfile, changePassword, logout, isLoading, error, clearError } =
+    useUserStore();
   const { handleProfileError } = useAuthError();
-  
+
   const [activeTab, setActiveTab] = useState<'profile' | 'password'>('profile');
   const [profileData, setProfileData] = useState<UserUpdateRequest>({
     email: '',
-    avatar: ''
+    avatar: '',
   });
-  
+
   const [passwordData, setPasswordData] = useState<PasswordChangeRequest>({
     currentPassword: '',
-    newPassword: ''
+    newPassword: '',
   });
-  
+
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [showPasswords, setShowPasswords] = useState({
     current: false,
     new: false,
-    confirm: false
+    confirm: false,
   });
-  
+
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -51,7 +52,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ className = '' }) => {
     if (user) {
       setProfileData({
         email: user.email,
-        avatar: user.avatar || ''
+        avatar: user.avatar || '',
       });
     }
   }, [user]);
@@ -83,7 +84,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ className = '' }) => {
   // 验证密码表单
   const validatePasswordForm = (): boolean => {
     const errors: Record<string, string> = {};
-    
+
     if (!passwordData.currentPassword) {
       errors.currentPassword = t('validation.currentPasswordRequired');
     }
@@ -103,7 +104,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ className = '' }) => {
     if (passwordData.currentPassword === passwordData.newPassword) {
       errors.newPassword = t('validation.passwordSameAsCurrent');
     }
-    
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -111,20 +112,20 @@ export const UserProfile: React.FC<UserProfileProps> = ({ className = '' }) => {
   // 处理资料输入变化
   const handleProfileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    
-    setProfileData(prev => ({
+
+    setProfileData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
-    
+
     // 清除验证错误
     if (validationErrors[name]) {
-      setValidationErrors(prev => ({
+      setValidationErrors((prev) => ({
         ...prev,
-        [name]: ''
+        [name]: '',
       }));
     }
-    
+
     if (error) clearError();
     if (successMessage) setSuccessMessage('');
   };
@@ -132,24 +133,24 @@ export const UserProfile: React.FC<UserProfileProps> = ({ className = '' }) => {
   // 处理密码输入变化
   const handlePasswordInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    
+
     if (name === 'confirmNewPassword') {
       setConfirmNewPassword(value);
     } else {
-      setPasswordData(prev => ({
+      setPasswordData((prev) => ({
         ...prev,
-        [name]: value
+        [name]: value,
       }));
     }
-    
+
     // 清除验证错误
     if (validationErrors[name]) {
-      setValidationErrors(prev => ({
+      setValidationErrors((prev) => ({
         ...prev,
-        [name]: ''
+        [name]: '',
       }));
     }
-    
+
     if (error) clearError();
     if (successMessage) setSuccessMessage('');
   };
@@ -157,11 +158,11 @@ export const UserProfile: React.FC<UserProfileProps> = ({ className = '' }) => {
   // 处理资料更新
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateProfileForm()) {
       return;
     }
-    
+
     try {
       await updateProfile(profileData);
       setSuccessMessage(t('profile.updateSuccess'));
@@ -173,19 +174,19 @@ export const UserProfile: React.FC<UserProfileProps> = ({ className = '' }) => {
   // 处理密码修改
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validatePasswordForm()) {
       return;
     }
-    
+
     try {
       await changePassword(passwordData);
       setSuccessMessage(t('profile.passwordChangeSuccess'));
-      
+
       // 清空密码表单
       setPasswordData({
         currentPassword: '',
-        newPassword: ''
+        newPassword: '',
       });
       setConfirmNewPassword('');
     } catch (err) {
@@ -202,9 +203,9 @@ export const UserProfile: React.FC<UserProfileProps> = ({ className = '' }) => {
 
   // 切换密码显示状态
   const togglePasswordVisibility = (field: 'current' | 'new' | 'confirm') => {
-    setShowPasswords(prev => ({
+    setShowPasswords((prev) => ({
       ...prev,
-      [field]: !prev[field]
+      [field]: !prev[field],
     }));
   };
 
@@ -225,7 +226,11 @@ export const UserProfile: React.FC<UserProfileProps> = ({ className = '' }) => {
           ) : (
             <div className="avatar-placeholder">
               <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                <path
+                  fillRule="evenodd"
+                  d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                  clipRule="evenodd"
+                />
               </svg>
             </div>
           )}
@@ -273,7 +278,6 @@ export const UserProfile: React.FC<UserProfileProps> = ({ className = '' }) => {
       {/* 资料编辑表单 */}
       {activeTab === 'profile' && (
         <form onSubmit={handleProfileSubmit} className="profile-form">
-
           <div className="form-group">
             <label htmlFor="email" className="form-label">
               {t('profile.email')}
@@ -381,10 +385,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ className = '' }) => {
               <span className="error-message">{validationErrors.newPassword}</span>
             )}
             {/* 密码强度指示器 */}
-            <PasswordStrengthIndicator
-              password={passwordData.newPassword}
-              showDetails={true}
-            />
+            <PasswordStrengthIndicator password={passwordData.newPassword} showDetails={true} />
           </div>
 
           <div className="form-group">
@@ -433,11 +434,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ className = '' }) => {
 
       {/* 登出按钮 */}
       <div className="profile-actions">
-        <button
-          onClick={handleLogout}
-          className="logout-button"
-          disabled={isLoading}
-        >
+        <button onClick={handleLogout} className="logout-button" disabled={isLoading}>
           <i className="icon-log-out"></i>
           {t('profile.logout')}
         </button>

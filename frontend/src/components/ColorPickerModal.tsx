@@ -110,22 +110,26 @@ const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* 背景遮罩 */}
-      <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+
       {/* 模态框 */}
       <div className="relative bg-surface border border-border rounded-lg shadow-xl w-96 max-w-[90vw] max-h-[90vh] overflow-hidden animate-in fade-in-0 zoom-in-95 duration-200">
         {/* 标题栏 */}
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <h3 className="text-lg font-medium text-text-primary">{title || t('board:colors.selectColor')}</h3>
+          <h3 className="text-lg font-medium text-text-primary">
+            {title || t('board:colors.selectColor')}
+          </h3>
           <button
             onClick={onClose}
             className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -140,7 +144,7 @@ const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
                 'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
                 activeTab === 'preset'
                   ? 'border-primary text-primary'
-                  : 'border-transparent text-text-secondary hover:text-text-primary'
+                  : 'border-transparent text-text-secondary hover:text-text-primary',
               )}
             >
               {t('board:colors.preset')}
@@ -151,7 +155,7 @@ const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
                 'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
                 activeTab === 'custom'
                   ? 'border-primary text-primary'
-                  : 'border-transparent text-text-secondary hover:text-text-primary'
+                  : 'border-transparent text-text-secondary hover:text-text-primary',
               )}
             >
               {t('board:colors.custom')}
@@ -174,7 +178,9 @@ const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
 
                 {/* 柔和色调 */}
                 <div>
-                  <h4 className="text-sm font-medium text-text-secondary mb-3">{t('board:colors.soft')}</h4>
+                  <h4 className="text-sm font-medium text-text-secondary mb-3">
+                    {t('board:colors.soft')}
+                  </h4>
                   <div className="grid grid-cols-8 gap-2">
                     {PRESET_COLORS.soft.map((color, index) => (
                       <button
@@ -182,7 +188,9 @@ const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
                         onClick={() => handleColorSelect(color)}
                         className={classNames(
                           'w-8 h-8 rounded border-2 transition-all hover:scale-110',
-                          currentColor === color ? 'border-primary ring-2 ring-primary/20' : 'border-gray-200'
+                          currentColor === color
+                            ? 'border-primary ring-2 ring-primary/20'
+                            : 'border-gray-200',
                         )}
                         style={{ backgroundColor: color }}
                         title={color}
@@ -193,7 +201,9 @@ const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
 
                 {/* 鲜明色彩 */}
                 <div>
-                  <h4 className="text-sm font-medium text-text-secondary mb-3">{t('board:colors.vibrant')}</h4>
+                  <h4 className="text-sm font-medium text-text-secondary mb-3">
+                    {t('board:colors.vibrant')}
+                  </h4>
                   <div className="grid grid-cols-8 gap-2">
                     {PRESET_COLORS.vibrant.map((color, index) => (
                       <button
@@ -201,7 +211,9 @@ const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
                         onClick={() => handleColorSelect(color)}
                         className={classNames(
                           'w-8 h-8 rounded border-2 transition-all hover:scale-110',
-                          currentColor === color ? 'border-primary ring-2 ring-primary/20' : 'border-gray-200'
+                          currentColor === color
+                            ? 'border-primary ring-2 ring-primary/20'
+                            : 'border-gray-200',
                         )}
                         style={{ backgroundColor: color }}
                         title={color}
@@ -212,7 +224,9 @@ const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
 
                 {/* 中性色调 */}
                 <div>
-                  <h4 className="text-sm font-medium text-text-secondary mb-3">{t('board:colors.neutral')}</h4>
+                  <h4 className="text-sm font-medium text-text-secondary mb-3">
+                    {t('board:colors.neutral')}
+                  </h4>
                   <div className="grid grid-cols-8 gap-2">
                     {PRESET_COLORS.neutral.map((color, index) => (
                       <button
@@ -220,7 +234,9 @@ const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
                         onClick={() => handleColorSelect(color)}
                         className={classNames(
                           'w-8 h-8 rounded border-2 transition-all hover:scale-110',
-                          currentColor === color ? 'border-primary ring-2 ring-primary/20' : 'border-gray-200'
+                          currentColor === color
+                            ? 'border-primary ring-2 ring-primary/20'
+                            : 'border-gray-200',
                         )}
                         style={{ backgroundColor: color }}
                         title={color}
@@ -231,7 +247,9 @@ const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
 
                 {/* 渐变色 */}
                 <div>
-                  <h4 className="text-sm font-medium text-text-secondary mb-3">{t('board:colors.gradient')}</h4>
+                  <h4 className="text-sm font-medium text-text-secondary mb-3">
+                    {t('board:colors.gradient')}
+                  </h4>
                   <div className="grid grid-cols-3 gap-3">
                     {GRADIENT_COLORS.map((gradient, index) => (
                       <button
@@ -239,7 +257,9 @@ const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
                         onClick={() => handleColorSelect(gradient)}
                         className={classNames(
                           'w-full h-12 rounded border-2 transition-all hover:scale-105',
-                          currentColor === gradient ? 'border-primary ring-2 ring-primary/20' : 'border-gray-200'
+                          currentColor === gradient
+                            ? 'border-primary ring-2 ring-primary/20'
+                            : 'border-gray-200',
                         )}
                         style={{ background: gradient }}
                         title={gradient}
@@ -271,7 +291,7 @@ const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
                     />
                   </div>
                 </div>
-                
+
                 <div className="flex space-x-3">
                   <button
                     onClick={applyCustomColor}

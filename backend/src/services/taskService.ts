@@ -4,7 +4,12 @@
 
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
-import { extendedTaskSchema, extendedTaskUpdateSchema, type ExtendedTaskInput, type ExtendedTaskUpdate } from '../types/multiBoardSchema';
+import {
+  extendedTaskSchema,
+  extendedTaskUpdateSchema,
+  type ExtendedTaskInput,
+  type ExtendedTaskUpdate,
+} from '../types/multiBoardSchema';
 
 const prisma = new PrismaClient();
 
@@ -18,12 +23,9 @@ export class TaskService {
       include: {
         tags: true,
         parent: true,
-        subTasks: true
+        subTasks: true,
       },
-      orderBy: [
-        { sortOrder: 'asc' },
-        { createdAt: 'desc' }
-      ]
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
     });
   }
 
@@ -34,19 +36,16 @@ export class TaskService {
     return await prisma.task.findMany({
       where: {
         board: {
-          projectId
-        }
+          projectId,
+        },
       },
       include: {
         tags: true,
         parent: true,
         subTasks: true,
-        board: true
+        board: true,
       },
-      orderBy: [
-        { sortOrder: 'asc' },
-        { createdAt: 'desc' }
-      ]
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
     });
   }
 
@@ -57,19 +56,16 @@ export class TaskService {
     return await prisma.task.findMany({
       where: {
         board: {
-          workspaceId
-        }
+          workspaceId,
+        },
       },
       include: {
         tags: true,
         parent: true,
         subTasks: true,
-        board: true
+        board: true,
       },
-      orderBy: [
-        { sortOrder: 'asc' },
-        { createdAt: 'desc' }
-      ]
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
     });
   }
 
@@ -88,12 +84,12 @@ export class TaskService {
             workspace: true,
             project: {
               include: {
-                workspace: true
-              }
-            }
-          }
-        }
-      }
+                workspace: true,
+              },
+            },
+          },
+        },
+      },
     });
   }
 
@@ -103,10 +99,10 @@ export class TaskService {
   async createTask(data: ExtendedTaskInput, userId: string) {
     // 验证数据
     const validatedData = extendedTaskSchema.parse(data);
-    
+
     // 检查看板是否存在
     const board = await prisma.board.findUnique({
-      where: { id: validatedData.boardId }
+      where: { id: validatedData.boardId },
     });
 
     if (!board) {
@@ -117,8 +113,8 @@ export class TaskService {
     const column = await prisma.boardColumn.findFirst({
       where: {
         id: validatedData.status,
-        boardId: validatedData.boardId
-      }
+        boardId: validatedData.boardId,
+      },
     });
 
     if (!column) {
@@ -130,9 +126,17 @@ export class TaskService {
     if (validatedData.tags && validatedData.tags.length > 0) {
       tagsConnect = {
         connectOrCreate: validatedData.tags.map((tagName: string) => ({
-          where: { name: tagName },
-          create: { name: tagName }
-        }))
+          where: {
+            ownerId_name: {
+              ownerId: userId,
+              name: tagName,
+            },
+          },
+          create: {
+            name: tagName,
+            ownerId: userId,
+          },
+        })),
       };
     }
 
@@ -141,9 +145,9 @@ export class TaskService {
       const maxSortOrder = await prisma.task.aggregate({
         where: {
           boardId: validatedData.boardId,
-          status: validatedData.status
+          status: validatedData.status,
         },
-        _max: { sortOrder: true }
+        _max: { sortOrder: true },
       });
       validatedData.sortOrder = (maxSortOrder._max.sortOrder || 0) + 1;
     }
@@ -154,14 +158,14 @@ export class TaskService {
       data: {
         ...taskData,
         ownerId: userId,
-        tags: tagsConnect
+        tags: tagsConnect,
       },
       include: {
         tags: true,
         parent: true,
         subTasks: true,
-        board: true
-      }
+        board: true,
+      },
     });
   }
 
@@ -169,16 +173,16 @@ export class TaskService {
    * 批量创建任务
    */
   async createTasks(tasks: ExtendedTaskInput[], userId: string) {
-    const createdTasks = [];
+    const createdTasks: any[] = [];
 
     await prisma.$transaction(async (tx) => {
       for (const taskData of tasks) {
         // 验证数据
         const validatedData = extendedTaskSchema.parse(taskData);
-        
+
         // 检查看板是否存在
         const board = await tx.board.findUnique({
-          where: { id: validatedData.boardId }
+          where: { id: validatedData.boardId },
         });
 
         if (!board) {
@@ -189,8 +193,8 @@ export class TaskService {
         const column = await tx.boardColumn.findFirst({
           where: {
             id: validatedData.status,
-            boardId: validatedData.boardId
-          }
+            boardId: validatedData.boardId,
+          },
         });
 
         if (!column) {
@@ -202,9 +206,17 @@ export class TaskService {
         if (validatedData.tags && validatedData.tags.length > 0) {
           tagsConnect = {
             connectOrCreate: validatedData.tags.map((tagName: string) => ({
-              where: { name: tagName },
-              create: { name: tagName }
-            }))
+              where: {
+                ownerId_name: {
+                  ownerId: userId,
+                  name: tagName,
+                },
+              },
+              create: {
+                name: tagName,
+                ownerId: userId,
+              },
+            })),
           };
         }
 
@@ -213,9 +225,9 @@ export class TaskService {
           const maxSortOrder = await tx.task.aggregate({
             where: {
               boardId: validatedData.boardId,
-              status: validatedData.status
+              status: validatedData.status,
             },
-            _max: { sortOrder: true }
+            _max: { sortOrder: true },
           });
           validatedData.sortOrder = (maxSortOrder._max.sortOrder || 0) + 1;
         }
@@ -226,11 +238,11 @@ export class TaskService {
           data: {
             ...taskCreateData,
             ownerId: userId,
-            tags: tagsConnect
+            tags: tagsConnect,
           },
           include: {
-            tags: true
-          }
+            tags: true,
+          },
         });
 
         createdTasks.push(task);
@@ -243,14 +255,14 @@ export class TaskService {
   /**
    * 更新任务
    */
-  async updateTask(id: string, data: ExtendedTaskUpdate) {
+  async updateTask(id: string, data: ExtendedTaskUpdate, userId: string) {
     // 验证数据
     const validatedData = extendedTaskUpdateSchema.parse(data);
 
     // 如果更新了boardId，需要验证新看板
     if (validatedData.boardId) {
       const board = await prisma.board.findUnique({
-        where: { id: validatedData.boardId }
+        where: { id: validatedData.boardId },
       });
 
       if (!board) {
@@ -261,7 +273,7 @@ export class TaskService {
     // 如果更新了status，需要验证状态列
     if (validatedData.status) {
       const task = await prisma.task.findUnique({
-        where: { id }
+        where: { id },
       });
 
       if (!task) {
@@ -269,12 +281,12 @@ export class TaskService {
       }
 
       const targetBoardId = validatedData.boardId || task.boardId;
-      
+
       const column = await prisma.boardColumn.findFirst({
         where: {
           id: validatedData.status,
-          boardId: targetBoardId
-        }
+          boardId: targetBoardId,
+        },
       });
 
       if (!column) {
@@ -288,9 +300,17 @@ export class TaskService {
       tagsUpdate = {
         set: [], // 先清空现有标签
         connectOrCreate: validatedData.tags.map((tagName: string) => ({
-          where: { name: tagName },
-          create: { name: tagName }
-        }))
+          where: {
+            ownerId_name: {
+              ownerId: userId,
+              name: tagName,
+            },
+          },
+          create: {
+            name: tagName,
+            ownerId: userId,
+          },
+        })),
       };
     }
 
@@ -301,14 +321,14 @@ export class TaskService {
       data: {
         ...otherUpdates,
         updatedAt: new Date(),
-        tags: tagsUpdate
+        tags: tagsUpdate,
       },
       include: {
         tags: true,
         parent: true,
         subTasks: true,
-        board: true
-      }
+        board: true,
+      },
     });
   }
 
@@ -318,7 +338,7 @@ export class TaskService {
   async deleteTask(id: string) {
     // 检查是否有子任务
     const subTaskCount = await prisma.task.count({
-      where: { parentId: id }
+      where: { parentId: id },
     });
 
     if (subTaskCount > 0) {
@@ -326,7 +346,7 @@ export class TaskService {
     }
 
     return await prisma.task.delete({
-      where: { id }
+      where: { id },
     });
   }
 

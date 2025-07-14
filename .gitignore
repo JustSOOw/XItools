@@ -175,3 +175,7 @@ rsync-exclude.txt
 *.backup
 *.tmp
 .env.production
+
+# Claude AI 配置文件
+.claude/
+*.claude
