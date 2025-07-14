@@ -22,10 +22,7 @@ services:
 
   # XItools后端服务
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      target: production
+    image: ghcr.io/justsoow/xitools/backend:latest
     container_name: xitools-backend-prod
     restart: always
     environment:
@@ -53,10 +50,7 @@ services:
 
   # XItools前端服务（生产模式）
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      target: production
+    image: ghcr.io/justsoow/xitools/frontend:latest
     container_name: xitools-frontend-prod
     restart: always
     depends_on:
