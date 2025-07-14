@@ -128,13 +128,21 @@ jobs:
           docker-compose -f current/docker-compose.prod.yml down || true
         fi
 
+        # 登录到GitHub Container Registry
+        echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
         # 切换到新版本
         ln -sfn releases/${{ steps.version.outputs.version }} current
         cd current
 
-        # 启动服务
+        # 拉取最新镜像
         docker-compose -f docker-compose.prod.yml pull
+
+        # 启动服务
         docker-compose -f docker-compose.prod.yml up -d
+
+        # 清理旧镜像
+        docker image prune -f
 
         echo "✅ 生产环境部署完成"
         EOF
