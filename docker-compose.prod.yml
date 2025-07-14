@@ -1,9 +1,7 @@
 # XItools 生产环境 Docker Compose 配置
 # 使用预构建的镜像进行部署
 
-# 指定环境变量文件
-env_file:
-  - .env.production
+version: '3.8'
 
 services:
   # PostgreSQL数据库服务
@@ -11,6 +9,8 @@ services:
     image: postgres:14
     container_name: xitools-postgres-prod
     restart: always
+    env_file:
+      - .env.production
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -32,6 +32,8 @@ services:
     image: ghcr.io/justsoow/xitools/backend:latest
     container_name: xitools-backend-prod
     restart: always
+    env_file:
+      - .env.production
     environment:
       - NODE_ENV=production
       - PORT=3000
