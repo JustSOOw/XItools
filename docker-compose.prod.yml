@@ -1,8 +1,6 @@
 # XItools 生产环境 Docker Compose 配置
 # 使用预构建的镜像进行部署
 
-version: '3.8'
-
 services:
   # PostgreSQL数据库服务
   postgres:
