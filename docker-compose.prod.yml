@@ -4,7 +4,7 @@
 services:
   # PostgreSQL数据库服务
   postgres:
-    image: postgres:14
+    image: ghcr.io/justsoow/xitools/postgres:14
     container_name: xitools-postgres-prod
     restart: always
     env_file:
@@ -67,7 +67,7 @@ services:
 
   # Nginx反向代理
   nginx:
-    image: nginx:alpine
+    image: ghcr.io/justsoow/xitools/nginx:alpine
     container_name: xitools-nginx-prod
     restart: always
     ports:
