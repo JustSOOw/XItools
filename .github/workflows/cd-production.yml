@@ -141,10 +141,30 @@ jobs:
         # 严格检查SSL证书文件是否存在
         echo "🔍 严格检查SSL证书文件..."
 
-        SSL_CERT_FILE="/etc/letsencrypt/live/furdow.com/fullchain.pem"
-        SSL_KEY_FILE="/etc/letsencrypt/live/furdow.com/privkey.pem"
+        # 智能检测SSL证书路径（支持多种可能的路径）
+        SSL_CERT_FILE=""
+        SSL_KEY_FILE=""
 
-        if [ ! -f "$SSL_CERT_FILE" ] || [ ! -f "$SSL_KEY_FILE" ]; then
+        # 按优先级检查可能的证书路径
+        POSSIBLE_PATHS=(
+          "/etc/letsencrypt/live/xitools.furdow.com"
+          "/etc/letsencrypt/live/furdow.com"
+        )
+
+        echo "🔍 检测SSL证书路径..."
+        for cert_path in "${POSSIBLE_PATHS[@]}"; do
+          echo "   检查路径: $cert_path"
+          if [ -f "$cert_path/fullchain.pem" ] && [ -f "$cert_path/privkey.pem" ]; then
+            SSL_CERT_FILE="$cert_path/fullchain.pem"
+            SSL_KEY_FILE="$cert_path/privkey.pem"
+            echo "✅ 发现SSL证书: $cert_path"
+            break
+          else
+            echo "   ❌ 路径不存在或文件不完整: $cert_path"
+          fi
+        done
+
+        if [ -z "$SSL_CERT_FILE" ] || [ -z "$SSL_KEY_FILE" ]; then
           echo "⚠️ SSL证书文件不存在，开始自动申请Let's Encrypt证书..."
 
           # 检查certbot是否已安装
@@ -214,28 +234,47 @@ jobs:
             echo "   2. 防火墙阻止了80/443端口访问"
             echo "   3. Let's Encrypt速率限制"
 
-            # 创建SSL证书目录
-            mkdir -p /etc/letsencrypt/live/furdow.com
+            # 创建SSL证书目录（使用xitools.furdow.com以保持一致性）
+            FALLBACK_CERT_DIR="/etc/letsencrypt/live/xitools.furdow.com"
+            mkdir -p "$FALLBACK_CERT_DIR"
 
             # 生成自签名证书
             openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-              -keyout /etc/letsencrypt/live/furdow.com/privkey.pem \
-              -out /etc/letsencrypt/live/furdow.com/fullchain.pem \
+              -keyout "$FALLBACK_CERT_DIR/privkey.pem" \
+              -out "$FALLBACK_CERT_DIR/fullchain.pem" \
               -subj "/C=CN/ST=State/L=City/O=XItools/CN=xitools.furdow.com"
 
             echo "⚠️ 已生成临时自签名证书，浏览器会显示安全警告"
             echo "⚠️ 建议部署完成后手动申请正式SSL证书"
           fi
 
-          # 设置正确的文件权限
-          chmod 600 /etc/letsencrypt/live/furdow.com/privkey.pem 2>/dev/null || true
-          chmod 644 /etc/letsencrypt/live/furdow.com/fullchain.pem 2>/dev/null || true
+          # 重新检测证书路径（证书可能生成在不同的目录）
+          echo "🔍 重新检测生成的SSL证书路径..."
+          SSL_CERT_FILE=""
+          SSL_KEY_FILE=""
+
+          # 检查可能的证书路径
+          for cert_path in "${POSSIBLE_PATHS[@]}"; do
+            if [ -f "$cert_path/fullchain.pem" ] && [ -f "$cert_path/privkey.pem" ]; then
+              SSL_CERT_FILE="$cert_path/fullchain.pem"
+              SSL_KEY_FILE="$cert_path/privkey.pem"
+              echo "✅ 检测到SSL证书: $cert_path"
+
+              # 设置正确的文件权限
+              chmod 600 "$SSL_KEY_FILE" 2>/dev/null || true
+              chmod 644 "$SSL_CERT_FILE" 2>/dev/null || true
+              break
+            fi
+          done
 
           # 验证证书文件是否正确生成
-          if [ ! -f "$SSL_CERT_FILE" ] || [ ! -f "$SSL_KEY_FILE" ]; then
+          if [ -z "$SSL_CERT_FILE" ] || [ -z "$SSL_KEY_FILE" ]; then
             echo "❌ SSL证书生成失败，无法继续部署"
-            echo "📋 证书目录内容:"
+            echo "📋 Let's Encrypt证书目录内容:"
             ls -la /etc/letsencrypt/live/ 2>/dev/null || echo "证书目录不存在"
+            echo ""
+            echo "📋 详细目录结构:"
+            find /etc/letsencrypt/live/ -name "*.pem" 2>/dev/null || echo "未找到证书文件"
             exit 1
           fi
 
@@ -247,6 +286,18 @@ jobs:
 
           echo "✅ SSL证书配置完成"
         fi
+
+        # 动态更新nginx配置文件中的证书路径
+        echo "🔧 更新nginx配置文件中的SSL证书路径..."
+        CERT_DIR=$(dirname "$SSL_CERT_FILE")
+
+        # 创建临时的nginx配置文件，使用检测到的证书路径
+        sed "s|/etc/letsencrypt/live/furdow.com|$CERT_DIR|g" /opt/xitools/releases/${{ steps.version.outputs.version }}/nginx/xitools-docker.conf > /tmp/xitools-docker.conf.tmp
+
+        # 替换原配置文件
+        mv /tmp/xitools-docker.conf.tmp /opt/xitools/releases/${{ steps.version.outputs.version }}/nginx/xitools-docker.conf
+
+        echo "✅ nginx配置文件已更新为使用证书路径: $CERT_DIR"
 
         # 验证证书文件的有效性
         echo "🔍 验证SSL证书有效性..."
@@ -606,14 +657,26 @@ jobs:
           exit 1
         fi
 
-        # 验证SSL证书在容器内是否可访问
-        if ! docker exec xitools-nginx-prod test -f /etc/letsencrypt/live/furdow.com/fullchain.pem; then
-          echo "❌ Nginx容器内无法访问SSL证书文件"
-          exit 1
-        fi
+        # 验证SSL证书在容器内是否可访问（检查多个可能的路径）
+        SSL_ACCESSIBLE=false
+        CONTAINER_CERT_PATHS=(
+          "/etc/letsencrypt/live/xitools.furdow.com"
+          "/etc/letsencrypt/live/furdow.com"
+        )
 
-        if ! docker exec xitools-nginx-prod test -f /etc/letsencrypt/live/furdow.com/privkey.pem; then
-          echo "❌ Nginx容器内无法访问SSL私钥文件"
+        for cert_path in "${CONTAINER_CERT_PATHS[@]}"; do
+          if docker exec xitools-nginx-prod test -f "$cert_path/fullchain.pem" && \
+             docker exec xitools-nginx-prod test -f "$cert_path/privkey.pem"; then
+            echo "✅ Nginx容器内SSL证书可访问: $cert_path"
+            SSL_ACCESSIBLE=true
+            break
+          fi
+        done
+
+        if [ "$SSL_ACCESSIBLE" = false ]; then
+          echo "❌ Nginx容器内无法访问SSL证书文件"
+          echo "📋 容器内证书目录结构:"
+          docker exec xitools-nginx-prod ls -la /etc/letsencrypt/live/ 2>/dev/null || echo "无法访问容器内证书目录"
           exit 1
         fi
 
@@ -769,7 +832,17 @@ jobs:
 
           echo ""
           echo "=== SSL证书文件状态 ==="
-          ls -la /etc/letsencrypt/live/furdow.com/ 2>/dev/null || echo "SSL证书目录不存在"
+          echo "Let's Encrypt证书目录结构:"
+          ls -la /etc/letsencrypt/live/ 2>/dev/null || echo "Let's Encrypt目录不存在"
+
+          echo ""
+          echo "具体证书文件:"
+          for cert_dir in /etc/letsencrypt/live/*/; do
+            if [ -d "$cert_dir" ]; then
+              echo "目录: $cert_dir"
+              ls -la "$cert_dir" 2>/dev/null || echo "无法访问目录"
+            fi
+          done
 
           echo ""
           echo "=== Nginx配置测试 ==="
@@ -785,9 +858,22 @@ jobs:
         echo ""
         echo "🔒 SSL证书状态报告:"
         ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'SSL_REPORT_EOF'
-        SSL_CERT_FILE="/etc/letsencrypt/live/furdow.com/fullchain.pem"
 
-        if [ -f "$SSL_CERT_FILE" ]; then
+        # 智能检测SSL证书路径
+        SSL_CERT_FILE=""
+        POSSIBLE_PATHS=(
+          "/etc/letsencrypt/live/xitools.furdow.com/fullchain.pem"
+          "/etc/letsencrypt/live/furdow.com/fullchain.pem"
+        )
+
+        for cert_file in "${POSSIBLE_PATHS[@]}"; do
+          if [ -f "$cert_file" ]; then
+            SSL_CERT_FILE="$cert_file"
+            break
+          fi
+        done
+
+        if [ -n "$SSL_CERT_FILE" ] && [ -f "$SSL_CERT_FILE" ]; then
           echo "   📋 证书文件: $SSL_CERT_FILE"
           echo "   📅 有效期至: $(openssl x509 -in "$SSL_CERT_FILE" -noout -enddate | sed 's/notAfter=//')"
 
