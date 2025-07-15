@@ -880,8 +880,8 @@ jobs:
 
         HEALTH_EOF
 
-          echo "📋 获取详细诊断信息..."
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'DIAG_EOF'
+        echo "📋 获取详细诊断信息..."
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'DIAG_EOF'
           cd /opt/xitools/current
 
           echo "=== 容器状态 ==="
