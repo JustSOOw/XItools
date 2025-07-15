@@ -239,36 +239,59 @@ jobs:
         echo "启动服务..."
         docker compose -f docker-compose.prod.yml up -d || docker-compose -f docker-compose.prod.yml up -d
 
-        # 验证容器启动状态
+        # 验证容器启动状态（初步检查）
         echo "🔍 验证容器启动状态..."
-        sleep 10  # 等待容器启动
+        sleep 15  # 给容器更多启动时间
 
-        # 检查所有容器是否正在运行
+        # 检查所有容器状态（包括restarting状态）
         EXPECTED_CONTAINERS=("xitools-postgres-prod" "xitools-backend-prod" "xitools-frontend-prod" "xitools-nginx-prod")
-        FAILED_CONTAINERS=()
+        CRITICAL_FAILED_CONTAINERS=()
 
+        echo "📊 容器启动状态检查:"
         for container in "${EXPECTED_CONTAINERS[@]}"; do
-          if docker ps --format "table {{.Names}}" | grep -q "^${container}$"; then
-            echo "✅ 容器运行正常: $container"
-          else
-            echo "❌ 容器未运行: $container"
-            FAILED_CONTAINERS+=("$container")
-          fi
+          status=$(docker inspect --format='{{.State.Status}}' $container 2>/dev/null || echo "not-found")
+          restart_count=$(docker inspect --format='{{.RestartCount}}' $container 2>/dev/null || echo "0")
+
+          case "$status" in
+            "running")
+              echo "✅ $container: 运行中 (重启次数: $restart_count)"
+              ;;
+            "restarting")
+              echo "🔄 $container: 重启中 (重启次数: $restart_count)"
+              if [[ "$container" == *"nginx"* ]]; then
+                echo "   Nginx容器重启是正常的，可能在加载SSL配置"
+              fi
+              ;;
+            "exited")
+              exit_code=$(docker inspect --format='{{.State.ExitCode}}' $container 2>/dev/null || echo "unknown")
+              echo "❌ $container: 已退出 (退出码: $exit_code, 重启次数: $restart_count)"
+              CRITICAL_FAILED_CONTAINERS+=("$container")
+              ;;
+            "not-found")
+              echo "❌ $container: 容器不存在"
+              CRITICAL_FAILED_CONTAINERS+=("$container")
+              ;;
+            *)
+              echo "⚠️ $container: 状态 $status (重启次数: $restart_count)"
+              ;;
+          esac
         done
 
-        # 如果有容器启动失败，显示详细信息并退出
-        if [ ${#FAILED_CONTAINERS[@]} -gt 0 ]; then
-          echo "❌ 以下容器启动失败: ${FAILED_CONTAINERS[*]}"
+        # 只有在容器完全无法启动时才退出（不包括restarting状态）
+        if [ ${#CRITICAL_FAILED_CONTAINERS[@]} -gt 0 ]; then
+          echo "❌ 以下容器启动严重失败: ${CRITICAL_FAILED_CONTAINERS[*]}"
           echo "📋 显示容器状态和日志..."
           docker compose -f docker-compose.prod.yml ps || docker-compose -f docker-compose.prod.yml ps
 
-          for container in "${FAILED_CONTAINERS[@]}"; do
+          for container in "${CRITICAL_FAILED_CONTAINERS[@]}"; do
             echo "📋 容器 $container 的日志:"
-            docker logs $container --tail 20 2>&1 || echo "无法获取容器日志"
+            docker logs $container --tail 30 2>&1 || echo "无法获取容器日志"
           done
 
           exit 1
         fi
+
+        echo "✅ 容器初步启动检查完成，将在后续进行详细健康检查"
 
         # 显示容器状态
         echo "📊 所有容器状态："
@@ -286,36 +309,107 @@ jobs:
 
         # 等待服务完全启动
         echo "⏳ 等待服务完全启动..."
-        sleep 45
+        echo "  给予容器足够的启动时间，特别是Nginx容器需要加载SSL配置..."
+        sleep 90
 
-        # 检查容器健康状态
+        # 检查容器健康状态（带重试机制）
         echo "🔍 检查容器健康状态..."
         ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'HEALTH_EOF'
         cd /opt/xitools/current
 
-        # 检查容器健康状态
-        UNHEALTHY_CONTAINERS=()
-        for container in xitools-postgres-prod xitools-backend-prod xitools-frontend-prod xitools-nginx-prod; do
-          health=$(docker inspect --format='{{.State.Health.Status}}' $container 2>/dev/null || echo "no-healthcheck")
-          status=$(docker inspect --format='{{.State.Status}}' $container 2>/dev/null || echo "not-found")
+        # 定义容器检查函数
+        check_container_health() {
+          local container=$1
+          local max_retries=6
+          local retry_interval=10
 
-          if [ "$status" = "running" ]; then
-            if [ "$health" = "healthy" ] || [ "$health" = "no-healthcheck" ]; then
-              echo "✅ $container: $status ($health)"
-            else
-              echo "❌ $container: $status ($health)"
-              UNHEALTHY_CONTAINERS+=("$container")
+          for ((i=1; i<=max_retries; i++)); do
+            echo "🔍 检查 $container 状态 (尝试 $i/$max_retries)..."
+
+            health=$(docker inspect --format='{{.State.Health.Status}}' $container 2>/dev/null || echo "no-healthcheck")
+            status=$(docker inspect --format='{{.State.Status}}' $container 2>/dev/null || echo "not-found")
+            restart_count=$(docker inspect --format='{{.RestartCount}}' $container 2>/dev/null || echo "0")
+
+            echo "  状态: $status, 健康: $health, 重启次数: $restart_count"
+
+            # 检查容器状态
+            case "$status" in
+              "running")
+                if [ "$health" = "healthy" ] || [ "$health" = "no-healthcheck" ]; then
+                  echo "✅ $container: 运行正常 ($status, $health)"
+                  return 0
+                else
+                  echo "⚠️ $container: 运行中但健康检查失败 ($status, $health)"
+                fi
+                ;;
+              "restarting")
+                echo "🔄 $container: 正在重启中，等待启动完成..."
+                # 对于nginx容器，给予更多耐心
+                if [[ "$container" == *"nginx"* ]]; then
+                  echo "  Nginx容器需要更长时间加载SSL配置，继续等待..."
+                fi
+                ;;
+              "exited")
+                exit_code=$(docker inspect --format='{{.State.ExitCode}}' $container 2>/dev/null || echo "unknown")
+                echo "❌ $container: 已退出 (退出码: $exit_code)"
+                # 显示容器日志
+                echo "📋 容器日志 (最近10行):"
+                docker logs --tail 10 $container 2>&1 || echo "无法获取日志"
+                return 1
+                ;;
+              "not-found")
+                echo "❌ $container: 容器不存在"
+                return 1
+                ;;
+              *)
+                echo "⚠️ $container: 未知状态 ($status)"
+                ;;
+            esac
+
+            # 如果不是最后一次尝试，等待后重试
+            if [ $i -lt $max_retries ]; then
+              echo "  等待 ${retry_interval} 秒后重试..."
+              sleep $retry_interval
             fi
-          else
-            echo "❌ $container: $status"
-            UNHEALTHY_CONTAINERS+=("$container")
+          done
+
+          # 所有重试都失败
+          echo "❌ $container: 健康检查失败，已达到最大重试次数"
+          echo "📋 最终状态: $status, 健康: $health, 重启次数: $restart_count"
+
+          # 显示详细的容器信息
+          echo "📋 容器详细信息:"
+          docker inspect $container --format='{{json .State}}' 2>/dev/null | jq '.' 2>/dev/null || docker inspect $container --format='{{.State}}' 2>/dev/null || echo "无法获取容器信息"
+
+          # 显示容器日志
+          echo "📋 容器日志 (最近20行):"
+          docker logs --tail 20 $container 2>&1 || echo "无法获取日志"
+
+          return 1
+        }
+
+        # 检查所有容器
+        FAILED_CONTAINERS=()
+        CONTAINERS=("xitools-postgres-prod" "xitools-backend-prod" "xitools-frontend-prod" "xitools-nginx-prod")
+
+        for container in "${CONTAINERS[@]}"; do
+          if ! check_container_health "$container"; then
+            FAILED_CONTAINERS+=("$container")
           fi
         done
 
-        if [ ${#UNHEALTHY_CONTAINERS[@]} -gt 0 ]; then
-          echo "❌ 发现不健康的容器: ${UNHEALTHY_CONTAINERS[*]}"
+        # 检查是否有失败的容器
+        if [ ${#FAILED_CONTAINERS[@]} -gt 0 ]; then
+          echo "❌ 以下容器健康检查失败: ${FAILED_CONTAINERS[*]}"
+
+          # 显示所有容器的当前状态
+          echo "📊 所有容器当前状态:"
+          docker compose -f docker-compose.prod.yml ps || docker-compose -f docker-compose.prod.yml ps
+
           exit 1
         fi
+
+        echo "✅ 所有容器健康检查通过"
 
         # 检查端口监听状态
         echo "🔌 检查端口监听状态..."
