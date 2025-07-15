@@ -192,9 +192,7 @@ XItools/
 项目的详细文档位于 `docs/` 目录，覆盖了产品、设计、架构和开发指南。关键文档包括：
 
 ### CI/CD 部署文档
-- **[环境配置指南](./docs/cicd/environment-setup.md)** - 多环境部署配置详解
-- **[GitHub环境配置清单](./docs/cicd/github-environments-checklist.md)** - GitHub环境变量配置步骤
-- **[简化设置指南](./docs/cicd/setup-guide-simplified.md)** - 快速配置和使用说明
+- **[CI/CD 部署指南](./docs/cicd/unified-ci-cd-guide.md)** - 统一的 CI/CD 部署指南
 
 
 ### 产品与技术文档
