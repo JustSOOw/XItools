@@ -134,6 +134,10 @@ jobs:
         scp -o StrictHostKeyChecking=no .env.production ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools/releases/${{ steps.version.outputs.version }}/
         scp -r -o StrictHostKeyChecking=no nginx/ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools/releases/${{ steps.version.outputs.version }}/
 
+        # 部署系统Nginx配置
+        echo "📤 部署系统Nginx配置..."
+        scp -o StrictHostKeyChecking=no nginx/xitools-only.conf ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/etc/nginx/sites-available/xitools.conf
+
         # 验证文件上传完整性
         echo "🔍 验证文件上传完整性..."
         ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'VERIFY_EOF'
@@ -188,6 +192,23 @@ jobs:
         fi
 
         echo "✅ 基础设施检查完成"
+
+        # 配置系统Nginx
+        echo "🔧 配置系统Nginx..."
+
+        # 启用XItools站点配置
+        if [ ! -L /etc/nginx/sites-enabled/xitools.conf ]; then
+          ln -sf /etc/nginx/sites-available/xitools.conf /etc/nginx/sites-enabled/xitools.conf
+        fi
+
+        # 测试Nginx配置
+        if nginx -t; then
+          echo "✅ Nginx配置语法正确"
+          systemctl reload nginx
+        else
+          echo "❌ Nginx配置语法错误"
+          exit 1
+        fi
 
         # 停止当前服务
         if [ -f current/docker-compose.prod.yml ]; then
@@ -290,41 +311,100 @@ jobs:
           echo "❌ 发现不健康的容器: ${UNHEALTHY_CONTAINERS[*]}"
           exit 1
         fi
+
+        # 检查端口监听状态
+        echo "🔌 检查端口监听状态..."
+        echo "Docker容器端口8080:"
+        netstat -tlnp | grep :8080 || echo "⚠️ 端口8080未监听"
+
+        echo "系统Nginx端口443:"
+        netstat -tlnp | grep :443 || echo "⚠️ 端口443未监听"
+
+        # 检查本地连通性
+        echo "🔗 检查本地连通性..."
+        if curl -f -s --connect-timeout 5 "http://127.0.0.1:8080/health" > /dev/null; then
+          echo "✅ Docker容器8080端口可访问"
+        else
+          echo "❌ Docker容器8080端口不可访问"
+        fi
+
         HEALTH_EOF
 
         # 检查应用可访问性
         echo "🌐 检查应用可访问性..."
         HEALTH_CHECK_FAILED=false
 
-        # 检查前端
-        for i in {1..12}; do
+        # 检查前端（先尝试HTTPS，再尝试HTTP）
+        echo "检查前端应用可访问性..."
+        FRONTEND_ACCESSIBLE=false
+
+        # 尝试HTTPS访问
+        for i in {1..6}; do
           if curl -f -s --connect-timeout 10 "https://xitools.furdow.com/" > /dev/null; then
-            echo "✅ 前端应用可访问"
+            echo "✅ 前端应用HTTPS可访问"
+            FRONTEND_ACCESSIBLE=true
             break
           else
-            echo "⏳ 等待前端应用启动... ($i/12)"
-            if [ $i -eq 12 ]; then
-              echo "❌ 前端应用健康检查失败"
-              HEALTH_CHECK_FAILED=true
-            fi
+            echo "⏳ 等待前端HTTPS启动... ($i/6)"
             sleep 10
           fi
         done
 
-        # 检查后端API
-        for i in {1..12}; do
+        # 如果HTTPS失败，尝试HTTP
+        if [ "$FRONTEND_ACCESSIBLE" = false ]; then
+          echo "HTTPS访问失败，尝试HTTP..."
+          for i in {1..6}; do
+            if curl -f -s --connect-timeout 10 "http://xitools.furdow.com/" > /dev/null; then
+              echo "✅ 前端应用HTTP可访问"
+              FRONTEND_ACCESSIBLE=true
+              break
+            else
+              echo "⏳ 等待前端HTTP启动... ($i/6)"
+              sleep 10
+            fi
+          done
+        fi
+
+        if [ "$FRONTEND_ACCESSIBLE" = false ]; then
+          echo "❌ 前端应用健康检查失败（HTTPS和HTTP都无法访问）"
+          HEALTH_CHECK_FAILED=true
+        fi
+
+        # 检查后端API（先尝试HTTPS，再尝试HTTP）
+        echo "检查后端API可访问性..."
+        API_ACCESSIBLE=false
+
+        # 尝试HTTPS访问
+        for i in {1..6}; do
           if curl -f -s --connect-timeout 10 "https://xitools.furdow.com/api/health" > /dev/null; then
-            echo "✅ 后端API可访问"
+            echo "✅ 后端API HTTPS可访问"
+            API_ACCESSIBLE=true
             break
           else
-            echo "⏳ 等待后端API启动... ($i/12)"
-            if [ $i -eq 12 ]; then
-              echo "❌ 后端API健康检查失败"
-              HEALTH_CHECK_FAILED=true
-            fi
+            echo "⏳ 等待后端API HTTPS启动... ($i/6)"
             sleep 10
           fi
         done
+
+        # 如果HTTPS失败，尝试HTTP
+        if [ "$API_ACCESSIBLE" = false ]; then
+          echo "HTTPS访问失败，尝试HTTP..."
+          for i in {1..6}; do
+            if curl -f -s --connect-timeout 10 "http://xitools.furdow.com/api/health" > /dev/null; then
+              echo "✅ 后端API HTTP可访问"
+              API_ACCESSIBLE=true
+              break
+            else
+              echo "⏳ 等待后端API HTTP启动... ($i/6)"
+              sleep 10
+            fi
+          done
+        fi
+
+        if [ "$API_ACCESSIBLE" = false ]; then
+          echo "❌ 后端API健康检查失败（HTTPS和HTTP都无法访问）"
+          HEALTH_CHECK_FAILED=true
+        fi
 
         # 如果健康检查失败，标记部署失败
         if [ "$HEALTH_CHECK_FAILED" = true ]; then
