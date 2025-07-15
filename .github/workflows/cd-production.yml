@@ -134,285 +134,74 @@ jobs:
         scp -o StrictHostKeyChecking=no .env.production ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools/releases/${{ steps.version.outputs.version }}/
         scp -r -o StrictHostKeyChecking=no nginx/ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools/releases/${{ steps.version.outputs.version }}/
 
-        # 检查SSL证书并配置nginx
-        echo "� 检查SSL证书并配置nginx..."
-        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'SSL_CONFIG_EOF'
-        cd /opt/xitools/releases/${{ steps.version.outputs.version }}
+        # 检查SSL证书目录
+        echo "� 检查SSL证书目录..."
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'SSL_CHECK_EOF'
 
-        # 检查SSL证书是否存在
-        SSL_AVAILABLE=false
+        # 严格检查SSL证书文件是否存在
+        echo "🔍 严格检查SSL证书文件..."
 
-        # 首先检查xitools.furdow.com的专用证书
-        if [ -f "/etc/letsencrypt/live/xitools.furdow.com/fullchain.pem" ] && [ -f "/etc/letsencrypt/live/xitools.furdow.com/privkey.pem" ]; then
-          echo "✅ xitools.furdow.com SSL证书文件存在"
-          CERT_PATH="/etc/letsencrypt/live/xitools.furdow.com"
+        SSL_CERT_FILE="/etc/letsencrypt/live/furdow.com/fullchain.pem"
+        SSL_KEY_FILE="/etc/letsencrypt/live/furdow.com/privkey.pem"
 
-          # 检查证书是否即将过期（30天内）
-          if openssl x509 -checkend 2592000 -noout -in "$CERT_PATH/fullchain.pem"; then
-            echo "✅ SSL证书有效期充足"
-            SSL_AVAILABLE=true
-          else
-            echo "⚠️ SSL证书即将过期，需要续期"
-            SSL_AVAILABLE=false
-          fi
-
-        # 如果没有专用证书，检查通配符证书
-        elif [ -f "/etc/letsencrypt/live/furdow.com/fullchain.pem" ] && [ -f "/etc/letsencrypt/live/furdow.com/privkey.pem" ]; then
-          echo "✅ 发现furdow.com通配符证书"
-          CERT_PATH="/etc/letsencrypt/live/furdow.com"
-
-          # 检查证书是否支持xitools.furdow.com
-          if openssl x509 -in "$CERT_PATH/fullchain.pem" -text -noout | grep -E "(DNS:.*xitools\.furdow\.com|DNS:\*\.furdow\.com)"; then
-            echo "✅ 通配符证书支持xitools.furdow.com"
-            SSL_AVAILABLE=true
-          else
-            echo "⚠️ 现有证书不支持xitools.furdow.com，需要生成新证书"
-            SSL_AVAILABLE=false
-          fi
-
-        else
-          echo "⚠️ 未找到任何SSL证书文件"
-          SSL_AVAILABLE=false
+        if [ ! -f "$SSL_CERT_FILE" ]; then
+          echo "❌ SSL证书文件不存在: $SSL_CERT_FILE"
+          echo "💡 请确保已正确配置Let's Encrypt SSL证书"
+          echo "💡 您可以使用以下命令生成证书:"
+          echo "   sudo certbot certonly --nginx -d xitools.furdow.com"
+          echo "   或者"
+          echo "   sudo certbot certonly --standalone -d xitools.furdow.com"
+          exit 1
         fi
 
-        # 如果SSL证书不可用，尝试自动生成
-        if [ "$SSL_AVAILABLE" = false ]; then
-          echo "🔒 开始自动生成SSL证书..."
-
-          # 安装certbot（如果未安装）
-          if ! command -v certbot &> /dev/null; then
-            echo "📦 安装certbot..."
-            apt-get update
-            apt-get install -y certbot
-          fi
-
-          # 确保nginx未占用80端口（用于证书验证）
-          if netstat -tlnp | grep :80 > /dev/null; then
-            echo "🛑 停止占用80端口的服务..."
-            fuser -k 80/tcp || true
-            sleep 5
-          fi
-
-          # 创建webroot目录
-          mkdir -p /var/www/certbot
-
-          # 创建临时nginx配置用于证书验证
-          echo "🔧 创建临时nginx配置用于证书验证..."
-          cat > /etc/nginx/sites-available/temp-certbot << 'TEMP_NGINX_EOF'
-server {
-    listen 80;
-    server_name xitools.furdow.com;
-
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-        allow all;
-    }
-
-    location / {
-        return 200 'Certificate verification in progress...';
-        add_header Content-Type text/plain;
-    }
-}
-TEMP_NGINX_EOF
-
-          # 启用临时配置
-          ln -sf /etc/nginx/sites-available/temp-certbot /etc/nginx/sites-enabled/temp-certbot
-
-          # 安装并启动nginx（如果未运行）
-          if ! command -v nginx &> /dev/null; then
-            apt-get install -y nginx
-          fi
-
-          # 测试并重载nginx配置
-          if nginx -t; then
-            systemctl reload nginx || systemctl restart nginx
-          fi
-
-          # 使用webroot模式生成证书
-          echo "🔐 为 xitools.furdow.com 生成SSL证书..."
-          if certbot certonly \
-            --webroot \
-            --webroot-path=/var/www/certbot \
-            --email ${{ secrets.SSL_EMAIL || 'admin@furdow.com' }} \
-            --agree-tos \
-            --no-eff-email \
-            --domains xitools.furdow.com \
-            --non-interactive; then
-
-            echo "✅ SSL证书生成成功"
-            SSL_AVAILABLE=true
-            CERT_PATH="/etc/letsencrypt/live/xitools.furdow.com"
-
-            # 清理临时nginx配置
-            rm -f /etc/nginx/sites-enabled/temp-certbot
-            rm -f /etc/nginx/sites-available/temp-certbot
-
-            # 设置证书自动续期
-            if ! crontab -l | grep -q "certbot renew"; then
-              echo "⏰ 设置证书自动续期..."
-              (crontab -l 2>/dev/null; echo "0 12 * * * /usr/bin/certbot renew --quiet --deploy-hook 'docker restart xitools-nginx-prod'") | crontab -
-            fi
-
-          else
-            echo "❌ SSL证书生成失败，将使用HTTP模式"
-            echo "  可能的原因："
-            echo "  1. 域名DNS未正确指向此服务器"
-            echo "  2. 防火墙阻止了80端口访问"
-            echo "  3. Let's Encrypt服务暂时不可用"
-            SSL_AVAILABLE=false
-          fi
+        if [ ! -f "$SSL_KEY_FILE" ]; then
+          echo "❌ SSL私钥文件不存在: $SSL_KEY_FILE"
+          echo "💡 请确保已正确配置Let's Encrypt SSL证书"
+          exit 1
         fi
 
-        # 根据SSL证书可用性选择nginx配置
-        if [ "$SSL_AVAILABLE" = true ]; then
-          echo "🔧 配置HTTPS模式的nginx..."
-          # 创建支持HTTPS的nginx配置
-          cat > nginx/xitools-prod-ssl.conf << NGINX_SSL_EOF
-# XItools 生产环境 Nginx 配置 (HTTPS模式)
-upstream backend_servers {
-    server backend:3000;
-    keepalive 32;
-}
-
-upstream frontend_servers {
-    server frontend:80;
-    keepalive 16;
-}
-
-# HTTP服务器 - 重定向到HTTPS
-server {
-    listen 80;
-    server_name xitools.furdow.com;
-
-    # Let's Encrypt验证路径
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-        allow all;
-    }
-
-    # 重定向到HTTPS
-    location / {
-        return 301 https://$server_name$request_uri;
-    }
-}
-
-# HTTPS服务器
-server {
-    listen 443 ssl http2;
-    server_name xitools.furdow.com;
-
-    # SSL配置
-    ssl_certificate ${CERT_PATH}/fullchain.pem;
-    ssl_certificate_key ${CERT_PATH}/privkey.pem;
-
-    # SSL安全配置
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_prefer_server_ciphers on;
-    ssl_ciphers "EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH";
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 1d;
-
-    # 安全头部
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    add_header X-Content-Type-Options nosniff always;
-    add_header X-Frame-Options SAMEORIGIN always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header Referrer-Policy "no-referrer-when-downgrade" always;
-
-    # 文件上传大小限制
-    client_max_body_size 1024M;
-
-    # Gzip压缩
-    gzip on;
-    gzip_vary on;
-    gzip_min_length 1024;
-    gzip_proxied any;
-    gzip_comp_level 6;
-    gzip_types text/plain text/css text/xml text/javascript application/json application/javascript application/xml+rss application/atom+xml image/svg+xml;
-
-    # API代理到后端服务
-    location /api/ {
-        proxy_pass http://backend_servers;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_request_buffering off;
-        proxy_buffering off;
-        proxy_max_temp_file_size 0;
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 300s;
-        proxy_read_timeout 300s;
-    }
-
-    # WebSocket代理
-    location /socket.io/ {
-        proxy_pass http://backend_servers;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_cache_bypass $http_upgrade;
-    }
-
-    # MCP服务代理
-    location /mcp {
-        proxy_pass http://backend_servers;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_connect_timeout 120s;
-        proxy_send_timeout 120s;
-        proxy_read_timeout 120s;
-    }
-
-    # 后端健康检查
-    location /health {
-        proxy_pass http://backend_servers;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # 前端静态文件
-    location / {
-        proxy_pass http://frontend_servers;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # 错误页面
-    error_page 500 502 503 504 /50x.html;
-    location = /50x.html {
-        root /usr/share/nginx/html;
-    }
-}
-NGINX_SSL_EOF
-
-          # 使用HTTPS配置
-          cp nginx/xitools-prod-ssl.conf nginx/xitools-docker.conf
-
-          # 添加443端口映射到docker-compose.prod.yml
-          sed -i '/- "80:80"/a\      - "443:443"   # HTTPS端口' docker-compose.prod.yml
-
-          echo "✅ 已配置HTTPS模式"
-        else
-          echo "🔧 使用HTTP模式的nginx配置..."
-          echo "✅ 已配置HTTP模式（仅80端口）"
+        # 验证证书文件的有效性
+        echo "🔍 验证SSL证书有效性..."
+        if ! openssl x509 -in "$SSL_CERT_FILE" -noout -checkend 86400; then
+          echo "❌ SSL证书已过期或将在24小时内过期"
+          echo "💡 请更新SSL证书后重新部署"
+          exit 1
         fi
+
+        # 验证私钥文件的有效性
+        if ! openssl rsa -in "$SSL_KEY_FILE" -check -noout 2>/dev/null; then
+          echo "❌ SSL私钥文件无效或损坏"
+          exit 1
+        fi
+
+        # 验证证书和私钥是否匹配
+        CERT_MODULUS=$(openssl x509 -noout -modulus -in "$SSL_CERT_FILE" | openssl md5)
+        KEY_MODULUS=$(openssl rsa -noout -modulus -in "$SSL_KEY_FILE" | openssl md5)
+
+        if [ "$CERT_MODULUS" != "$KEY_MODULUS" ]; then
+          echo "❌ SSL证书和私钥不匹配"
+          exit 1
+        fi
+
+        # 检查证书是否支持xitools.furdow.com域名
+        if ! openssl x509 -in "$SSL_CERT_FILE" -text -noout | grep -E "(xitools\.furdow\.com|\*\.furdow\.com)" > /dev/null; then
+          echo "❌ SSL证书不支持xitools.furdow.com域名"
+          echo "💡 请确保证书包含xitools.furdow.com或*.furdow.com域名"
+          echo "📋 当前证书支持的域名:"
+          openssl x509 -in "$SSL_CERT_FILE" -text -noout | grep -A1 "Subject Alternative Name" || echo "   无SAN扩展"
+          exit 1
+        fi
+
+        echo "✅ SSL证书验证通过"
+        echo "📋 证书信息:"
+        echo "   颁发给: $(openssl x509 -in "$SSL_CERT_FILE" -noout -subject | sed 's/subject=//')"
+        echo "   颁发者: $(openssl x509 -in "$SSL_CERT_FILE" -noout -issuer | sed 's/issuer=//')"
+        echo "   有效期至: $(openssl x509 -in "$SSL_CERT_FILE" -noout -enddate | sed 's/notAfter=//')"
 
         # 确保certbot验证目录存在
         mkdir -p /var/www/certbot
 
-        echo "✅ Nginx配置完成"
-        SSL_CONFIG_EOF
+        SSL_CHECK_EOF
 
         # 验证文件上传完整性
         echo "🔍 验证文件上传完整性..."
@@ -675,7 +464,37 @@ NGINX_SSL_EOF
           exit 1
         fi
 
-        echo "✅ 所有容器健康检查通过"
+        # 对nginx容器进行额外的SSL配置验证
+        echo "🔍 验证Nginx容器SSL配置..."
+
+        # 检查nginx容器是否能正确加载SSL配置
+        if docker exec xitools-nginx-prod nginx -t 2>&1 | grep -i "ssl" | grep -i "error"; then
+          echo "❌ Nginx容器SSL配置验证失败"
+          echo "📋 Nginx配置测试结果:"
+          docker exec xitools-nginx-prod nginx -t 2>&1 || echo "无法执行nginx配置测试"
+          exit 1
+        fi
+
+        # 验证SSL证书在容器内是否可访问
+        if ! docker exec xitools-nginx-prod test -f /etc/letsencrypt/live/furdow.com/fullchain.pem; then
+          echo "❌ Nginx容器内无法访问SSL证书文件"
+          exit 1
+        fi
+
+        if ! docker exec xitools-nginx-prod test -f /etc/letsencrypt/live/furdow.com/privkey.pem; then
+          echo "❌ Nginx容器内无法访问SSL私钥文件"
+          exit 1
+        fi
+
+        # 验证nginx配置语法
+        if ! docker exec xitools-nginx-prod nginx -t > /dev/null 2>&1; then
+          echo "❌ Nginx配置语法验证失败"
+          echo "📋 详细错误信息:"
+          docker exec xitools-nginx-prod nginx -t 2>&1 || echo "无法获取nginx配置错误信息"
+          exit 1
+        fi
+
+        echo "✅ 所有容器健康检查通过，包括Nginx SSL配置验证"
 
         # 检查端口监听状态
         echo "🔌 检查端口监听状态..."
@@ -704,93 +523,132 @@ NGINX_SSL_EOF
         echo "🌐 检查应用可访问性..."
         HEALTH_CHECK_FAILED=false
 
-        # 检查前端（先尝试HTTPS，再尝试HTTP）
-        echo "检查前端应用可访问性..."
-        FRONTEND_ACCESSIBLE=false
+        # 检查前端HTTPS访问（严格要求HTTPS正常工作）
+        echo "检查前端应用HTTPS可访问性..."
+        FRONTEND_HTTPS_ACCESSIBLE=false
 
         # 尝试HTTPS访问
-        for i in {1..6}; do
-          if curl -f -s --connect-timeout 10 "https://xitools.furdow.com/" > /dev/null; then
+        for i in {1..8}; do
+          if curl -f -s --connect-timeout 15 "https://xitools.furdow.com/" > /dev/null; then
             echo "✅ 前端应用HTTPS可访问"
-            FRONTEND_ACCESSIBLE=true
+            FRONTEND_HTTPS_ACCESSIBLE=true
             break
           else
-            echo "⏳ 等待前端HTTPS启动... ($i/6)"
+            echo "⏳ 等待前端HTTPS启动... ($i/8)"
+            sleep 15
+          fi
+        done
+
+        if [ "$FRONTEND_HTTPS_ACCESSIBLE" = false ]; then
+          echo "❌ 前端应用HTTPS访问失败"
+          echo "💡 由于配置了SSL证书，HTTPS访问是必需的"
+          HEALTH_CHECK_FAILED=true
+        fi
+
+        # 验证HTTP到HTTPS重定向是否正常工作
+        echo "检查HTTP到HTTPS重定向..."
+        HTTP_REDIRECT_WORKING=false
+
+        for i in {1..3}; do
+          # 检查HTTP请求是否正确重定向到HTTPS
+          REDIRECT_RESPONSE=$(curl -s -I --connect-timeout 10 "http://xitools.furdow.com/" | head -1)
+          if echo "$REDIRECT_RESPONSE" | grep -E "(301|302)" > /dev/null; then
+            echo "✅ HTTP到HTTPS重定向正常工作"
+            HTTP_REDIRECT_WORKING=true
+            break
+          else
+            echo "⏳ 等待HTTP重定向配置生效... ($i/3)"
             sleep 10
           fi
         done
 
-        # 如果HTTPS失败，尝试HTTP
-        if [ "$FRONTEND_ACCESSIBLE" = false ]; then
-          echo "HTTPS访问失败，尝试HTTP..."
-          for i in {1..6}; do
-            if curl -f -s --connect-timeout 10 "http://xitools.furdow.com/" > /dev/null; then
-              echo "✅ 前端应用HTTP可访问"
-              FRONTEND_ACCESSIBLE=true
-              break
-            else
-              echo "⏳ 等待前端HTTP启动... ($i/6)"
-              sleep 10
-            fi
-          done
+        if [ "$HTTP_REDIRECT_WORKING" = false ]; then
+          echo "⚠️ HTTP到HTTPS重定向可能未正常工作"
+          echo "📋 HTTP响应头:"
+          curl -s -I --connect-timeout 10 "http://xitools.furdow.com/" | head -5 || echo "无法获取HTTP响应"
         fi
 
-        if [ "$FRONTEND_ACCESSIBLE" = false ]; then
-          echo "❌ 前端应用健康检查失败（HTTPS和HTTP都无法访问）"
-          HEALTH_CHECK_FAILED=true
-        fi
-
-        # 检查后端API（先尝试HTTPS，再尝试HTTP）
-        echo "检查后端API可访问性..."
-        API_ACCESSIBLE=false
+        # 检查后端API HTTPS访问（严格要求HTTPS正常工作）
+        echo "检查后端API HTTPS可访问性..."
+        API_HTTPS_ACCESSIBLE=false
 
         # 尝试HTTPS访问
-        for i in {1..6}; do
-          if curl -f -s --connect-timeout 10 "https://xitools.furdow.com/api/health" > /dev/null; then
+        for i in {1..8}; do
+          if curl -f -s --connect-timeout 15 "https://xitools.furdow.com/api/health" > /dev/null; then
             echo "✅ 后端API HTTPS可访问"
-            API_ACCESSIBLE=true
+            API_HTTPS_ACCESSIBLE=true
             break
           else
-            echo "⏳ 等待后端API HTTPS启动... ($i/6)"
-            sleep 10
+            echo "⏳ 等待后端API HTTPS启动... ($i/8)"
+            sleep 15
           fi
         done
 
-        # 如果HTTPS失败，尝试HTTP
-        if [ "$API_ACCESSIBLE" = false ]; then
-          echo "HTTPS访问失败，尝试HTTP..."
-          for i in {1..6}; do
-            if curl -f -s --connect-timeout 10 "http://xitools.furdow.com/api/health" > /dev/null; then
-              echo "✅ 后端API HTTP可访问"
-              API_ACCESSIBLE=true
-              break
-            else
-              echo "⏳ 等待后端API HTTP启动... ($i/6)"
-              sleep 10
-            fi
-          done
+        if [ "$API_HTTPS_ACCESSIBLE" = false ]; then
+          echo "❌ 后端API HTTPS访问失败"
+          echo "💡 由于配置了SSL证书，HTTPS访问是必需的"
+          HEALTH_CHECK_FAILED=true
         fi
 
-        if [ "$API_ACCESSIBLE" = false ]; then
-          echo "❌ 后端API健康检查失败（HTTPS和HTTP都无法访问）"
-          HEALTH_CHECK_FAILED=true
+        # 验证SSL证书在实际HTTPS连接中是否正常工作
+        echo "验证SSL证书在HTTPS连接中的工作状态..."
+        SSL_CONNECTION_WORKING=false
+
+        # 使用openssl验证SSL连接
+        if echo | openssl s_client -connect xitools.furdow.com:443 -servername xitools.furdow.com 2>/dev/null | grep "Verify return code: 0" > /dev/null; then
+          echo "✅ SSL证书验证通过，HTTPS连接正常"
+          SSL_CONNECTION_WORKING=true
+        else
+          echo "⚠️ SSL证书验证可能存在问题"
+          echo "📋 SSL连接详情:"
+          echo | openssl s_client -connect xitools.furdow.com:443 -servername xitools.furdow.com 2>/dev/null | grep -E "(Verify return code|subject|issuer)" || echo "无法获取SSL连接信息"
         fi
 
         # 如果健康检查失败，标记部署失败
         if [ "$HEALTH_CHECK_FAILED" = true ]; then
           echo "❌ 健康检查失败，部署被标记为失败"
-          echo "📋 获取失败诊断信息..."
+          echo ""
+          echo "� SSL/HTTPS相关故障排查指南:"
+          echo "1. 确认SSL证书文件存在且有效:"
+          echo "   sudo ls -la /etc/letsencrypt/live/furdow.com/"
+          echo "   sudo openssl x509 -in /etc/letsencrypt/live/furdow.com/fullchain.pem -text -noout"
+          echo ""
+          echo "2. 如果证书不存在，请生成SSL证书:"
+          echo "   sudo certbot certonly --nginx -d xitools.furdow.com"
+          echo "   或者"
+          echo "   sudo certbot certonly --standalone -d xitools.furdow.com"
+          echo ""
+          echo "3. 如果证书过期，请续期:"
+          echo "   sudo certbot renew"
+          echo ""
+          echo "4. 确认证书权限正确:"
+          echo "   sudo chmod 644 /etc/letsencrypt/live/furdow.com/fullchain.pem"
+          echo "   sudo chmod 600 /etc/letsencrypt/live/furdow.com/privkey.pem"
+          echo ""
+          echo "�📋 获取详细诊断信息..."
           ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'DIAG_EOF'
           cd /opt/xitools/current
-          echo "容器状态："
+
+          echo "=== 容器状态 ==="
           docker compose -f docker-compose.prod.yml ps || docker-compose -f docker-compose.prod.yml ps
-          echo "容器日志（最近20行）："
-          docker compose -f docker-compose.prod.yml logs --tail 20 || docker-compose -f docker-compose.prod.yml logs --tail 20
+
+          echo ""
+          echo "=== Nginx容器日志（最近30行）==="
+          docker logs xitools-nginx-prod --tail 30 2>&1 || echo "无法获取nginx日志"
+
+          echo ""
+          echo "=== SSL证书文件状态 ==="
+          ls -la /etc/letsencrypt/live/furdow.com/ 2>/dev/null || echo "SSL证书目录不存在"
+
+          echo ""
+          echo "=== Nginx配置测试 ==="
+          docker exec xitools-nginx-prod nginx -t 2>&1 || echo "无法测试nginx配置"
+
           DIAG_EOF
           exit 1
         fi
 
-        echo "✅ 所有健康检查通过，部署成功"
+        echo "✅ 所有健康检查通过，包括SSL/HTTPS验证，部署成功"
 
     - name: 自动回滚处理
       if: failure()
