@@ -134,9 +134,19 @@ jobs:
         scp -o StrictHostKeyChecking=no .env.production ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools/releases/${{ steps.version.outputs.version }}/
         scp -r -o StrictHostKeyChecking=no nginx/ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools/releases/${{ steps.version.outputs.version }}/
 
-        # 部署系统Nginx配置
-        echo "📤 部署系统Nginx配置..."
-        scp -o StrictHostKeyChecking=no nginx/xitools-only.conf ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/etc/nginx/sites-available/xitools.conf
+        # 检查SSL证书目录
+        echo "� 检查SSL证书目录..."
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'SSL_CHECK_EOF'
+        if [ ! -d "/etc/letsencrypt/live/furdow.com" ]; then
+          echo "⚠️ SSL证书目录不存在，请确保已配置SSL证书"
+          mkdir -p /etc/letsencrypt/live/furdow.com
+        else
+          echo "✅ SSL证书目录存在"
+        fi
+
+        # 确保certbot验证目录存在
+        mkdir -p /var/www/certbot
+        SSL_CHECK_EOF
 
         # 验证文件上传完整性
         echo "🔍 验证文件上传完整性..."
@@ -193,21 +203,16 @@ jobs:
 
         echo "✅ 基础设施检查完成"
 
-        # 配置系统Nginx
-        echo "🔧 配置系统Nginx..."
-
-        # 启用XItools站点配置
-        if [ ! -L /etc/nginx/sites-enabled/xitools.conf ]; then
-          ln -sf /etc/nginx/sites-available/xitools.conf /etc/nginx/sites-enabled/xitools.conf
+        # 检查端口占用情况
+        echo "� 检查端口占用情况..."
+        if netstat -tlnp | grep :80 > /dev/null; then
+          echo "⚠️ 端口80已被占用，停止占用进程..."
+          fuser -k 80/tcp || true
         fi
 
-        # 测试Nginx配置
-        if nginx -t; then
-          echo "✅ Nginx配置语法正确"
-          systemctl reload nginx
-        else
-          echo "❌ Nginx配置语法错误"
-          exit 1
+        if netstat -tlnp | grep :443 > /dev/null; then
+          echo "⚠️ 端口443已被占用，停止占用进程..."
+          fuser -k 443/tcp || true
         fi
 
         # 停止当前服务
@@ -314,18 +319,23 @@ jobs:
 
         # 检查端口监听状态
         echo "🔌 检查端口监听状态..."
-        echo "Docker容器端口8080:"
-        netstat -tlnp | grep :8080 || echo "⚠️ 端口8080未监听"
+        echo "HTTP端口80:"
+        netstat -tlnp | grep :80 || echo "⚠️ 端口80未监听"
 
-        echo "系统Nginx端口443:"
+        echo "HTTPS端口443:"
         netstat -tlnp | grep :443 || echo "⚠️ 端口443未监听"
 
         # 检查本地连通性
         echo "🔗 检查本地连通性..."
-        if curl -f -s --connect-timeout 5 "http://127.0.0.1:8080/health" > /dev/null; then
-          echo "✅ Docker容器8080端口可访问"
+        if curl -f -s --connect-timeout 5 "http://127.0.0.1/health" > /dev/null; then
+          echo "✅ HTTP端口可访问"
         else
-          echo "❌ Docker容器8080端口不可访问"
+          echo "⚠️ HTTP端口不可访问，尝试HTTPS..."
+          if curl -f -s -k --connect-timeout 5 "https://127.0.0.1/health" > /dev/null; then
+            echo "✅ HTTPS端口可访问"
+          else
+            echo "❌ 本地健康检查失败，无法访问应用"
+          fi
         fi
 
         HEALTH_EOF
