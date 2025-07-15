@@ -877,7 +877,10 @@ jobs:
           echo "   sudo chmod 644 /etc/letsencrypt/live/furdow.com/fullchain.pem"
           echo "   sudo chmod 600 /etc/letsencrypt/live/furdow.com/privkey.pem"
           echo ""
-          echo "�📋 获取详细诊断信息..."
+
+        HEALTH_EOF
+
+          echo "📋 获取详细诊断信息..."
           ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'DIAG_EOF'
           cd /opt/xitools/current
 
@@ -911,8 +914,6 @@ jobs:
         fi
 
         echo "✅ 所有健康检查通过，包括SSL/HTTPS验证，部署成功"
-
-        HEALTH_EOF
 
         # 显示最终的SSL证书状态报告
         echo ""
