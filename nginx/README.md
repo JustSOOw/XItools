@@ -1,13 +1,14 @@
 # XItools Nginx配置说明
 
-XItools项目使用双层Nginx架构来实现高性能和安全的Web服务。
+XItools项目使用容器化Nginx架构来实现高性能和安全的Web服务。
 
 ## 配置文件说明
 
 ### 1. xitools-docker.conf
-**用途**: Docker容器内的Nginx配置  
-**位置**: 运行在Docker容器内，端口8080  
+**用途**: Docker容器内的Nginx配置
+**位置**: 运行在Docker容器内，直接监听80/443端口
 **功能**:
+- SSL终止和HTTPS处理
 - 处理前端静态文件服务
 - 代理后端API请求到backend容器
 - 专门优化的MCP服务配置
@@ -28,45 +29,34 @@ location /mcp {
 }
 ```
 
-### 2. xitools-only.conf
-**用途**: 系统级Nginx配置  
-**位置**: 安装在服务器系统上，端口80/443  
-**功能**:
-- SSL终止和HTTPS处理
-- 代理请求到Docker容器(8080端口)
-- 使用现有furdow.com SSL证书
+### 2. xitools-only.conf (已弃用)
+**状态**: 已弃用，不再使用
+**原用途**: 系统级Nginx配置
+**说明**: 项目现在完全使用容器化Nginx，无需系统级配置
 
-**关键特性**:
-```nginx
-# 简单代理到Docker容器
-location / {
-    proxy_pass http://127.0.0.1:8080;
-    # SSL和安全头部处理
-    proxy_set_header X-Forwarded-Proto $scheme;
-}
-```
+**历史功能**:
+- SSL终止和HTTPS处理
+- 代理请求到Docker容器
+- 使用现有furdow.com SSL证书
 
 ## 部署架构
 
 ```
-Internet → 系统Nginx(443) → Docker Nginx(8080) → 应用容器
-           (SSL终止)        (应用路由)         (业务逻辑)
+Internet → Docker Nginx(80/443) → 应用容器
+           (SSL终止+应用路由)     (业务逻辑)
 ```
 
 ### 流量处理流程
 
-1. **HTTPS请求** → 系统Nginx (xitools-only.conf)
+1. **HTTPS/HTTP请求** → Docker Nginx (xitools-docker.conf)
    - SSL证书验证和解密
    - 安全头部添加
-   - 代理到Docker容器
-
-2. **HTTP请求** → Docker Nginx (xitools-docker.conf)
    - 路由到对应的服务
    - API请求 → 后端容器
    - MCP请求 → 后端容器(专用配置)
    - 静态文件 → 前端容器
 
-3. **响应返回** → 原路返回给客户端
+2. **响应返回** → 原路返回给客户端
 
 ## MCP服务优化
 
