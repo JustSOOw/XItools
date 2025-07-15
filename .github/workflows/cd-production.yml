@@ -860,7 +860,7 @@ jobs:
         if [ "$HEALTH_CHECK_FAILED" = true ]; then
           echo "❌ 健康检查失败，部署被标记为失败"
           echo ""
-          echo "� SSL/HTTPS相关故障排查指南:"
+          echo "🔧 SSL/HTTPS相关故障排查指南:"
           echo "1. 确认SSL证书文件存在且有效:"
           echo "   sudo ls -la /etc/letsencrypt/live/furdow.com/"
           echo "   sudo openssl x509 -in /etc/letsencrypt/live/furdow.com/fullchain.pem -text -noout"
@@ -877,11 +877,15 @@ jobs:
           echo "   sudo chmod 644 /etc/letsencrypt/live/furdow.com/fullchain.pem"
           echo "   sudo chmod 600 /etc/letsencrypt/live/furdow.com/privkey.pem"
           echo ""
+          exit 1
+        fi
 
         HEALTH_EOF
 
-        echo "📋 获取详细诊断信息..."
-        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'DIAG_EOF'
+        # 如果健康检查失败，获取详细诊断信息
+        if [ "$?" -ne 0 ]; then
+          echo "📋 获取详细诊断信息..."
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'DIAG_EOF'
           cd /opt/xitools/current
 
           echo "=== 容器状态 ==="
