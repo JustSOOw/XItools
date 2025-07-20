@@ -387,31 +387,30 @@ jobs:
 
         # 验证文件上传完整性
         echo "🔍 验证文件上传完整性..."
-        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'VERIFY_EOF'
-        cd /opt/xitools/releases/${{ steps.version.outputs.version }}
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+          cd /opt/xitools/releases/${{ steps.version.outputs.version }}
 
-        # 检查必需文件
-        REQUIRED_FILES=("docker-compose.prod.yml" ".env.production" "nginx/xitools-docker.conf")
-        for file in "${REQUIRED_FILES[@]}"; do
-          if [ ! -f "$file" ]; then
-            echo "❌ 缺少必需文件: $file"
+          # 检查必需文件
+          REQUIRED_FILES=('docker-compose.prod.yml' '.env.production' 'nginx/xitools-docker.conf')
+          for file in \"\${REQUIRED_FILES[@]}\"; do
+            if [ ! -f \"\$file\" ]; then
+              echo '❌ 缺少必需文件: '\$file
+              exit 1
+            fi
+            echo '✅ 文件存在: '\$file
+          done
+
+          # 验证配置文件语法
+          echo '🔍 验证Docker Compose配置语法...'
+          if docker compose -f docker-compose.prod.yml config > /dev/null 2>&1 || docker-compose -f docker-compose.prod.yml config > /dev/null 2>&1; then
+            echo '✅ Docker Compose配置语法正确'
+          else
+            echo '❌ Docker Compose配置语法错误'
             exit 1
           fi
-          echo "✅ 文件存在: $file"
-        done
 
-        # 验证配置文件语法
-        echo "🔍 验证Docker Compose配置语法..."
-        docker compose -f docker-compose.prod.yml config > /dev/null || docker-compose -f docker-compose.prod.yml config > /dev/null
-        if [ $? -eq 0 ]; then
-          echo "✅ Docker Compose配置语法正确"
-        else
-          echo "❌ Docker Compose配置语法错误"
-          exit 1
-        fi
-
-        echo "✅ 文件上传完整性验证通过"
-        VERIFY_EOF
+          echo '✅ 文件上传完整性验证通过'
+        "
 
         # 执行部署
         ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
@@ -882,38 +881,38 @@ jobs:
 
         HEALTH_EOF
 
+        # 捕获健康检查的退出码
+        HEALTH_CHECK_EXIT_CODE=$?
+
         # 如果健康检查失败，获取详细诊断信息
-        if [ "$?" -ne 0 ]; then
-          echo "📋 获取详细诊断信息..."
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'DIAG_EOF'
-          cd /opt/xitools/current
+        if [ $HEALTH_CHECK_EXIT_CODE -ne 0 ]; then
+          echo "📋 健康检查失败 (退出码: $HEALTH_CHECK_EXIT_CODE)，获取详细诊断信息..."
 
-          echo "=== 容器状态 ==="
-          docker compose -f docker-compose.prod.yml ps || docker-compose -f docker-compose.prod.yml ps
+          # 获取诊断信息
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+            cd /opt/xitools/current
+            echo '=== 容器状态 ==='
+            docker compose -f docker-compose.prod.yml ps || docker-compose -f docker-compose.prod.yml ps
+            echo ''
+            echo '=== Nginx容器日志（最近30行）==='
+            docker logs xitools-nginx-prod --tail 30 2>&1 || echo '无法获取nginx日志'
+            echo ''
+            echo '=== SSL证书文件状态 ==='
+            echo 'Let'\''s Encrypt证书目录结构:'
+            ls -la /etc/letsencrypt/live/ 2>/dev/null || echo 'Let'\''s Encrypt目录不存在'
+            echo ''
+            echo '具体证书文件:'
+            for cert_dir in /etc/letsencrypt/live/*/; do
+              if [ -d \"\$cert_dir\" ]; then
+                echo \"目录: \$cert_dir\"
+                ls -la \"\$cert_dir\" 2>/dev/null || echo '无法访问目录'
+              fi
+            done
+            echo ''
+            echo '=== Nginx配置测试 ==='
+            docker exec xitools-nginx-prod nginx -t 2>&1 || echo '无法测试nginx配置'
+          "
 
-          echo ""
-          echo "=== Nginx容器日志（最近30行）==="
-          docker logs xitools-nginx-prod --tail 30 2>&1 || echo "无法获取nginx日志"
-
-          echo ""
-          echo "=== SSL证书文件状态 ==="
-          echo "Let's Encrypt证书目录结构:"
-          ls -la /etc/letsencrypt/live/ 2>/dev/null || echo "Let's Encrypt目录不存在"
-
-          echo ""
-          echo "具体证书文件:"
-          for cert_dir in /etc/letsencrypt/live/*/; do
-            if [ -d "$cert_dir" ]; then
-              echo "目录: $cert_dir"
-              ls -la "$cert_dir" 2>/dev/null || echo "无法访问目录"
-            fi
-          done
-
-          echo ""
-          echo "=== Nginx配置测试 ==="
-          docker exec xitools-nginx-prod nginx -t 2>&1 || echo "无法测试nginx配置"
-
-          DIAG_EOF
           exit 1
         fi
 
@@ -922,51 +921,50 @@ jobs:
         # 显示最终的SSL证书状态报告
         echo ""
         echo "🔒 SSL证书状态报告:"
-        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'SSL_REPORT_EOF'
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+          # 智能检测SSL证书路径
+          SSL_CERT_FILE=''
+          POSSIBLE_PATHS=(
+            '/etc/letsencrypt/live/xitools.furdow.com/fullchain.pem'
+            '/etc/letsencrypt/live/furdow.com/fullchain.pem'
+          )
 
-        # 智能检测SSL证书路径
-        SSL_CERT_FILE=""
-        POSSIBLE_PATHS=(
-          "/etc/letsencrypt/live/xitools.furdow.com/fullchain.pem"
-          "/etc/letsencrypt/live/furdow.com/fullchain.pem"
-        )
+          for cert_file in \"\${POSSIBLE_PATHS[@]}\"; do
+            if [ -f \"\$cert_file\" ]; then
+              SSL_CERT_FILE=\"\$cert_file\"
+              break
+            fi
+          done
 
-        for cert_file in "${POSSIBLE_PATHS[@]}"; do
-          if [ -f "$cert_file" ]; then
-            SSL_CERT_FILE="$cert_file"
-            break
-          fi
-        done
+          if [ -n \"\$SSL_CERT_FILE\" ] && [ -f \"\$SSL_CERT_FILE\" ]; then
+            echo '   📋 证书文件: '\$SSL_CERT_FILE
+            echo '   📅 有效期至: '\$(openssl x509 -in \"\$SSL_CERT_FILE\" -noout -enddate | sed 's/notAfter=//')
 
-        if [ -n "$SSL_CERT_FILE" ] && [ -f "$SSL_CERT_FILE" ]; then
-          echo "   📋 证书文件: $SSL_CERT_FILE"
-          echo "   📅 有效期至: $(openssl x509 -in "$SSL_CERT_FILE" -noout -enddate | sed 's/notAfter=//')"
+            # 计算剩余天数
+            EXPIRY_DATE=\$(openssl x509 -in \"\$SSL_CERT_FILE\" -noout -enddate | sed 's/notAfter=//')
+            EXPIRY_TIMESTAMP=\$(date -d \"\$EXPIRY_DATE\" +%s 2>/dev/null || echo '0')
+            CURRENT_TIMESTAMP=\$(date +%s)
+            DAYS_LEFT=\$(( (EXPIRY_TIMESTAMP - CURRENT_TIMESTAMP) / 86400 ))
 
-          # 计算剩余天数
-          EXPIRY_DATE=$(openssl x509 -in "$SSL_CERT_FILE" -noout -enddate | sed 's/notAfter=//')
-          EXPIRY_TIMESTAMP=$(date -d "$EXPIRY_DATE" +%s 2>/dev/null || echo "0")
-          CURRENT_TIMESTAMP=$(date +%s)
-          DAYS_LEFT=$(( (EXPIRY_TIMESTAMP - CURRENT_TIMESTAMP) / 86400 ))
+            if [ \$DAYS_LEFT -gt 30 ]; then
+              echo '   ✅ 证书状态: 健康 (剩余 '\$DAYS_LEFT' 天)'
+            elif [ \$DAYS_LEFT -gt 7 ]; then
+              echo '   ⚠️ 证书状态: 即将过期 (剩余 '\$DAYS_LEFT' 天)'
+            else
+              echo '   🚨 证书状态: 紧急续期 (剩余 '\$DAYS_LEFT' 天)'
+            fi
 
-          if [ $DAYS_LEFT -gt 30 ]; then
-            echo "   ✅ 证书状态: 健康 (剩余 $DAYS_LEFT 天)"
-          elif [ $DAYS_LEFT -gt 7 ]; then
-            echo "   ⚠️ 证书状态: 即将过期 (剩余 $DAYS_LEFT 天)"
+            # 检查证书类型
+            ISSUER=\$(openssl x509 -in \"\$SSL_CERT_FILE\" -noout -issuer 2>/dev/null || echo '')
+            if echo \"\$ISSUER\" | grep -i 'let'\''s encrypt' > /dev/null; then
+              echo '   🤖 自动续期: 已配置 (Let'\''s Encrypt)'
+            else
+              echo '   ⚠️ 自动续期: 未配置 (非Let'\''s Encrypt证书)'
+            fi
           else
-            echo "   🚨 证书状态: 紧急续期 (剩余 $DAYS_LEFT 天)"
+            echo '   ❌ 证书文件不存在'
           fi
-
-          # 检查证书类型
-          ISSUER=$(openssl x509 -in "$SSL_CERT_FILE" -noout -issuer 2>/dev/null || echo "")
-          if echo "$ISSUER" | grep -i "let's encrypt" > /dev/null; then
-            echo "   🤖 自动续期: 已配置 (Let's Encrypt)"
-          else
-            echo "   ⚠️ 自动续期: 未配置 (非Let's Encrypt证书)"
-          fi
-        else
-          echo "   ❌ 证书文件不存在"
-        fi
-        SSL_REPORT_EOF
+        "
 
         echo ""
         echo "🌐 访问地址:"
