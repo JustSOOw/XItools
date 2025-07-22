@@ -74,7 +74,7 @@ services:
       - "80:80"     # 直接监听HTTP端口
       - "443:443"   # 直接监听HTTPS端口
     volumes:
-      - ./nginx/xitools-docker.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/xitools-docker.conf:/etc/nginx/conf.d/xitools.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro  # 挂载宿主机的SSL证书
       - /var/www/certbot:/var/www/certbot:ro  # Let's Encrypt验证目录
     environment:
