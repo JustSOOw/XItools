@@ -451,10 +451,33 @@ jobs:
           fuser -k 443/tcp || true
         fi
 
-        # 停止当前服务
+        # 彻底清理现有部署环境
+        echo "🧹 执行彻底的部署环境清理..."
+
+        # 停止并删除所有XItools相关容器
+        echo "🛑 停止所有XItools容器..."
+        docker stop $(docker ps -q --filter "name=xitools") 2>/dev/null || true
+        docker rm $(docker ps -aq --filter "name=xitools") 2>/dev/null || true
+
+        # 停止当前服务（如果配置文件存在）
         if [ -f current/docker-compose.prod.yml ]; then
-          docker compose -f current/docker-compose.prod.yml down || docker-compose -f current/docker-compose.prod.yml down || true
+          echo "🔄 使用docker-compose停止服务..."
+          docker compose -f current/docker-compose.prod.yml down --volumes --remove-orphans || docker-compose -f current/docker-compose.prod.yml down --volumes --remove-orphans || true
         fi
+
+        # 清理Docker系统缓存
+        echo "🗑️ 清理Docker系统缓存..."
+        docker system prune -f --volumes
+
+        # 清理XItools相关的Docker网络
+        echo "🌐 清理XItools网络..."
+        docker network ls --filter "name=xitools" -q | xargs -r docker network rm 2>/dev/null || true
+
+        # 清理XItools相关的Docker卷
+        echo "💾 清理XItools数据卷..."
+        docker volume ls --filter "name=xitools" -q | xargs -r docker volume rm 2>/dev/null || true
+
+        echo "✅ 部署环境清理完成"
 
         # 登录到GitHub Container Registry
         echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
@@ -471,9 +494,9 @@ jobs:
         echo "拉取最新镜像..."
         docker compose -f docker-compose.prod.yml pull || docker-compose -f docker-compose.prod.yml pull
 
-        # 启动服务
-        echo "启动服务..."
-        docker compose -f docker-compose.prod.yml up -d || docker-compose -f docker-compose.prod.yml up -d
+        # 启动服务（强制重新创建容器）
+        echo "🚀 启动服务（强制重新创建容器以避免缓存问题）..."
+        docker compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans || docker-compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
 
         # 验证容器启动状态（初步检查）
         echo "🔍 验证容器启动状态..."
@@ -994,8 +1017,8 @@ jobs:
           ln -sfn releases/$PREVIOUS_VERSION current
           cd current
 
-          # 启动上一个版本的服务
-          docker compose -f docker-compose.prod.yml up -d || docker-compose -f docker-compose.prod.yml up -d
+          # 启动上一个版本的服务（强制重新创建）
+          docker compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans || docker-compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
 
           echo "✅ 回滚完成，服务已恢复到上一个稳定版本"
         else
