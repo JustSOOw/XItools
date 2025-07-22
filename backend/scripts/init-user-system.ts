@@ -112,7 +112,8 @@ async function createAdminUser() {
         username: 'admin',
         email: 'admin@xitools.local',
         passwordHash,
-        displayName: '系统管理员',
+        bio: '系统管理员',
+        role: 'admin',
         isActive: true,
       },
     });
