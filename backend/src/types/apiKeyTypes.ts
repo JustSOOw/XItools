@@ -195,7 +195,11 @@ export enum ApiKeyErrorCode {
  * API密钥错误类
  */
 export class ApiKeyError extends Error {
-  constructor(public code: ApiKeyErrorCode, message: string, public statusCode: number = 401) {
+  constructor(
+    public code: ApiKeyErrorCode,
+    message: string,
+    public statusCode: number = 401,
+  ) {
     super(message);
     this.name = 'ApiKeyError';
   }

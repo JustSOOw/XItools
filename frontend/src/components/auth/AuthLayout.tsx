@@ -294,8 +294,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   // 优化的SVG图标组件 - 减少Edge浏览器闪烁
   const OptimizedSVGIcon = ({
     children,
-    className = "highlight-svg",
-    enableAnimation = true
+    className = 'highlight-svg',
+    enableAnimation = true,
   }: {
     children: React.ReactNode;
     className?: string;
@@ -316,8 +316,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           ...(isEdgeBrowser && {
             transform: 'translateZ(0)',
             backfaceVisibility: 'hidden',
-            willChange: 'transform, opacity'
-          })
+            willChange: 'transform, opacity',
+          }),
         }}
       >
         {shouldDisableAnimation
@@ -328,8 +328,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               }
               return child;
             })
-          : children
-        }
+          : children}
       </svg>
     );
   };

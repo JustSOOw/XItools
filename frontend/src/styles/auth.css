@@ -2511,7 +2511,7 @@
 .form-input:focus + .input-icon,
 .form-input:focus ~ .input-icon {
   color: rgb(var(--color-primary));
-  transform: translateY(-50%) scale(1.0);
+  transform: translateY(-50%) scale(1);
 }
 
 .password-toggle {
@@ -4868,8 +4868,8 @@
   }
 
   /* 为Edge浏览器提供CSS动画替代方案 */
-  .highlight-svg circle[opacity="0.6"],
-  .stat-svg circle[opacity="0.3"] {
+  .highlight-svg circle[opacity='0.6'],
+  .stat-svg circle[opacity='0.3'] {
     animation: edge-safe-pulse 2s ease-in-out infinite !important;
   }
 
@@ -4880,7 +4880,8 @@
 
 /* Edge安全的动画关键帧 */
 @keyframes edge-safe-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.6;
   }
   50% {
