@@ -1,0 +1,85 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Build outputs
+dist/
+build/
+*/dist/
+*/build/
+
+# Generated files
+*.generated.*
+**/generated/
+**/.generated/
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env
+.env.*
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Package manager files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Docker files
+Dockerfile*
+docker-compose*.yml
+
+# CI/CD files
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
+# Documentation that should maintain original formatting
+CHANGELOG.md
+LICENSE
+README.md
+
+# Prisma generated files
+backend/src/generated/
+backend/node_modules/.prisma/
+
+# Backup files
+*.bak
+*.backup
+
+# Coverage reports
+coverage/
+*.lcov
+
+# Test files that might have specific formatting
+**/__tests__/
+**/*.test.*
+**/*.spec.*

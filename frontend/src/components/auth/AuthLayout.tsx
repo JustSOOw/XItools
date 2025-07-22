@@ -9,7 +9,7 @@
  * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { LoginForm } from './LoginForm';
 import { RegisterForm } from './RegisterForm';
 import { ForgotPasswordForm } from './ForgotPasswordForm';
@@ -33,6 +33,26 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot-password'>(initialMode);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [nextMode, setNextMode] = useState<'login' | 'register' | 'forgot-password' | null>(null);
+  const [isEdgeBrowser, setIsEdgeBrowser] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  // 检测Edge浏览器和用户动画偏好
+  useEffect(() => {
+    // 检测Edge浏览器
+    const isEdge = /Edg/.test(navigator.userAgent);
+    setIsEdgeBrowser(isEdge);
+
+    // 检测用户是否偏好减少动画
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReducedMotion(mediaQuery.matches);
+
+    const handleChange = (e: MediaQueryListEvent) => {
+      setPrefersReducedMotion(e.matches);
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
 
   const handleAuthSuccess = () => {
     onAuthSuccess?.();
@@ -271,6 +291,48 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
     return particles;
   }, []);
 
+  // 优化的SVG图标组件 - 减少Edge浏览器闪烁
+  const OptimizedSVGIcon = ({
+    children,
+    className = 'highlight-svg',
+    enableAnimation = true,
+  }: {
+    children: React.ReactNode;
+    className?: string;
+    enableAnimation?: boolean;
+  }) => {
+    // 在Edge浏览器或用户偏好减少动画时禁用SVG动画
+    const shouldDisableAnimation = isEdgeBrowser || prefersReducedMotion || !enableAnimation;
+
+    return (
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        className={className}
+        style={{
+          // Edge浏览器优化
+          ...(isEdgeBrowser && {
+            transform: 'translateZ(0)',
+            backfaceVisibility: 'hidden',
+            willChange: 'transform, opacity',
+          }),
+        }}
+      >
+        {shouldDisableAnimation
+          ? // 静态版本 - 移除所有animate元素
+            React.Children.map(children, (child) => {
+              if (React.isValidElement(child) && child.type === 'animate') {
+                return null;
+              }
+              return child;
+            })
+          : children}
+      </svg>
+    );
+  };
+
   // 渲染不同主题的背景动画
   const renderThemeBackground = () => {
     switch (currentTheme) {
@@ -366,13 +428,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               <div className="brand-highlights">
                 <div className="highlight-card">
                   <div className="highlight-icon">
-                    <svg
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      className="highlight-svg"
-                    >
+                    <OptimizedSVGIcon>
                       <circle cx="12" cy="12" r="11" fill="url(#mcpGradient)" opacity="0.1" />
                       <rect
                         x="8"
@@ -503,7 +559,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                           />
                         </linearGradient>
                       </defs>
-                    </svg>
+                    </OptimizedSVGIcon>
                   </div>
                   <div className="highlight-content">
                     <h3>{t('brand.highlight1.title')}</h3>
@@ -513,13 +569,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
                 <div className="highlight-card">
                   <div className="highlight-icon">
-                    <svg
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      className="highlight-svg"
-                    >
+                    <OptimizedSVGIcon>
                       <circle cx="12" cy="12" r="11" fill="url(#kanbanGradient)" opacity="0.1" />
                       <rect
                         x="4"
@@ -663,7 +713,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                           />
                         </linearGradient>
                       </defs>
-                    </svg>
+                    </OptimizedSVGIcon>
                   </div>
                   <div className="highlight-content">
                     <h3>{t('brand.highlight2.title')}</h3>
@@ -673,13 +723,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
                 <div className="highlight-card">
                   <div className="highlight-icon">
-                    <svg
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      className="highlight-svg"
-                    >
+                    <OptimizedSVGIcon>
                       <circle cx="12" cy="12" r="11" fill="url(#multiViewGradient)" opacity="0.1" />
                       <circle
                         cx="12"
@@ -873,7 +917,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                           />
                         </linearGradient>
                       </defs>
-                    </svg>
+                    </OptimizedSVGIcon>
                   </div>
                   <div className="highlight-content">
                     <h3>{t('brand.highlight3.title')}</h3>

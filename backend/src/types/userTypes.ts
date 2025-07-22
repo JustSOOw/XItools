@@ -326,7 +326,11 @@ export enum AuthErrorCode {
  * 认证错误类
  */
 export class AuthError extends Error {
-  constructor(public code: AuthErrorCode, message: string, public statusCode: number = 401) {
+  constructor(
+    public code: AuthErrorCode,
+    message: string,
+    public statusCode: number = 401,
+  ) {
     super(message);
     this.name = 'AuthError';
   }
