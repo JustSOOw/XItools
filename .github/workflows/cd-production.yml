@@ -131,7 +131,6 @@ jobs:
         # 上传文件
         echo "📤 上传部署文件..."
         scp -o StrictHostKeyChecking=no docker-compose.prod.yml ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools/releases/${{ steps.version.outputs.version }}/
-        scp -o StrictHostKeyChecking=no docker-compose.prod.backup.yml ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools/releases/${{ steps.version.outputs.version }}/
         scp -o StrictHostKeyChecking=no .env.production ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools/releases/${{ steps.version.outputs.version }}/
         scp -r -o StrictHostKeyChecking=no nginx/ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools/releases/${{ steps.version.outputs.version }}/
 
@@ -392,29 +391,13 @@ jobs:
           cd /opt/xitools/releases/${{ steps.version.outputs.version }}
 
           # 检查必需文件
-          echo '🔍 验证部署文件完整性...'
-          echo \"当前工作目录: \$(pwd)\"
-          echo \"目录内容:\"
-          ls -la
-
           REQUIRED_FILES=('docker-compose.prod.yml' '.env.production' 'nginx/xitools-docker.conf')
           for file in \"\${REQUIRED_FILES[@]}\"; do
             if [ ! -f \"\$file\" ]; then
-              echo \"❌ 缺少必需文件: \$file\"
-              echo \"当前目录结构:\"
-              find . -name \"*.conf\" -o -name \"*.yml\" -o -name \".env*\" | head -20
+              echo '❌ 缺少必需文件: '\$file
               exit 1
             fi
-            # 显示文件详细信息
-            file_size=\$(stat -c%s \"\$file\" 2>/dev/null || echo \"unknown\")
-            file_perms=\$(stat -c%a \"\$file\" 2>/dev/null || echo \"unknown\")
-            echo \"✅ 文件存在: \$file (大小: \${file_size}字节, 权限: \${file_perms})\"
-
-            # 对nginx配置文件进行额外验证
-            if [[ \"\$file\" == *\"nginx\"* ]]; then
-              echo \"   📋 Nginx配置文件内容预览:\"
-              head -5 \"\$file\" | sed 's/^/      /'
-            fi
+            echo '✅ 文件存在: '\$file
           done
 
           # 验证配置文件语法
@@ -481,49 +464,16 @@ jobs:
         cd current
 
         # 验证配置文件
-        echo "🔍 验证Docker Compose配置..."
+        echo "验证Docker Compose配置..."
         docker compose -f docker-compose.prod.yml config || docker-compose -f docker-compose.prod.yml config
 
-        # 验证nginx配置文件挂载路径
-        echo "🔍 验证nginx配置文件挂载..."
-        echo "当前工作目录: \$(pwd)"
-        echo "nginx配置文件路径检查:"
-        if [ -f "./nginx/xitools-docker.conf" ]; then
-          echo "✅ nginx配置文件存在: ./nginx/xitools-docker.conf"
-          echo "文件大小: \$(stat -c%s ./nginx/xitools-docker.conf)字节"
-          echo "文件权限: \$(stat -c%a ./nginx/xitools-docker.conf)"
-          echo "文件类型: \$(file ./nginx/xitools-docker.conf)"
-        else
-          echo "❌ nginx配置文件不存在: ./nginx/xitools-docker.conf"
-          echo "当前目录结构:"
-          find . -name "*.conf" -type f
-          exit 1
-        fi
-
         # 拉取最新镜像
-        echo "📥 拉取最新镜像..."
+        echo "拉取最新镜像..."
         docker compose -f docker-compose.prod.yml pull || docker-compose -f docker-compose.prod.yml pull
 
         # 启动服务
-        echo "🚀 启动服务..."
-        if ! (docker compose -f docker-compose.prod.yml up -d || docker-compose -f docker-compose.prod.yml up -d); then
-          echo "❌ 主要配置启动失败，尝试备用配置..."
-
-          # 停止所有容器
-          docker compose -f docker-compose.prod.yml down 2>/dev/null || docker-compose -f docker-compose.prod.yml down 2>/dev/null || true
-
-          # 检查是否有备用配置文件
-          if [ -f "docker-compose.prod.backup.yml" ]; then
-            echo "🔄 使用备用配置启动服务..."
-            docker compose -f docker-compose.prod.backup.yml up -d || docker-compose -f docker-compose.prod.backup.yml up -d
-            USING_BACKUP_CONFIG=true
-          else
-            echo "❌ 没有备用配置文件，部署失败"
-            exit 1
-          fi
-        else
-          USING_BACKUP_CONFIG=false
-        fi
+        echo "启动服务..."
+        docker compose -f docker-compose.prod.yml up -d || docker-compose -f docker-compose.prod.yml up -d
 
         # 验证容器启动状态（初步检查）
         echo "🔍 验证容器启动状态..."
@@ -551,35 +501,6 @@ jobs:
             "exited")
               exit_code=$(docker inspect --format='{{.State.ExitCode}}' $container 2>/dev/null || echo "unknown")
               echo "❌ $container: 已退出 (退出码: $exit_code, 重启次数: $restart_count)"
-
-              # 对nginx容器进行特殊诊断
-              if [[ "$container" == *"nginx"* ]]; then
-                echo "🔍 Nginx容器诊断信息:"
-                echo "   📋 容器日志 (最近20行):"
-                docker logs $container --tail 20 2>&1 | sed 's/^/      /' || echo "      无法获取日志"
-                echo "   📁 nginx配置目录检查:"
-                docker run --rm -v "\$(pwd)/nginx:/tmp/check" alpine:latest sh -c "
-                  echo '      当前目录内容:' && ls -la /tmp/check/ 2>/dev/null || echo '      目录不存在'
-                  echo '      配置文件检查:' && [ -f /tmp/check/xitools-docker.conf ] && echo '      ✅ 配置文件存在' || echo '      ❌ 配置文件不存在'
-                " 2>/dev/null || echo "      无法检查配置目录"
-              fi
-
-              CRITICAL_FAILED_CONTAINERS+=("$container")
-              ;;
-            "created")
-              echo "⚠️ $container: 已创建但未启动"
-
-              # 对nginx容器进行特殊诊断
-              if [[ "$container" == *"nginx"* ]]; then
-                echo "🔍 Nginx容器创建失败诊断:"
-                echo "   📋 容器创建日志:"
-                docker logs $container 2>&1 | sed 's/^/      /' || echo "      无法获取日志"
-                echo "   🔧 尝试手动启动以获取详细错误:"
-                docker start $container 2>&1 | sed 's/^/      /' || echo "      手动启动也失败"
-                sleep 2
-                docker logs $container --tail 10 2>&1 | sed 's/^/      /' || echo "      无法获取启动日志"
-              fi
-
               CRITICAL_FAILED_CONTAINERS+=("$container")
               ;;
             "not-found")
