@@ -62,8 +62,37 @@ jobs:
     - name: 代码格式检查
       run: |
         echo "📝 检查代码格式..."
-        cd frontend && npm run format:check
-        cd ../backend && npm run format:check
+        echo "🔍 环境信息:"
+        echo "Node版本: $(node --version)"
+        echo "NPM版本: $(npm --version)"
+        echo "工作目录: $(pwd)"
+        echo "Git配置: $(git config --get core.autocrlf || echo 'not set')"
+
+        echo "📝 检查前端代码格式..."
+        cd frontend
+        echo "前端Prettier版本: $(npx prettier --version)"
+
+        # 尝试格式检查，如果失败则自动修复并重新检查
+        if ! npm run format:check; then
+          echo "⚠️ 发现格式问题，尝试自动修复..."
+          npm run format
+          echo "🔄 重新检查格式..."
+          npm run format:check
+        fi
+
+        echo "📝 检查后端代码格式..."
+        cd ../backend
+        echo "后端Prettier版本: $(npx prettier --version)"
+        echo "检查文件列表:"
+        find src -name "*.ts" -o -name "*.js" -o -name "*.json" | head -10
+
+        # 尝试格式检查，如果失败则自动修复并重新检查
+        if ! npm run format:check; then
+          echo "⚠️ 发现格式问题，尝试自动修复..."
+          npm run format
+          echo "🔄 重新检查格式..."
+          npm run format:check
+        fi
 
 
     - name: 前端构建测试

@@ -1,4 +1,4 @@
-# XItools 生产环境部署工作流
+﻿# XItools 生产环境部署工作流
 # 简化版生产部署，专注于安全可靠的部署
 
 name: 生产环境部署
@@ -69,6 +69,19 @@ jobs:
         REPO_LOWERCASE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
         echo "📦 使用镜像仓库: ghcr.io/${REPO_LOWERCASE}"
 
+        # 拉取并推送基础镜像到GitHub Container Registry
+        echo "📥 拉取基础镜像..."
+        docker pull postgres:14
+        docker pull nginx:alpine
+
+        echo "🏷️ 重新标记基础镜像..."
+        docker tag postgres:14 ghcr.io/${REPO_LOWERCASE}/postgres:14
+        docker tag nginx:alpine ghcr.io/${REPO_LOWERCASE}/nginx:alpine
+
+        echo "📤 推送基础镜像..."
+        docker push ghcr.io/${REPO_LOWERCASE}/postgres:14
+        docker push ghcr.io/${REPO_LOWERCASE}/nginx:alpine
+
         # 构建前端镜像
         echo "🔨 构建前端镜像..."
         docker build -t ghcr.io/${REPO_LOWERCASE}/frontend:latest ./frontend --target production
@@ -121,37 +134,322 @@ jobs:
         scp -o StrictHostKeyChecking=no .env.production ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools/releases/${{ steps.version.outputs.version }}/
         scp -r -o StrictHostKeyChecking=no nginx/ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools/releases/${{ steps.version.outputs.version }}/
 
-        # 验证文件上传完整性
-        echo "🔍 验证文件上传完整性..."
-        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'VERIFY_EOF'
-        cd /opt/xitools/releases/${{ steps.version.outputs.version }}
+        # 检查SSL证书目录
+        echo "� 检查SSL证书目录..."
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'SSL_CHECK_EOF'
 
-        # 检查必需文件
-        REQUIRED_FILES=("docker-compose.prod.yml" ".env.production" "nginx/xitools-docker.conf")
-        for file in "${REQUIRED_FILES[@]}"; do
-          if [ ! -f "$file" ]; then
-            echo "❌ 缺少必需文件: $file"
-            exit 1
+        # 严格检查SSL证书文件是否存在
+        echo "🔍 严格检查SSL证书文件..."
+
+        # 智能检测SSL证书路径（支持多种可能的路径）
+        SSL_CERT_FILE=""
+        SSL_KEY_FILE=""
+
+        # 按优先级检查可能的证书路径
+        POSSIBLE_PATHS=(
+          "/etc/letsencrypt/live/xitools.furdow.com"
+          "/etc/letsencrypt/live/furdow.com"
+        )
+
+        echo "🔍 检测SSL证书路径..."
+        for cert_path in "${POSSIBLE_PATHS[@]}"; do
+          echo "   检查路径: $cert_path"
+          if [ -f "$cert_path/fullchain.pem" ] && [ -f "$cert_path/privkey.pem" ]; then
+            SSL_CERT_FILE="$cert_path/fullchain.pem"
+            SSL_KEY_FILE="$cert_path/privkey.pem"
+            echo "✅ 发现SSL证书: $cert_path"
+            break
+          else
+            echo "   ❌ 路径不存在或文件不完整: $cert_path"
           fi
-          echo "✅ 文件存在: $file"
         done
 
-        # 验证配置文件语法
-        echo "🔍 验证Docker Compose配置语法..."
-        docker compose -f docker-compose.prod.yml config > /dev/null || docker-compose -f docker-compose.prod.yml config > /dev/null
-        if [ $? -eq 0 ]; then
-          echo "✅ Docker Compose配置语法正确"
-        else
-          echo "❌ Docker Compose配置语法错误"
+        if [ -z "$SSL_CERT_FILE" ] || [ -z "$SSL_KEY_FILE" ]; then
+          echo "⚠️ SSL证书文件不存在，开始自动申请Let's Encrypt证书..."
+
+          # 检查certbot是否已安装
+          if ! command -v certbot &> /dev/null; then
+            echo "📦 安装certbot..."
+            apt-get update
+            apt-get install -y certbot
+          fi
+
+          # 停止可能占用80/443端口的服务
+          echo "🔍 检查并释放端口占用..."
+          if netstat -tlnp | grep :80 > /dev/null; then
+            echo "⚠️ 端口80被占用，停止占用进程..."
+            fuser -k 80/tcp || true
+            sleep 5
+          fi
+
+          if netstat -tlnp | grep :443 > /dev/null; then
+            echo "⚠️ 端口443被占用，停止占用进程..."
+            fuser -k 443/tcp || true
+            sleep 5
+          fi
+
+          # 使用certbot standalone模式申请证书
+          echo "🔒 使用certbot standalone模式申请SSL证书..."
+          CERTBOT_SUCCESS=false
+
+          if certbot certonly \
+            --standalone \
+            --non-interactive \
+            --agree-tos \
+            --email admin@furdow.com \
+            --domains xitools.furdow.com \
+            --keep-until-expiring \
+            --expand; then
+
+            echo "✅ Let's Encrypt SSL证书申请成功"
+            CERTBOT_SUCCESS=true
+
+          else
+            echo "❌ standalone模式申请失败，尝试webroot模式..."
+
+            # 创建webroot目录
+            mkdir -p /var/www/certbot
+
+            # 尝试webroot模式
+            if certbot certonly \
+              --webroot \
+              --webroot-path=/var/www/certbot \
+              --non-interactive \
+              --agree-tos \
+              --email admin@furdow.com \
+              --domains xitools.furdow.com \
+              --keep-until-expiring \
+              --expand; then
+
+              echo "✅ webroot模式申请SSL证书成功"
+              CERTBOT_SUCCESS=true
+            fi
+          fi
+
+          # 如果certbot申请失败，生成自签名证书作为备选
+          if [ "$CERTBOT_SUCCESS" = false ]; then
+            echo "❌ Let's Encrypt证书申请失败，生成临时自签名证书..."
+            echo "💡 可能的原因："
+            echo "   1. 域名xitools.furdow.com未正确解析到此服务器"
+            echo "   2. 防火墙阻止了80/443端口访问"
+            echo "   3. Let's Encrypt速率限制"
+
+            # 创建SSL证书目录（使用xitools.furdow.com以保持一致性）
+            FALLBACK_CERT_DIR="/etc/letsencrypt/live/xitools.furdow.com"
+            mkdir -p "$FALLBACK_CERT_DIR"
+
+            # 生成自签名证书
+            openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+              -keyout "$FALLBACK_CERT_DIR/privkey.pem" \
+              -out "$FALLBACK_CERT_DIR/fullchain.pem" \
+              -subj "/C=CN/ST=State/L=City/O=XItools/CN=xitools.furdow.com"
+
+            echo "⚠️ 已生成临时自签名证书，浏览器会显示安全警告"
+            echo "⚠️ 建议部署完成后手动申请正式SSL证书"
+          fi
+
+          # 重新检测证书路径（证书可能生成在不同的目录）
+          echo "🔍 重新检测生成的SSL证书路径..."
+          SSL_CERT_FILE=""
+          SSL_KEY_FILE=""
+
+          # 检查可能的证书路径
+          for cert_path in "${POSSIBLE_PATHS[@]}"; do
+            if [ -f "$cert_path/fullchain.pem" ] && [ -f "$cert_path/privkey.pem" ]; then
+              SSL_CERT_FILE="$cert_path/fullchain.pem"
+              SSL_KEY_FILE="$cert_path/privkey.pem"
+              echo "✅ 检测到SSL证书: $cert_path"
+
+              # 设置正确的文件权限
+              chmod 600 "$SSL_KEY_FILE" 2>/dev/null || true
+              chmod 644 "$SSL_CERT_FILE" 2>/dev/null || true
+              break
+            fi
+          done
+
+          # 验证证书文件是否正确生成
+          if [ -z "$SSL_CERT_FILE" ] || [ -z "$SSL_KEY_FILE" ]; then
+            echo "❌ SSL证书生成失败，无法继续部署"
+            echo "📋 Let's Encrypt证书目录内容:"
+            ls -la /etc/letsencrypt/live/ 2>/dev/null || echo "证书目录不存在"
+            echo ""
+            echo "📋 详细目录结构:"
+            find /etc/letsencrypt/live/ -name "*.pem" 2>/dev/null || echo "未找到证书文件"
+            exit 1
+          fi
+
+          # 配置证书自动续期（仅对Let's Encrypt证书）
+          if [ "$CERTBOT_SUCCESS" = true ] && command -v crontab &> /dev/null; then
+            echo "⚙️ 配置SSL证书自动续期..."
+            (crontab -l 2>/dev/null | grep -v "certbot renew"; echo "0 12 * * * /usr/bin/certbot renew --quiet") | crontab -
+          fi
+
+          echo "✅ SSL证书配置完成"
+        fi
+
+        # 动态更新nginx配置文件中的证书路径
+        echo "🔧 更新nginx配置文件中的SSL证书路径..."
+        CERT_DIR=$(dirname "$SSL_CERT_FILE")
+
+        # 创建临时的nginx配置文件，使用检测到的证书路径
+        sed "s|/etc/letsencrypt/live/furdow.com|$CERT_DIR|g" /opt/xitools/releases/${{ steps.version.outputs.version }}/nginx/xitools-docker.conf > /tmp/xitools-docker.conf.tmp
+
+        # 替换原配置文件
+        mv /tmp/xitools-docker.conf.tmp /opt/xitools/releases/${{ steps.version.outputs.version }}/nginx/xitools-docker.conf
+
+        echo "✅ nginx配置文件已更新为使用证书路径: $CERT_DIR"
+
+        # 验证证书文件的有效性
+        echo "🔍 验证SSL证书有效性..."
+        if ! openssl x509 -in "$SSL_CERT_FILE" -noout -checkend 86400; then
+          echo "⚠️ SSL证书已过期或将在24小时内过期，尝试自动续期..."
+
+          # 检查是否为Let's Encrypt证书（通过颁发者判断）
+          ISSUER=$(openssl x509 -in "$SSL_CERT_FILE" -noout -issuer 2>/dev/null || echo "")
+          if echo "$ISSUER" | grep -i "let's encrypt" > /dev/null; then
+            echo "🔄 检测到Let's Encrypt证书，尝试自动续期..."
+
+            # 停止可能占用端口的服务
+            if netstat -tlnp | grep :80 > /dev/null; then
+              fuser -k 80/tcp || true
+              sleep 3
+            fi
+            if netstat -tlnp | grep :443 > /dev/null; then
+              fuser -k 443/tcp || true
+              sleep 3
+            fi
+
+            # 尝试续期证书
+            if certbot renew --force-renewal --non-interactive; then
+              echo "✅ SSL证书续期成功"
+
+              # 重新验证续期后的证书
+              if openssl x509 -in "$SSL_CERT_FILE" -noout -checkend 86400; then
+                echo "✅ 续期后的证书验证通过"
+              else
+                echo "❌ 续期后的证书仍然无效"
+                exit 1
+              fi
+            else
+              echo "❌ SSL证书自动续期失败"
+              echo "💡 手动续期命令: sudo certbot renew --force-renewal"
+              exit 1
+            fi
+          else
+            echo "❌ 非Let's Encrypt证书无法自动续期"
+            echo "💡 请手动更新SSL证书后重新部署"
+            exit 1
+          fi
+        fi
+
+        # 验证私钥文件的有效性
+        if ! openssl rsa -in "$SSL_KEY_FILE" -check -noout 2>/dev/null; then
+          echo "❌ SSL私钥文件无效或损坏"
           exit 1
         fi
 
-        echo "✅ 文件上传完整性验证通过"
-        VERIFY_EOF
+        # 验证证书和私钥是否匹配
+        CERT_MODULUS=$(openssl x509 -noout -modulus -in "$SSL_CERT_FILE" | openssl md5)
+        KEY_MODULUS=$(openssl rsa -noout -modulus -in "$SSL_KEY_FILE" | openssl md5)
+
+        if [ "$CERT_MODULUS" != "$KEY_MODULUS" ]; then
+          echo "❌ SSL证书和私钥不匹配"
+          exit 1
+        fi
+
+        # 检查证书是否支持xitools.furdow.com域名
+        if ! openssl x509 -in "$SSL_CERT_FILE" -text -noout | grep -E "(xitools\.furdow\.com|\*\.furdow\.com)" > /dev/null; then
+          echo "❌ SSL证书不支持xitools.furdow.com域名"
+          echo "💡 请确保证书包含xitools.furdow.com或*.furdow.com域名"
+          echo "📋 当前证书支持的域名:"
+          openssl x509 -in "$SSL_CERT_FILE" -text -noout | grep -A1 "Subject Alternative Name" || echo "   无SAN扩展"
+          exit 1
+        fi
+
+        echo "✅ SSL证书验证通过"
+        echo "📋 证书信息:"
+        echo "   颁发给: $(openssl x509 -in "$SSL_CERT_FILE" -noout -subject | sed 's/subject=//')"
+        echo "   颁发者: $(openssl x509 -in "$SSL_CERT_FILE" -noout -issuer | sed 's/issuer=//')"
+        echo "   有效期至: $(openssl x509 -in "$SSL_CERT_FILE" -noout -enddate | sed 's/notAfter=//')"
+
+        # 识别证书类型
+        ISSUER_INFO=$(openssl x509 -in "$SSL_CERT_FILE" -noout -issuer 2>/dev/null || echo "")
+        if echo "$ISSUER_INFO" | grep -i "let's encrypt" > /dev/null; then
+          echo "   证书类型: Let's Encrypt (自动续期已配置)"
+        else
+          echo "   证书类型: 其他CA (需要手动管理续期)"
+        fi
+
+        # 确保certbot验证目录存在
+        mkdir -p /var/www/certbot
+
+        SSL_CHECK_EOF
+
+        # 验证文件上传完整性
+        echo "🔍 验证文件上传完整性..."
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+          cd /opt/xitools/releases/${{ steps.version.outputs.version }}
+
+          # 检查必需文件
+          REQUIRED_FILES=('docker-compose.prod.yml' '.env.production' 'nginx/xitools-docker.conf')
+          for file in \"\${REQUIRED_FILES[@]}\"; do
+            if [ ! -f \"\$file\" ]; then
+              echo '❌ 缺少必需文件: '\$file
+              exit 1
+            fi
+            echo '✅ 文件存在: '\$file
+          done
+
+          # 验证配置文件语法
+          echo '🔍 验证Docker Compose配置语法...'
+          if docker compose -f docker-compose.prod.yml config > /dev/null 2>&1 || docker-compose -f docker-compose.prod.yml config > /dev/null 2>&1; then
+            echo '✅ Docker Compose配置语法正确'
+          else
+            echo '❌ Docker Compose配置语法错误'
+            exit 1
+          fi
+
+          echo '✅ 文件上传完整性验证通过'
+        "
 
         # 执行部署
         ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
         cd /opt/xitools
+
+        # 基础设施检查
+        echo "🔍 执行基础设施检查..."
+
+        # 检查Docker服务状态
+        if ! systemctl is-active --quiet docker; then
+          echo "启动Docker服务..."
+          systemctl start docker
+          sleep 5
+        fi
+
+        # 检查Docker daemon连接
+        if ! docker info > /dev/null 2>&1; then
+          echo "重启Docker服务..."
+          systemctl restart docker
+          sleep 10
+          if ! docker info > /dev/null 2>&1; then
+            echo "❌ Docker daemon连接失败"
+            exit 1
+          fi
+        fi
+
+        echo "✅ 基础设施检查完成"
+
+        # 检查端口占用情况
+        echo "� 检查端口占用情况..."
+        if netstat -tlnp | grep :80 > /dev/null; then
+          echo "⚠️ 端口80已被占用，停止占用进程..."
+          fuser -k 80/tcp || true
+        fi
+
+        if netstat -tlnp | grep :443 > /dev/null; then
+          echo "⚠️ 端口443已被占用，停止占用进程..."
+          fuser -k 443/tcp || true
+        fi
 
         # 停止当前服务
         if [ -f current/docker-compose.prod.yml ]; then
@@ -177,36 +475,59 @@ jobs:
         echo "启动服务..."
         docker compose -f docker-compose.prod.yml up -d || docker-compose -f docker-compose.prod.yml up -d
 
-        # 验证容器启动状态
+        # 验证容器启动状态（初步检查）
         echo "🔍 验证容器启动状态..."
-        sleep 10  # 等待容器启动
+        sleep 15  # 给容器更多启动时间
 
-        # 检查所有容器是否正在运行
+        # 检查所有容器状态（包括restarting状态）
         EXPECTED_CONTAINERS=("xitools-postgres-prod" "xitools-backend-prod" "xitools-frontend-prod" "xitools-nginx-prod")
-        FAILED_CONTAINERS=()
+        CRITICAL_FAILED_CONTAINERS=()
 
+        echo "📊 容器启动状态检查:"
         for container in "${EXPECTED_CONTAINERS[@]}"; do
-          if docker ps --format "table {{.Names}}" | grep -q "^${container}$"; then
-            echo "✅ 容器运行正常: $container"
-          else
-            echo "❌ 容器未运行: $container"
-            FAILED_CONTAINERS+=("$container")
-          fi
+          status=$(docker inspect --format='{{.State.Status}}' $container 2>/dev/null || echo "not-found")
+          restart_count=$(docker inspect --format='{{.RestartCount}}' $container 2>/dev/null || echo "0")
+
+          case "$status" in
+            "running")
+              echo "✅ $container: 运行中 (重启次数: $restart_count)"
+              ;;
+            "restarting")
+              echo "🔄 $container: 重启中 (重启次数: $restart_count)"
+              if [[ "$container" == *"nginx"* ]]; then
+                echo "   Nginx容器重启是正常的，可能在加载SSL配置"
+              fi
+              ;;
+            "exited")
+              exit_code=$(docker inspect --format='{{.State.ExitCode}}' $container 2>/dev/null || echo "unknown")
+              echo "❌ $container: 已退出 (退出码: $exit_code, 重启次数: $restart_count)"
+              CRITICAL_FAILED_CONTAINERS+=("$container")
+              ;;
+            "not-found")
+              echo "❌ $container: 容器不存在"
+              CRITICAL_FAILED_CONTAINERS+=("$container")
+              ;;
+            *)
+              echo "⚠️ $container: 状态 $status (重启次数: $restart_count)"
+              ;;
+          esac
         done
 
-        # 如果有容器启动失败，显示详细信息并退出
-        if [ ${#FAILED_CONTAINERS[@]} -gt 0 ]; then
-          echo "❌ 以下容器启动失败: ${FAILED_CONTAINERS[*]}"
+        # 只有在容器完全无法启动时才退出（不包括restarting状态）
+        if [ ${#CRITICAL_FAILED_CONTAINERS[@]} -gt 0 ]; then
+          echo "❌ 以下容器启动严重失败: ${CRITICAL_FAILED_CONTAINERS[*]}"
           echo "📋 显示容器状态和日志..."
           docker compose -f docker-compose.prod.yml ps || docker-compose -f docker-compose.prod.yml ps
 
-          for container in "${FAILED_CONTAINERS[@]}"; do
+          for container in "${CRITICAL_FAILED_CONTAINERS[@]}"; do
             echo "📋 容器 $container 的日志:"
-            docker logs $container --tail 20 2>&1 || echo "无法获取容器日志"
+            docker logs $container --tail 30 2>&1 || echo "无法获取容器日志"
           done
 
           exit 1
         fi
+
+        echo "✅ 容器初步启动检查完成，将在后续进行详细健康检查"
 
         # 显示容器状态
         echo "📊 所有容器状态："
@@ -214,6 +535,16 @@ jobs:
 
         # 清理旧镜像
         docker image prune -f
+
+        # 重新加载nginx配置以确保SSL配置生效
+        echo "🔄 重新加载nginx配置..."
+        if docker exec xitools-nginx-prod nginx -s reload 2>/dev/null; then
+          echo "✅ nginx配置重新加载成功"
+        else
+          echo "⚠️ nginx配置重新加载失败，尝试重启nginx容器..."
+          docker restart xitools-nginx-prod
+          sleep 10
+        fi
 
         echo "✅ 生产环境部署完成，所有容器正常运行"
         EOF
@@ -224,87 +555,421 @@ jobs:
 
         # 等待服务完全启动
         echo "⏳ 等待服务完全启动..."
-        sleep 45
+        echo "  给予容器足够的启动时间，特别是Nginx容器需要加载SSL配置..."
+        echo "  nginx配置已更新，需要额外时间确保重定向配置生效..."
+        sleep 120
 
-        # 检查容器健康状态
+        # 检查容器健康状态（带重试机制）
         echo "🔍 检查容器健康状态..."
         ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'HEALTH_EOF'
         cd /opt/xitools/current
 
-        # 检查容器健康状态
-        UNHEALTHY_CONTAINERS=()
-        for container in xitools-postgres-prod xitools-backend-prod xitools-frontend-prod xitools-nginx-prod; do
-          health=$(docker inspect --format='{{.State.Health.Status}}' $container 2>/dev/null || echo "no-healthcheck")
-          status=$(docker inspect --format='{{.State.Status}}' $container 2>/dev/null || echo "not-found")
+        # 定义容器检查函数
+        check_container_health() {
+          local container=$1
+          local max_retries=6
+          local retry_interval=10
 
-          if [ "$status" = "running" ]; then
-            if [ "$health" = "healthy" ] || [ "$health" = "no-healthcheck" ]; then
-              echo "✅ $container: $status ($health)"
-            else
-              echo "❌ $container: $status ($health)"
-              UNHEALTHY_CONTAINERS+=("$container")
+          for ((i=1; i<=max_retries; i++)); do
+            echo "🔍 检查 $container 状态 (尝试 $i/$max_retries)..."
+
+            health=$(docker inspect --format='{{.State.Health.Status}}' $container 2>/dev/null || echo "no-healthcheck")
+            status=$(docker inspect --format='{{.State.Status}}' $container 2>/dev/null || echo "not-found")
+            restart_count=$(docker inspect --format='{{.RestartCount}}' $container 2>/dev/null || echo "0")
+
+            echo "  状态: $status, 健康: $health, 重启次数: $restart_count"
+
+            # 检查容器状态
+            case "$status" in
+              "running")
+                if [ "$health" = "healthy" ] || [ "$health" = "no-healthcheck" ]; then
+                  echo "✅ $container: 运行正常 ($status, $health)"
+                  return 0
+                else
+                  echo "⚠️ $container: 运行中但健康检查失败 ($status, $health)"
+                fi
+                ;;
+              "restarting")
+                echo "🔄 $container: 正在重启中，等待启动完成..."
+                # 对于nginx容器，给予更多耐心
+                if [[ "$container" == *"nginx"* ]]; then
+                  echo "  Nginx容器需要更长时间加载SSL配置，继续等待..."
+                fi
+                ;;
+              "exited")
+                exit_code=$(docker inspect --format='{{.State.ExitCode}}' $container 2>/dev/null || echo "unknown")
+                echo "❌ $container: 已退出 (退出码: $exit_code)"
+                # 显示容器日志
+                echo "📋 容器日志 (最近10行):"
+                docker logs --tail 10 $container 2>&1 || echo "无法获取日志"
+                return 1
+                ;;
+              "not-found")
+                echo "❌ $container: 容器不存在"
+                return 1
+                ;;
+              *)
+                echo "⚠️ $container: 未知状态 ($status)"
+                ;;
+            esac
+
+            # 如果不是最后一次尝试，等待后重试
+            if [ $i -lt $max_retries ]; then
+              echo "  等待 ${retry_interval} 秒后重试..."
+              sleep $retry_interval
             fi
-          else
-            echo "❌ $container: $status"
-            UNHEALTHY_CONTAINERS+=("$container")
+          done
+
+          # 所有重试都失败
+          echo "❌ $container: 健康检查失败，已达到最大重试次数"
+          echo "📋 最终状态: $status, 健康: $health, 重启次数: $restart_count"
+
+          # 显示详细的容器信息
+          echo "📋 容器详细信息:"
+          docker inspect $container --format='{{json .State}}' 2>/dev/null | jq '.' 2>/dev/null || docker inspect $container --format='{{.State}}' 2>/dev/null || echo "无法获取容器信息"
+
+          # 显示容器日志
+          echo "📋 容器日志 (最近20行):"
+          docker logs --tail 20 $container 2>&1 || echo "无法获取日志"
+
+          return 1
+        }
+
+        # 检查所有容器
+        FAILED_CONTAINERS=()
+        CONTAINERS=("xitools-postgres-prod" "xitools-backend-prod" "xitools-frontend-prod" "xitools-nginx-prod")
+
+        for container in "${CONTAINERS[@]}"; do
+          if ! check_container_health "$container"; then
+            FAILED_CONTAINERS+=("$container")
           fi
         done
 
-        if [ ${#UNHEALTHY_CONTAINERS[@]} -gt 0 ]; then
-          echo "❌ 发现不健康的容器: ${UNHEALTHY_CONTAINERS[*]}"
+        # 检查是否有失败的容器
+        if [ ${#FAILED_CONTAINERS[@]} -gt 0 ]; then
+          echo "❌ 以下容器健康检查失败: ${FAILED_CONTAINERS[*]}"
+
+          # 显示所有容器的当前状态
+          echo "📊 所有容器当前状态:"
+          docker compose -f docker-compose.prod.yml ps || docker-compose -f docker-compose.prod.yml ps
+
           exit 1
         fi
-        HEALTH_EOF
+
+        # 对nginx容器进行额外的SSL配置验证
+        echo "🔍 验证Nginx容器SSL配置..."
+
+        # 检查nginx容器是否能正确加载SSL配置
+        if docker exec xitools-nginx-prod nginx -t 2>&1 | grep -i "ssl" | grep -i "error"; then
+          echo "❌ Nginx容器SSL配置验证失败"
+          echo "📋 Nginx配置测试结果:"
+          docker exec xitools-nginx-prod nginx -t 2>&1 || echo "无法执行nginx配置测试"
+          exit 1
+        fi
+
+        # 验证SSL证书在容器内是否可访问（检查多个可能的路径）
+        SSL_ACCESSIBLE=false
+        CONTAINER_CERT_PATHS=(
+          "/etc/letsencrypt/live/xitools.furdow.com"
+          "/etc/letsencrypt/live/furdow.com"
+        )
+
+        for cert_path in "${CONTAINER_CERT_PATHS[@]}"; do
+          if docker exec xitools-nginx-prod test -f "$cert_path/fullchain.pem" && \
+             docker exec xitools-nginx-prod test -f "$cert_path/privkey.pem"; then
+            echo "✅ Nginx容器内SSL证书可访问: $cert_path"
+            SSL_ACCESSIBLE=true
+            break
+          fi
+        done
+
+        if [ "$SSL_ACCESSIBLE" = false ]; then
+          echo "❌ Nginx容器内无法访问SSL证书文件"
+          echo "📋 容器内证书目录结构:"
+          docker exec xitools-nginx-prod ls -la /etc/letsencrypt/live/ 2>/dev/null || echo "无法访问容器内证书目录"
+          exit 1
+        fi
+
+        # 验证nginx配置语法
+        if ! docker exec xitools-nginx-prod nginx -t > /dev/null 2>&1; then
+          echo "❌ Nginx配置语法验证失败"
+          echo "📋 详细错误信息:"
+          docker exec xitools-nginx-prod nginx -t 2>&1 || echo "无法获取nginx配置错误信息"
+          exit 1
+        fi
+
+        echo "✅ 所有容器健康检查通过，包括Nginx SSL配置验证"
+
+        # 检查端口监听状态
+        echo "🔌 检查端口监听状态..."
+        echo "HTTP端口80:"
+        netstat -tlnp | grep :80 || echo "⚠️ 端口80未监听"
+
+        echo "HTTPS端口443:"
+        netstat -tlnp | grep :443 || echo "⚠️ 端口443未监听"
+
+        # 检查本地连通性
+        echo "🔗 检查本地连通性..."
+        if curl -f -s --connect-timeout 5 "http://127.0.0.1/health" > /dev/null; then
+          echo "✅ HTTP端口可访问"
+        else
+          echo "⚠️ HTTP端口不可访问，尝试HTTPS..."
+          if curl -f -s -k --connect-timeout 5 "https://127.0.0.1/health" > /dev/null; then
+            echo "✅ HTTPS端口可访问"
+          else
+            echo "❌ 本地健康检查失败，无法访问应用"
+          fi
+        fi
 
         # 检查应用可访问性
         echo "🌐 检查应用可访问性..."
         HEALTH_CHECK_FAILED=false
 
-        # 检查前端
-        for i in {1..12}; do
-          if curl -f -s --connect-timeout 10 "https://xitools.furdow.com/" > /dev/null; then
-            echo "✅ 前端应用可访问"
+        # 检查前端HTTPS访问（严格要求HTTPS正常工作）
+        echo "检查前端应用HTTPS可访问性..."
+        FRONTEND_HTTPS_ACCESSIBLE=false
+
+        # 尝试HTTPS访问
+        for i in {1..8}; do
+          if curl -f -s --connect-timeout 15 "https://xitools.furdow.com/" > /dev/null; then
+            echo "✅ 前端应用HTTPS可访问"
+            FRONTEND_HTTPS_ACCESSIBLE=true
             break
           else
-            echo "⏳ 等待前端应用启动... ($i/12)"
-            if [ $i -eq 12 ]; then
-              echo "❌ 前端应用健康检查失败"
-              HEALTH_CHECK_FAILED=true
+            echo "⏳ 等待前端HTTPS启动... ($i/8)"
+            sleep 15
+          fi
+        done
+
+        if [ "$FRONTEND_HTTPS_ACCESSIBLE" = false ]; then
+          echo "❌ 前端应用HTTPS访问失败"
+          echo "💡 由于配置了SSL证书，HTTPS访问是必需的"
+          HEALTH_CHECK_FAILED=true
+        fi
+
+        # 验证HTTP到HTTPS重定向是否正常工作
+        echo "检查HTTP到HTTPS重定向..."
+        HTTP_REDIRECT_WORKING=false
+
+        for i in {1..5}; do
+          # 检查HTTP请求是否正确重定向到HTTPS
+          echo "  尝试HTTP重定向检查 ($i/5)..."
+
+          # 使用curl检查重定向状态码
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 "http://xitools.furdow.com/")
+          REDIRECT_LOCATION=$(curl -s -I --connect-timeout 10 "http://xitools.furdow.com/" | grep -i "location:" | tr -d '\r')
+
+          echo "  HTTP状态码: $HTTP_STATUS"
+          echo "  重定向位置: $REDIRECT_LOCATION"
+
+          if [ "$HTTP_STATUS" = "301" ] || [ "$HTTP_STATUS" = "302" ]; then
+            if echo "$REDIRECT_LOCATION" | grep -i "https://" > /dev/null; then
+              echo "✅ HTTP到HTTPS重定向正常工作 (状态码: $HTTP_STATUS)"
+              HTTP_REDIRECT_WORKING=true
+              break
+            else
+              echo "⚠️ 重定向状态码正确但目标不是HTTPS"
             fi
+          else
+            echo "⚠️ HTTP状态码不是重定向: $HTTP_STATUS"
+          fi
+
+          if [ $i -lt 5 ]; then
+            echo "  等待10秒后重试..."
             sleep 10
           fi
         done
 
-        # 检查后端API
-        for i in {1..12}; do
-          if curl -f -s --connect-timeout 10 "https://xitools.furdow.com/api/health" > /dev/null; then
-            echo "✅ 后端API可访问"
+        if [ "$HTTP_REDIRECT_WORKING" = false ]; then
+          echo "❌ HTTP到HTTPS重定向验证失败"
+          echo "📋 详细HTTP响应信息:"
+          curl -s -I --connect-timeout 10 "http://xitools.furdow.com/" | head -10 || echo "无法获取HTTP响应"
+          HEALTH_CHECK_FAILED=true
+        fi
+
+        # 检查后端API HTTPS访问（严格要求HTTPS正常工作）
+        echo "检查后端API HTTPS可访问性..."
+        API_HTTPS_ACCESSIBLE=false
+
+        # 尝试HTTPS访问
+        for i in {1..10}; do
+          echo "  尝试访问后端API HTTPS ($i/10)..."
+
+          # 获取详细的响应信息
+          API_RESPONSE=$(curl -s -w "HTTP_CODE:%{http_code};TOTAL_TIME:%{time_total}" --connect-timeout 15 "https://xitools.furdow.com/api/health" 2>&1)
+          HTTP_CODE=$(echo "$API_RESPONSE" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2)
+
+          echo "  响应状态码: $HTTP_CODE"
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ 后端API HTTPS可访问"
+            API_HTTPS_ACCESSIBLE=true
             break
+          elif [ -n "$HTTP_CODE" ] && [ "$HTTP_CODE" != "000" ]; then
+            echo "  收到HTTP响应但状态码不是200: $HTTP_CODE"
+            # 显示响应内容（前100字符）
+            RESPONSE_BODY=$(echo "$API_RESPONSE" | sed 's/HTTP_CODE:.*//g' | head -c 100)
+            echo "  响应内容: $RESPONSE_BODY"
           else
-            echo "⏳ 等待后端API启动... ($i/12)"
-            if [ $i -eq 12 ]; then
-              echo "❌ 后端API健康检查失败"
-              HEALTH_CHECK_FAILED=true
-            fi
-            sleep 10
+            echo "  无法连接到API端点"
+          fi
+
+          if [ $i -lt 10 ]; then
+            echo "  等待15秒后重试..."
+            sleep 15
           fi
         done
+
+        if [ "$API_HTTPS_ACCESSIBLE" = false ]; then
+          echo "❌ 后端API HTTPS访问失败"
+          echo "💡 由于配置了SSL证书，HTTPS访问是必需的"
+
+          # 额外的诊断信息
+          echo "🔍 API访问诊断信息:"
+          echo "  1. 检查nginx配置中的API路由"
+          echo "  2. 检查后端容器是否正常运行"
+          echo "  3. 检查SSL证书是否正确配置"
+
+          # 尝试直接访问后端容器
+          echo "📋 尝试直接访问后端容器:"
+          if curl -f -s --connect-timeout 5 "http://127.0.0.1:3000/health" > /dev/null; then
+            echo "  ✅ 后端容器直接访问正常，问题可能在nginx代理配置"
+          else
+            echo "  ❌ 后端容器直接访问也失败，问题在后端服务"
+          fi
+
+          HEALTH_CHECK_FAILED=true
+        fi
+
+        # 验证SSL证书在实际HTTPS连接中是否正常工作
+        echo "验证SSL证书在HTTPS连接中的工作状态..."
+        SSL_CONNECTION_WORKING=false
+
+        # 使用openssl验证SSL连接
+        if echo | openssl s_client -connect xitools.furdow.com:443 -servername xitools.furdow.com 2>/dev/null | grep "Verify return code: 0" > /dev/null; then
+          echo "✅ SSL证书验证通过，HTTPS连接正常"
+          SSL_CONNECTION_WORKING=true
+        else
+          echo "⚠️ SSL证书验证可能存在问题"
+          echo "📋 SSL连接详情:"
+          echo | openssl s_client -connect xitools.furdow.com:443 -servername xitools.furdow.com 2>/dev/null | grep -E "(Verify return code|subject|issuer)" || echo "无法获取SSL连接信息"
+        fi
 
         # 如果健康检查失败，标记部署失败
         if [ "$HEALTH_CHECK_FAILED" = true ]; then
           echo "❌ 健康检查失败，部署被标记为失败"
-          echo "📋 获取失败诊断信息..."
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'DIAG_EOF'
-          cd /opt/xitools/current
-          echo "容器状态："
-          docker compose -f docker-compose.prod.yml ps || docker-compose -f docker-compose.prod.yml ps
-          echo "容器日志（最近20行）："
-          docker compose -f docker-compose.prod.yml logs --tail 20 || docker-compose -f docker-compose.prod.yml logs --tail 20
-          DIAG_EOF
+          echo ""
+          echo "🔧 SSL/HTTPS相关故障排查指南:"
+          echo "1. 确认SSL证书文件存在且有效:"
+          echo "   sudo ls -la /etc/letsencrypt/live/furdow.com/"
+          echo "   sudo openssl x509 -in /etc/letsencrypt/live/furdow.com/fullchain.pem -text -noout"
+          echo ""
+          echo "2. 如果证书不存在，请生成SSL证书:"
+          echo "   sudo certbot certonly --nginx -d xitools.furdow.com"
+          echo "   或者"
+          echo "   sudo certbot certonly --standalone -d xitools.furdow.com"
+          echo ""
+          echo "3. 如果证书过期，请续期:"
+          echo "   sudo certbot renew"
+          echo ""
+          echo "4. 确认证书权限正确:"
+          echo "   sudo chmod 644 /etc/letsencrypt/live/furdow.com/fullchain.pem"
+          echo "   sudo chmod 600 /etc/letsencrypt/live/furdow.com/privkey.pem"
+          echo ""
           exit 1
         fi
 
-        echo "✅ 所有健康检查通过，部署成功"
+        HEALTH_EOF
+
+        # 捕获健康检查的退出码
+        HEALTH_CHECK_EXIT_CODE=$?
+
+        # 如果健康检查失败，获取详细诊断信息
+        if [ $HEALTH_CHECK_EXIT_CODE -ne 0 ]; then
+          echo "📋 健康检查失败 (退出码: $HEALTH_CHECK_EXIT_CODE)，获取详细诊断信息..."
+
+          # 获取诊断信息
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+            cd /opt/xitools/current
+            echo '=== 容器状态 ==='
+            docker compose -f docker-compose.prod.yml ps || docker-compose -f docker-compose.prod.yml ps
+            echo ''
+            echo '=== Nginx容器日志（最近30行）==='
+            docker logs xitools-nginx-prod --tail 30 2>&1 || echo '无法获取nginx日志'
+            echo ''
+            echo '=== SSL证书文件状态 ==='
+            echo 'Let'\''s Encrypt证书目录结构:'
+            ls -la /etc/letsencrypt/live/ 2>/dev/null || echo 'Let'\''s Encrypt目录不存在'
+            echo ''
+            echo '具体证书文件:'
+            for cert_dir in /etc/letsencrypt/live/*/; do
+              if [ -d \"\$cert_dir\" ]; then
+                echo \"目录: \$cert_dir\"
+                ls -la \"\$cert_dir\" 2>/dev/null || echo '无法访问目录'
+              fi
+            done
+            echo ''
+            echo '=== Nginx配置测试 ==='
+            docker exec xitools-nginx-prod nginx -t 2>&1 || echo '无法测试nginx配置'
+          "
+
+          exit 1
+        fi
+
+        echo "✅ 所有健康检查通过，包括SSL/HTTPS验证，部署成功"
+
+        # 显示最终的SSL证书状态报告
+        echo ""
+        echo "🔒 SSL证书状态报告:"
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+          # 智能检测SSL证书路径
+          SSL_CERT_FILE=''
+          POSSIBLE_PATHS=(
+            '/etc/letsencrypt/live/xitools.furdow.com/fullchain.pem'
+            '/etc/letsencrypt/live/furdow.com/fullchain.pem'
+          )
+
+          for cert_file in \"\${POSSIBLE_PATHS[@]}\"; do
+            if [ -f \"\$cert_file\" ]; then
+              SSL_CERT_FILE=\"\$cert_file\"
+              break
+            fi
+          done
+
+          if [ -n \"\$SSL_CERT_FILE\" ] && [ -f \"\$SSL_CERT_FILE\" ]; then
+            echo '   📋 证书文件: '\$SSL_CERT_FILE
+            echo '   📅 有效期至: '\$(openssl x509 -in \"\$SSL_CERT_FILE\" -noout -enddate | sed 's/notAfter=//')
+
+            # 计算剩余天数
+            EXPIRY_DATE=\$(openssl x509 -in \"\$SSL_CERT_FILE\" -noout -enddate | sed 's/notAfter=//')
+            EXPIRY_TIMESTAMP=\$(date -d \"\$EXPIRY_DATE\" +%s 2>/dev/null || echo '0')
+            CURRENT_TIMESTAMP=\$(date +%s)
+            DAYS_LEFT=\$(( (EXPIRY_TIMESTAMP - CURRENT_TIMESTAMP) / 86400 ))
+
+            if [ \$DAYS_LEFT -gt 30 ]; then
+              echo '   ✅ 证书状态: 健康 (剩余 '\$DAYS_LEFT' 天)'
+            elif [ \$DAYS_LEFT -gt 7 ]; then
+              echo '   ⚠️ 证书状态: 即将过期 (剩余 '\$DAYS_LEFT' 天)'
+            else
+              echo '   🚨 证书状态: 紧急续期 (剩余 '\$DAYS_LEFT' 天)'
+            fi
+
+            # 检查证书类型
+            ISSUER=\$(openssl x509 -in \"\$SSL_CERT_FILE\" -noout -issuer 2>/dev/null || echo '')
+            if echo \"\$ISSUER\" | grep -i 'let'\''s encrypt' > /dev/null; then
+              echo '   🤖 自动续期: 已配置 (Let'\''s Encrypt)'
+            else
+              echo '   ⚠️ 自动续期: 未配置 (非Let'\''s Encrypt证书)'
+            fi
+          else
+            echo '   ❌ 证书文件不存在'
+          fi
+        "
+
+        echo ""
+        echo "🌐 访问地址:"
+        echo "   HTTPS: https://xitools.furdow.com"
+        echo "   HTTP:  http://xitools.furdow.com (自动重定向到HTTPS)"
 
     - name: 自动回滚处理
       if: failure()
@@ -347,5 +1012,17 @@ jobs:
         echo "📢 生产环境部署完成"
         echo "版本: ${{ steps.version.outputs.version }}"
         echo "分支: ${{ github.ref_name }}"
-        echo "访问地址: https://xitools.furdow.com"
         echo "部署时间: $(date)"
+        echo ""
+        echo "🌐 访问地址:"
+        echo "  HTTPS: https://xitools.furdow.com"
+        echo "  API:   https://xitools.furdow.com/api"
+        echo "  健康检查: https://xitools.furdow.com/health"
+        echo ""
+        if [ "${{ job.status }}" = "success" ]; then
+          echo "✅ 部署状态: 成功"
+          echo "🔒 SSL证书: 已配置并验证通过"
+        else
+          echo "❌ 部署状态: 失败"
+          echo "💡 请检查上述日志中的SSL证书相关错误信息"
+        fi

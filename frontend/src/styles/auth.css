@@ -2502,12 +2502,16 @@
   pointer-events: none;
   z-index: 1;
   transition: all 0.3s ease;
+  /* 确保图标大小固定，防止异常缩放 */
+  width: 1.25rem !important;
+  height: 1.25rem !important;
+  flex-shrink: 0;
 }
 
 .form-input:focus + .input-icon,
 .form-input:focus ~ .input-icon {
   color: rgb(var(--color-primary));
-  transform: translateY(-50%) scale(1.1);
+  transform: translateY(-50%) scale(1);
 }
 
 .password-toggle {
@@ -2540,6 +2544,13 @@
   cursor: not-allowed;
   opacity: 0.5;
   transform: none;
+}
+
+/* 确保密码切换按钮中的SVG图标大小固定 */
+.password-toggle svg {
+  width: 1.25rem !important;
+  height: 1.25rem !important;
+  flex-shrink: 0;
 }
 
 /* 复选框样式 */
@@ -2905,6 +2916,9 @@
 
   .input-icon {
     left: 1rem;
+    /* 移动端也确保图标大小固定 */
+    width: 1.125rem !important;
+    height: 1.125rem !important;
   }
 
   .password-toggle {
@@ -3503,6 +3517,13 @@
   animation: error-shake 0.4s ease-in-out;
 }
 
+/* 确保错误消息中的SVG图标大小固定 */
+.error-message svg {
+  width: 1rem !important;
+  height: 1rem !important;
+  flex-shrink: 0;
+}
+
 @keyframes error-shake {
   0%,
   100% {
@@ -3562,14 +3583,35 @@
   }
 }
 
-/* 错误消息样式 */
-.error-message {
-  font-size: 0.875rem;
-  color: rgb(var(--color-error));
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+/* 错误消息样式已在上方定义，删除重复定义 */
+
+/* 防御性CSS规则 - 防止UI元素异常缩放 */
+.auth-form .input-wrapper svg,
+.auth-form .form-group svg,
+.login-form svg,
+.register-form svg {
+  /* 强制设置SVG图标的固定大小，防止异常缩放 */
+  max-width: 1.25rem !important;
+  max-height: 1.25rem !important;
+  min-width: 1rem !important;
+  min-height: 1rem !important;
+}
+
+/* 确保错误提示不会异常放大 */
+.auth-form .error-message,
+.login-form .error-message,
+.register-form .error-message {
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+  max-width: 100% !important;
+}
+
+/* 防止整个表单容器异常缩放 */
+.auth-form,
+.login-form,
+.register-form {
+  transform: none !important;
+  zoom: 1 !important;
 }
 
 .global-error {
@@ -4681,5 +4723,193 @@
 
   .password-input-demo {
     padding: 1rem;
+  }
+}
+
+/* ========================================
+   Edge浏览器兼容性修复和现代强制颜色模式支持
+   ======================================== */
+
+/* 现代强制颜色模式支持 - 替代过时的 -ms-high-contrast */
+@media (forced-colors: active) {
+  .highlight-card {
+    background: ButtonFace !important;
+    border: 1px solid ButtonText !important;
+    color: ButtonText !important;
+  }
+
+  .highlight-icon {
+    background: ButtonFace !important;
+    border: 1px solid ButtonText !important;
+  }
+
+  .highlight-svg {
+    color: ButtonText !important;
+  }
+
+  .highlight-content h3,
+  .highlight-content p {
+    color: ButtonText !important;
+  }
+
+  .brand-stats {
+    background: ButtonFace !important;
+    border: 1px solid ButtonText !important;
+  }
+
+  .stat-number {
+    color: ButtonText !important;
+    background: none !important;
+    -webkit-background-clip: unset !important;
+    background-clip: unset !important;
+    -webkit-text-fill-color: unset !important;
+  }
+
+  .stat-label {
+    color: ButtonText !important;
+  }
+
+  /* 简化动画以提高兼容性 */
+  .highlight-card {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .highlight-card:hover {
+    transform: none !important;
+    background: SelectedItem !important;
+    color: SelectedItemText !important;
+  }
+}
+
+/* 减少动画偏好支持 */
+@media (prefers-reduced-motion: reduce) {
+  .highlight-card {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .highlight-svg {
+    transition: none !important;
+  }
+
+  .highlight-card:hover .highlight-svg {
+    transform: none !important;
+  }
+
+  /* 禁用所有SVG动画 */
+  .highlight-svg animate {
+    animation-play-state: paused !important;
+  }
+}
+
+/* Edge浏览器特定修复 */
+@supports (-ms-ime-align: auto) {
+  .highlight-card {
+    /* 使用更稳定的动画属性 */
+    animation: highlight-card-entrance-edge 0.6s ease-out both !important;
+    /* 强制GPU加速 */
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    /* 减少重绘 */
+    backface-visibility: hidden;
+  }
+
+  .highlight-svg {
+    /* 减少Edge中的渲染问题 */
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    /* 优化动画性能 */
+    will-change: transform, opacity;
+  }
+
+  /* 简化SVG动画以避免闪烁 */
+  .highlight-svg animate {
+    /* 使用CSS动画替代SVG动画 */
+    display: none;
+  }
+}
+
+/* Edge专用的简化入场动画 */
+@keyframes highlight-card-entrance-edge {
+  0% {
+    opacity: 0;
+    transform: translateZ(0) translateX(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateZ(0) translateX(0);
+  }
+}
+
+/* 通用性能优化 */
+.highlight-card {
+  /* 启用硬件加速 */
+  transform: translateZ(0);
+  /* 优化重绘性能 */
+  backface-visibility: hidden;
+}
+
+.highlight-svg {
+  /* 优化SVG渲染 */
+  shape-rendering: optimizeSpeed;
+  /* 减少抗锯齿计算 */
+  image-rendering: optimizeSpeed;
+}
+
+/* Edge浏览器SVG动画修复 - 针对所有SVG动画元素 */
+@supports (-ms-ime-align: auto) {
+  /* 禁用所有SVG内部动画以避免闪烁 */
+  .highlight-svg animate,
+  .stat-svg animate,
+  .highlight-svg animateTransform,
+  .stat-svg animateTransform {
+    display: none !important;
+  }
+
+  /* 为Edge浏览器提供CSS动画替代方案 */
+  .highlight-svg circle[opacity='0.6'],
+  .stat-svg circle[opacity='0.3'] {
+    animation: edge-safe-pulse 2s ease-in-out infinite !important;
+  }
+
+  .highlight-svg g[transformOrigin] {
+    animation: edge-safe-rotate 6s linear infinite !important;
+  }
+}
+
+/* Edge安全的动画关键帧 */
+@keyframes edge-safe-pulse {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes edge-safe-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 强制颜色模式下的额外修复 */
+@media (forced-colors: active) {
+  /* 确保SVG动画完全禁用 */
+  .highlight-svg *,
+  .stat-svg * {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* 移除所有渐变和复杂效果 */
+  .highlight-svg defs,
+  .stat-svg defs {
+    display: none !important;
   }
 }

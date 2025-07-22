@@ -1,12 +1,10 @@
 # XItools 生产环境 Docker Compose 配置
 # 使用预构建的镜像进行部署
 
-version: '3.8'
-
 services:
   # PostgreSQL数据库服务
   postgres:
-    image: postgres:14
+    image: ghcr.io/justsoow/xitools/postgres:14
     container_name: xitools-postgres-prod
     restart: always
     env_file:
@@ -69,22 +67,27 @@ services:
 
   # Nginx反向代理
   nginx:
-    image: nginx:alpine
+    image: ghcr.io/justsoow/xitools/nginx:alpine
     container_name: xitools-nginx-prod
     restart: always
     ports:
-      - "8080:80"  # 系统Nginx代理到此端口
+      - "80:80"     # 直接监听HTTP端口
+      - "443:443"   # 直接监听HTTPS端口
     volumes:
       - ./nginx/xitools-docker.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro  # 挂载宿主机的SSL证书
+      - /var/www/certbot:/var/www/certbot:ro  # Let's Encrypt验证目录
+    environment:
+      - NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx/conf.d
     depends_on:
       - frontend
       - backend
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      test: ["CMD", "sh", "-c", "nginx -t && curl -f -k https://localhost/health"]
       interval: 30s
-      timeout: 10s
-      retries: 3
+      timeout: 20s
+      retries: 5
+      start_period: 90s
     networks:
       - xitools-network
 

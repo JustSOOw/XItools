@@ -51,12 +51,14 @@ npm run docker:restart:prod
 
 #### Docker架构说明
 
-XItools采用了Nginx反向代理架构，解决了前端在浏览器中无法直接访问Docker容器网络的问题：
+XItools采用了完全容器化的Nginx反向代理架构，解决了前端在浏览器中无法直接访问Docker容器网络的问题：
 
 ```
-浏览器前端 ←→ localhost:8080 ←→ nginx ←→ backend:3000 (API + MCP)
+浏览器前端 ←→ 80/443端口 ←→ Docker Nginx ←→ backend:3000 (API + MCP)
 外部Cursor ←→ localhost:3000 ←→ backend:3000 (MCP直接访问)
 ```
+
+容器化Nginx直接处理SSL终止，使用Let's Encrypt证书提供HTTPS服务，无需系统级Nginx配置。
 
 ## 核心架构
 
@@ -190,9 +192,7 @@ XItools/
 项目的详细文档位于 `docs/` 目录，覆盖了产品、设计、架构和开发指南。关键文档包括：
 
 ### CI/CD 部署文档
-- **[环境配置指南](./docs/cicd/environment-setup.md)** - 多环境部署配置详解
-- **[GitHub环境配置清单](./docs/cicd/github-environments-checklist.md)** - GitHub环境变量配置步骤
-- **[简化设置指南](./docs/cicd/setup-guide-simplified.md)** - 快速配置和使用说明
+- **[CI/CD 部署指南](./docs/cicd/unified-ci-cd-guide.md)** - 统一的 CI/CD 部署指南
 
 
 ### 产品与技术文档
@@ -288,7 +288,7 @@ npm run rollback:auto
 
 ### 访问地址
 
-- **生产环境**: https://xitools.furdow.com
+- **生产环境**: https://xitools.furdow.com (容器化Nginx直接提供HTTPS服务)
 - **预生产环境**: http://xitools.furdow.com:8081
 - **健康检查**: https://xitools.furdow.com/health
 - **API文档**: https://xitools.furdow.com/api/documentation
