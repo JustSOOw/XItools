@@ -116,6 +116,7 @@ jobs:
         cp docker-compose.prod.yml docker-compose.staging.yml
         sed -i 's/8080:80/8081:80/g' docker-compose.staging.yml
         sed -i 's/5432:5432/5433:5432/g' docker-compose.staging.yml
+        # 确保nginx配置文件挂载路径正确（已经在生产配置中修复）
 
         # 创建环境变量文件
         cat > .env.staging << EOF
@@ -132,6 +133,7 @@ jobs:
         # 上传文件
         scp -o StrictHostKeyChecking=no docker-compose.staging.yml ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools-staging/releases/${{ steps.version.outputs.version }}/docker-compose.prod.yml
         scp -o StrictHostKeyChecking=no .env.staging ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools-staging/releases/${{ steps.version.outputs.version }}/.env.production
+        scp -r -o StrictHostKeyChecking=no nginx/ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools-staging/releases/${{ steps.version.outputs.version }}/
 
         # 执行部署
         ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
