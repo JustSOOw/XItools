@@ -59,7 +59,19 @@ jobs:
     - name: 快速构建验证
       run: |
         echo "🏗️ 快速构建验证..."
-        cd frontend && npm ci
+
+        # 在构建前端之前设置环境变量
+        echo "⚙️ 设置前端构建环境变量..."
+        cd frontend
+        cat > .env.staging << EOF
+        VITE_BACKEND_URL=${{ secrets.VITE_BACKEND_URL_STAGING }}
+        VITE_NODE_ENV=staging
+        EOF
+
+        echo "📋 验证环境变量设置:"
+        echo "VITE_BACKEND_URL=${{ secrets.VITE_BACKEND_URL_STAGING }}"
+
+        npm ci
         echo "📝 复制Web版本TypeScript配置..."
         cp tsconfig.web.json tsconfig.json
         echo "🔨 构建前端（Web版本）..."
