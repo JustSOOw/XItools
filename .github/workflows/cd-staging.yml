@@ -142,18 +142,29 @@ jobs:
         # 彻底清理预发布环境
         echo "🧹 清理预发布环境..."
 
-        # 停止并删除所有XItools staging相关容器
-        docker stop \$(docker ps -q --filter "name=xitools.*staging") 2>/dev/null || true
-        docker rm \$(docker ps -aq --filter "name=xitools.*staging") 2>/dev/null || true
+        # 停止并删除所有XItools相关容器（包括staging）
+        echo "🛑 停止XItools容器..."
+        docker stop $(docker ps -q --filter "name=xitools") 2>/dev/null || true
+        docker rm $(docker ps -aq --filter "name=xitools") 2>/dev/null || true
 
         # 停止当前服务
         if [ -f current/docker-compose.prod.yml ]; then
           docker-compose -f current/docker-compose.prod.yml down --volumes --remove-orphans || true
         fi
 
-        # 清理staging相关的Docker资源
-        docker system prune -f
-        docker network ls --filter "name=xitools.*staging" -q | xargs -r docker network rm 2>/dev/null || true
+        # 清理Docker系统缓存和资源
+        echo "🗑️ 清理Docker系统缓存..."
+        docker system prune -f --volumes
+
+        # 清理XItools相关的Docker网络
+        echo "🌐 清理XItools网络..."
+        docker network ls --filter "name=xitools" -q | xargs -r docker network rm 2>/dev/null || true
+
+        # 清理XItools相关的Docker卷
+        echo "💾 清理XItools数据卷..."
+        docker volume ls --filter "name=xitools" -q | xargs -r docker volume rm 2>/dev/null || true
+
+        echo "✅ 预发布环境清理完成"
 
         # 切换到新版本
         ln -sfn releases/${{ steps.version.outputs.version }} current
