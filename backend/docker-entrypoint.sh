@@ -26,13 +26,26 @@ done
 
 echo "Database connection successful"
 
-# Run database migrations
-echo "Running database migrations..."
-npx prisma migrate deploy || echo "Migration failed or not needed"
+# Run database migrations or push schema when no migrations present
+echo "Running database schema setup..."
+if [ -d "prisma/migrations" ] && [ "$(ls -A prisma/migrations 2>/dev/null | wc -l)" -gt 0 ]; then
+  echo "Detected Prisma migrations. Running migrate deploy..."
+  if ! npx prisma migrate deploy; then
+    echo "❌ prisma migrate deploy 失败"
+    exit 1
+  fi
+else
+  echo "No Prisma migrations found. Running prisma db push to sync schema..."
+  if ! npx prisma db push; then
+    echo "❌ prisma db push 失败"
+    exit 1
+  fi
+fi
 
 # Generate Prisma client (ensure latest)
 echo "Generating Prisma client..."
-npx prisma generate
+npx prisma generate || echo "⚠️ prisma generate 失败或已是最新"
+
 
 echo "Starting application server..."
 

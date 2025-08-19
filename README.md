@@ -249,6 +249,12 @@ GitHub → 简化 CI/CD → Docker Registry → Production Server
 - **生产环境**: 仅在PR合并到 `main` 分支时触发部署
 - **安全机制**: 禁止直接push触发部署，强制代码审查流程
 
+#### 数据库初始化与管理员自动化（重要）
+- 后端容器启动时将自动处理数据库：
+  - 若存在 Prisma 迁移目录 prisma/migrations，则执行 `prisma migrate deploy`
+  - 若无迁移目录（当前仓库），则执行 `prisma db push` 以同步 schema，确保首次部署可用
+- 健康检查将额外验证认证接口的基本可用性（401/400），帮助尽早发现数据库未初始化的问题
+
 #### 紧急回滚
 - **手动触发**: GitHub Actions 手动回滚工作流
 - **自动回滚**: 回滚到上一个稳定版本

@@ -94,6 +94,9 @@ RUN (npm ci --only=production || (echo "⚠️ npm ci failed, falling back to np
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/node_modules/@prisma ./node_modules/@prisma
+# 确保Prisma CLI可用（用于迁移/推送schema）
+COPY --from=build /app/node_modules/prisma ./node_modules/prisma
+COPY --from=build /app/node_modules/.bin ./node_modules/.bin
 
 # 复制必要的文件
 COPY docker-entrypoint.sh /usr/local/bin/
