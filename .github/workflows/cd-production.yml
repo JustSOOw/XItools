@@ -878,6 +878,15 @@ jobs:
           HEALTH_CHECK_FAILED=true
         fi
 
+        # 额外校验：验证认证接口返回401/200逻辑是否正常（确保数据库表可用）
+        echo "🔐 验证认证接口（登录失败应返回401）..."
+        LOGIN_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -k -X POST "https://xitools.furdow.com/api/auth/login" -H "Content-Type: application/json" --data '{"identifier":"non-exist","password":"wrong"}')
+        echo "  /api/auth/login 状态码: $LOGIN_STATUS"
+        if [ "$LOGIN_STATUS" != "401" ] && [ "$LOGIN_STATUS" != "400" ]; then
+          echo "❌ 认证接口返回异常（期望401/400），可能数据库未初始化或后端异常"
+          HEALTH_CHECK_FAILED=true
+        fi
+
         # 验证SSL证书在实际HTTPS连接中是否正常工作
         echo "验证SSL证书在HTTPS连接中的工作状态..."
         SSL_CONNECTION_WORKING=false
