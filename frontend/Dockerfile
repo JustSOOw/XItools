@@ -13,6 +13,10 @@ RUN npm ci --only=production && npm cache clean --force
 FROM node:20-alpine AS development
 WORKDIR /app
 
+# 声明构建参数（开发环境也可能需要）
+ARG VITE_BACKEND_URL=http://localhost:3000
+ARG VITE_NODE_ENV=development
+
 # 复制Docker专用的package文件（不包含Electron）
 COPY package.docker.json package.json
 
@@ -29,6 +33,10 @@ COPY tsconfig.web.json tsconfig.json
 
 # 复制源代码（.dockerignore会排除electron文件夹）
 COPY . .
+
+# 设置环境变量
+ENV VITE_BACKEND_URL=${VITE_BACKEND_URL}
+ENV VITE_NODE_ENV=${VITE_NODE_ENV}
 
 # 暴露开发服务器端口
 EXPOSE 5173
@@ -40,6 +48,10 @@ CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 FROM node:20-alpine AS build
 WORKDIR /app
 
+# 声明构建参数
+ARG VITE_BACKEND_URL
+ARG VITE_NODE_ENV=production
+
 # 复制Docker专用的package文件（不包含Electron）
 COPY package.docker.json package.json
 
@@ -56,6 +68,15 @@ COPY tsconfig.web.json tsconfig.json
 
 # 复制源代码（.dockerignore会排除electron文件夹）
 COPY . .
+
+# 设置环境变量用于构建
+ENV VITE_BACKEND_URL=${VITE_BACKEND_URL}
+ENV VITE_NODE_ENV=${VITE_NODE_ENV}
+
+# 显示构建时的环境变量（用于调试）
+RUN echo "构建时环境变量:" && \
+    echo "VITE_BACKEND_URL=${VITE_BACKEND_URL}" && \
+    echo "VITE_NODE_ENV=${VITE_NODE_ENV}"
 
 # 构建应用（直接调用vite，跳过npm钩子）
 RUN npx vite build
