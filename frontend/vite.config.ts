@@ -16,7 +16,8 @@ export default defineConfig(({ mode }) => {
         '@': path.resolve(__dirname, './src'),
       },
     },
-    base: './', // 重要：Electron需要相对路径
+    // Web 生产环境需要使用绝对路径，避免在子路由下相对路径导致静态资源404
+    base: mode === 'production' ? '/' : './',
     build: {
       outDir: 'dist',
       assetsDir: 'assets',
