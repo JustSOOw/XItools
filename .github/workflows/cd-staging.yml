@@ -161,20 +161,19 @@ jobs:
 
         # 停止当前服务
         if [ -f current/docker-compose.prod.yml ]; then
-          docker-compose -f current/docker-compose.prod.yml down --volumes --remove-orphans || true
+          docker-compose -f current/docker-compose.prod.yml down --remove-orphans || true
         fi
 
         # 清理Docker系统缓存和资源
         echo "🗑️ 清理Docker系统缓存..."
-        docker system prune -f --volumes
+        docker system prune -f
 
         # 清理XItools相关的Docker网络
         echo "🌐 清理XItools网络..."
         docker network ls --filter "name=xitools" -q | xargs -r docker network rm 2>/dev/null || true
 
         # 清理XItools相关的Docker卷
-        echo "💾 清理XItools数据卷..."
-        docker volume ls --filter "name=xitools" -q | xargs -r docker volume rm 2>/dev/null || true
+        echo "💾 清理XItools数据卷...（跳过以保护数据库）"
 
         echo "✅ 预发布环境清理完成"
 

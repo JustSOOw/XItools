@@ -182,8 +182,8 @@ class ApiKeyService {
    * 检验API密钥格式
    */
   static validateApiKeyFormat(apiKey: string): boolean {
-    // XItools API密钥格式: xitools_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-    const pattern = /^xitools_[a-zA-Z0-9]{32}$/;
+    // XItools API密钥格式: xitool_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    const pattern = /^xitool_[a-f0-9]{64}$/;
     return pattern.test(apiKey);
   }
 
