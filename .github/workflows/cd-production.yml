@@ -476,12 +476,12 @@ jobs:
         # 停止当前服务（如果配置文件存在）
         if [ -f current/docker-compose.prod.yml ]; then
           echo "🔄 使用docker-compose停止服务..."
-          docker compose -f current/docker-compose.prod.yml down --volumes --remove-orphans || docker-compose -f current/docker-compose.prod.yml down --volumes --remove-orphans || true
+          docker compose -f current/docker-compose.prod.yml down --remove-orphans || docker-compose -f current/docker-compose.prod.yml down --remove-orphans || true
         fi
 
         # 清理Docker系统缓存
         echo "🗑️ 清理Docker系统缓存..."
-        docker system prune -f --volumes
+        docker system prune -f
 
         # 清理XItools相关的Docker网络
         echo "🌐 清理XItools网络..."

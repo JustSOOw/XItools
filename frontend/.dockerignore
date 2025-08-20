@@ -77,11 +77,12 @@ __tests__/
 # Electron相关文件（Web版本不需要）
 electron/
 
-# 其他
+# 其他（保留构建必需的配置文件）
 .eslintrc*
 .prettierrc*
-tsconfig.json
-tsconfig.node.json
-vite.config.ts
-tailwind.config.js
-postcss.config.js
+# 以下文件是构建必需的，不能排除：
+# tsconfig.json - TypeScript构建需要
+# tsconfig.node.json - Node.js TypeScript构建需要
+# vite.config.ts - Vite构建配置必需
+# tailwind.config.js - Tailwind CSS构建必需
+# postcss.config.js - PostCSS处理必需

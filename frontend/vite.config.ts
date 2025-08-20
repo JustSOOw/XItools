@@ -16,7 +16,9 @@ export default defineConfig(({ mode }) => {
         '@': path.resolve(__dirname, './src'),
       },
     },
-    base: './', // 重要：Electron需要相对路径
+    // Web 生产环境固定使用根路径，避免在子路由下相对路径导致静态资源404
+    // Electron/Web 开发模式不受本镜像影响，生产环境总是走 Docker 构建
+    base: '/',
     build: {
       outDir: 'dist',
       assetsDir: 'assets',

@@ -40,19 +40,26 @@ export const getCurrentEnvironment = (): Environment => {
 /**
  * 获取后端服务地址
  * 统一的后端URL获取逻辑，消除重复代码
+ * 生产环境默认走“同源”，开发环境默认指向本地后端
  */
 export const getBackendUrl = (): string => {
   const env = getCurrentEnvironment();
 
-  // 优先使用环境变量中的配置
+  // 1) 优先使用显式配置的环境变量
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
-  if (backendUrl) {
+  if (backendUrl && backendUrl.trim().length > 0) {
     return backendUrl;
   }
 
-  // 如果没有配置，使用默认值
-  const defaultUrl = 'http://localhost:3000';
-  return defaultUrl;
+  // 2) 没有配置时：
+  // - 生产环境：使用当前页面的 origin（与 Nginx 反向代理同源）
+  // - 开发环境/本地：回退到 http://localhost:3000
+  if (env === 'production') {
+    // 在浏览器环境中始终可用
+    return window.location.origin;
+  }
+
+  return 'http://localhost:3000';
 };
 
 /**
