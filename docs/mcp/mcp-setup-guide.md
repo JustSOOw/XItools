@@ -37,10 +37,7 @@ XItools使用HTTP传输方式，无需安装额外软件，只需要在AI客户�
 {
   "mcpServers": {
     "xitools": {
-      "transport": {
-        "type": "http",
-        "url": "https://xitools.furdow.com/mcp-auth"
-      },
+      "url": "https://xitools.furdow.com/mcp-auth",
       "headers": {
         "Authorization": "Bearer xitools_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
       }
@@ -57,10 +54,7 @@ XItools使用HTTP传输方式，无需安装额外软件，只需要在AI客户�
 {
   "mcpServers": {
     "xitools": {
-      "transport": {
-        "type": "http",
-        "url": "https://xitools.furdow.com/mcp-auth"
-      },
+      "url": "https://xitools.furdow.com/mcp-auth",
       "headers": {
         "Authorization": "Bearer xitools_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
       }
@@ -72,7 +66,6 @@ XItools使用HTTP传输方式，无需安装额外软件，只需要在AI客户�
 ### 其他MCP客户端
 
 对于其他支持MCP的客户端，使用HTTP传输配置：
-- **传输类型**: HTTP
 - **URL**: `https://xitools.furdow.com/mcp-auth`
 - **认证头**: `Authorization: Bearer xitools_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
 

@@ -310,5 +310,30 @@ npm run rollback:auto
 
 ## 🔧 MCP工具使用
 
-XItools集成了MCP工具，支持通过AI编辑器直接管理任务。
+XItools集成了MCP（Model Context Protocol）工具，支持通过AI编辑器直接管理任务。
+
+### 🚀 快速配置
+
+1. **获取API Key**：在XItools网站的"设置" → "API密钥管理"中创建
+2. **配置AI客户端**：在Claude Desktop/Cursor中添加以下配置
+
+```json
+{
+  "mcpServers": {
+    "xitools": {
+      "url": "https://xitools.furdow.com/mcp-auth",
+      "headers": {
+        "Authorization": "Bearer xitools_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    }
+  }
+}
+```
+
+3. **开始使用**：重启AI客户端，询问"请列出我的任务"
+
+### 📚 详细文档
+
+完整的配置指南请参考：[MCP设置指南](docs/mcp/mcp-setup-guide.md)
+
 
