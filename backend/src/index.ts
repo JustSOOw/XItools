@@ -4,7 +4,7 @@ import fastifyCors from '@fastify/cors';
 import { Server } from 'socket.io';
 import { loadConfig } from './config/config';
 import { setupRoutes } from './routes';
-import { setupMCPService } from './services/mcpService';
+// import { setupMCPService } from './services/mcpService'; // 已废弃非认证MCP服务
 import { setupAuthenticatedMCPService } from './services/authenticatedMcpService';
 import { apiKeyExpirationManager } from './services/apiKeyExpirationManager';
 
@@ -64,10 +64,8 @@ const start = async () => {
     // 将io实例附加到server上，以便在路由中使用
     server.io = io;
 
-    // 设置MCP服务
-    await setupMCPService(server, io);
-
-    // 设置带认证的MCP服务
+    // 设置MCP服务（仅使用API Key认证版本）
+    // await setupMCPService(server, io); // 已废弃非认证MCP服务
     await setupAuthenticatedMCPService(server, io);
 
     // 启动API密钥过期管理器
@@ -77,7 +75,7 @@ const start = async () => {
     const address = await server.listen({ port: config.server.port, host: config.server.host });
     console.log(`服务器运行在 ${address}`);
     console.log(`API文档：${address}/documentation`);
-    console.log(`MCP端点：${address}/mcp`);
+    console.log(`MCP认证端点：${address}/api/mcp/:toolName 和 ${address}/mcp-auth`);
     console.log(`Socket.IO端点：${address}`);
   } catch (err) {
     server.log.error(err);
