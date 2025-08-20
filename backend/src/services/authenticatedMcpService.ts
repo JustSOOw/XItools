@@ -246,7 +246,16 @@ export async function setupAuthenticatedMCPService(
 
           if (toolName) {
             try {
-              const result = await dispatchMcpTool(toolName, toolArgs, mcpUser, io);
+              // 将UserContext转换为McpUserContext
+              const mcpUserContext: McpUserContext = {
+                userId: mcpUser.userId,
+                apiKeyId: request.apiKey?.id || '',
+                permissions: mcpUser.permissions as unknown as ApiKeyPermission[],
+                ipAddress: request.ip,
+                userAgent: request.headers['user-agent'],
+              };
+
+              const result = await dispatchMcpTool(toolName, toolArgs, mcpUserContext, io);
               return {
                 jsonrpc: '2.0',
                 result: {
