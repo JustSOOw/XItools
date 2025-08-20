@@ -17,7 +17,7 @@
    - **读取权限**：查看任务、看板、项目等
    - **写入权限**：创建、更新、删除任务等
    - **管理权限**：完整的管理功能
-6. 复制生成的API Key（格式：`xitools_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`）
+6. 复制生成的API Key（格式：`xitool_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`）
 
 ## ⚙️ 第二步：配置AI客户端
 
@@ -31,16 +31,19 @@ XItools使用HTTP传输方式，无需安装额外软件，只需要在AI客户�
 **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 **Linux**: `~/.config/Claude/claude_desktop_config.json`
 
-添加以下配置：
+添加以下配置（需要安装mcp-remote）：
 
 ```json
 {
   "mcpServers": {
     "xitools": {
-      "url": "https://xitools.furdow.com/mcp-auth",
-      "headers": {
-        "Authorization": "Bearer xitools_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-      }
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://xitools.furdow.com/mcp-auth",
+        "--header",
+        "Authorization: Bearer xitool_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      ]
     }
   }
 }
@@ -54,9 +57,10 @@ XItools使用HTTP传输方式，无需安装额外软件，只需要在AI客户�
 {
   "mcpServers": {
     "xitools": {
+      "type": "streamable-http",
       "url": "https://xitools.furdow.com/mcp-auth",
       "headers": {
-        "Authorization": "Bearer xitools_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        "Authorization": "Bearer xitool_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
       }
     }
   }
@@ -67,7 +71,7 @@ XItools使用HTTP传输方式，无需安装额外软件，只需要在AI客户�
 
 对于其他支持MCP的客户端，使用HTTP传输配置：
 - **URL**: `https://xitools.furdow.com/mcp-auth`
-- **认证头**: `Authorization: Bearer xitools_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
+- **认证头**: `Authorization: Bearer xitool_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
 
 ## 🧪 第三步：测试连接
 
@@ -132,7 +136,7 @@ XItools提供以下MCP工具：
 # 测试工具列表
 curl -X POST https://xitools.furdow.com/mcp-auth \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer xitools_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+  -H "Authorization: Bearer xitool_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
   -d '{
     "jsonrpc": "2.0",
     "method": "tools/list",
@@ -142,7 +146,7 @@ curl -X POST https://xitools.furdow.com/mcp-auth \
 # 测试任务列表
 curl -X POST https://xitools.furdow.com/mcp-auth \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer xitools_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+  -H "Authorization: Bearer xitool_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
   -d '{
     "jsonrpc": "2.0",
     "method": "tools/call",
