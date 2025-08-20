@@ -187,11 +187,89 @@ export async function setupAuthenticatedMCPService(
                   name: 'get_task_details',
                   description: '获取任务详情',
                 },
-                // ... 其他工具定义
+                {
+                  name: 'submit_task_dataset',
+                  description: '批量创建任务',
+                },
+                {
+                  name: 'update_task',
+                  description: '更新任务',
+                },
+                {
+                  name: 'delete_task',
+                  description: '删除任务',
+                },
+                {
+                  name: 'get_columns',
+                  description: '获取看板列',
+                },
+                {
+                  name: 'create_column',
+                  description: '创建看板列',
+                },
+                {
+                  name: 'update_column',
+                  description: '更新看板列',
+                },
+                {
+                  name: 'delete_column',
+                  description: '删除看板列',
+                },
+                {
+                  name: 'reorder_columns',
+                  description: '重新排序看板列',
+                },
+                {
+                  name: 'clear_all_tasks',
+                  description: '清空所有任务',
+                },
+                {
+                  name: 'get_workspaces',
+                  description: '获取工作区列表',
+                },
+                {
+                  name: 'get_projects',
+                  description: '获取项目列表',
+                },
+                {
+                  name: 'get_boards',
+                  description: '获取看板列表',
+                },
               ],
             },
             id: body.id,
           };
+        } else if (body.method === 'tools/call') {
+          // 处理工具调用
+          const toolName = body.params?.name;
+          const toolArgs = body.params?.arguments || {};
+
+          if (toolName) {
+            try {
+              const result = await dispatchMcpTool(toolName, toolArgs, mcpUser, io);
+              return {
+                jsonrpc: '2.0',
+                result: {
+                  content: [
+                    {
+                      type: 'text',
+                      text: JSON.stringify(result, null, 2),
+                    },
+                  ],
+                },
+                id: body.id,
+              };
+            } catch (error) {
+              return {
+                jsonrpc: '2.0',
+                error: {
+                  code: -32603,
+                  message: error instanceof Error ? error.message : '工具执行失败',
+                },
+                id: body.id,
+              };
+            }
+          }
         }
 
         // 临时响应，实际实现需要整合原有的MCP服务
