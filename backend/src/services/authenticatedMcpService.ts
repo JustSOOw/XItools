@@ -26,6 +26,25 @@ export async function setupAuthenticatedMCPService(
   console.log('开始配置带认证的MCP服务...');
 
   /**
+   * MCP健康检查端点 - 无需认证的基础状态检查
+   * 用于客户端验证服务器可用性
+   */
+  server.get('/mcp-auth/health', async (request, reply) => {
+    return {
+      status: 'ok',
+      service: 'xitools-mcp-auth',
+      version: '1.0.0',
+      timestamp: new Date().toISOString(),
+      capabilities: {
+        authentication: 'api-key',
+        transport: 'streamable-http',
+        tools: true,
+        resources: false,
+      },
+    };
+  });
+
+  /**
    * 通用MCP工具调用端点
    *
    * 所有MCP工具调用都通过这个统一端点进行，包含认证、速率限制和日志记录
@@ -71,6 +90,87 @@ export async function setupAuthenticatedMCPService(
           success: false,
           error: error instanceof Error ? error.message : '工具执行失败',
           toolName,
+        });
+      }
+    },
+  );
+
+  /**
+   * MCP GET端点 - 用于SSE连接建立和服务器验证
+   * 支持streamable-http协议的GET请求要求
+   */
+  server.get(
+    '/mcp-auth',
+    {
+      preHandler: [mcpAuthMiddleware],
+    },
+    async (request, reply) => {
+      const mcpUser = request.user;
+
+      if (!mcpUser) {
+        return reply.status(401).send({
+          error: 'API密钥认证失败',
+          code: 'AUTHENTICATION_REQUIRED',
+        });
+      }
+
+      try {
+        // 设置SSE headers
+        reply.header('Content-Type', 'text/event-stream');
+        reply.header('Cache-Control', 'no-cache');
+        reply.header('Connection', 'keep-alive');
+        reply.header('Access-Control-Allow-Origin', '*');
+        reply.header('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+
+        // 发送连接确认事件
+        const connectionEvent = {
+          type: 'connection',
+          data: {
+            serverInfo: {
+              name: 'xitools-mcp-auth',
+              version: '1.0.0',
+              capabilities: {
+                tools: {},
+                resources: {},
+              },
+            },
+            userId: mcpUser.userId,
+            permissions: mcpUser.permissions,
+            timestamp: new Date().toISOString(),
+          },
+        };
+
+        // 发送SSE格式的数据
+        reply.raw.write(`event: connection\n`);
+        reply.raw.write(`data: ${JSON.stringify(connectionEvent.data)}\n\n`);
+
+        // 保持连接开放，定期发送心跳
+        const heartbeatInterval = setInterval(() => {
+          try {
+            reply.raw.write(`event: heartbeat\n`);
+            reply.raw.write(`data: ${JSON.stringify({ timestamp: new Date().toISOString() })}\n\n`);
+          } catch (error) {
+            console.log('SSE连接已关闭，清理心跳');
+            clearInterval(heartbeatInterval);
+          }
+        }, 30000); // 每30秒发送一次心跳
+
+        // 处理连接关闭
+        request.raw.on('close', () => {
+          console.log('MCP SSE连接关闭');
+          clearInterval(heartbeatInterval);
+        });
+
+        request.raw.on('error', () => {
+          console.log('MCP SSE连接错误');
+          clearInterval(heartbeatInterval);
+        });
+
+      } catch (error) {
+        console.error('MCP GET端点错误:', error);
+        return reply.status(500).send({
+          error: '服务器内部错误',
+          code: 'INTERNAL_ERROR',
         });
       }
     },
