@@ -315,16 +315,35 @@ XItools集成了MCP（Model Context Protocol）工具，支持通过AI编辑器�
 ### 🚀 快速配置
 
 1. **获取API Key**：在XItools网站的"设置" → "API密钥管理"中创建
-2. **配置AI客户端**：在Claude Desktop/Cursor中添加以下配置
+2. **配置AI客户端**：
 
+**Cursor配置**：
 ```json
 {
   "mcpServers": {
     "xitools": {
+      "type": "streamable-http",
       "url": "https://xitools.furdow.com/mcp-auth",
       "headers": {
-        "Authorization": "Bearer xitools_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        "Authorization": "Bearer xitool_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
       }
+    }
+  }
+}
+```
+
+**Claude Desktop配置**：
+```json
+{
+  "mcpServers": {
+    "xitools": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://xitools.furdow.com/mcp-auth",
+        "--header",
+        "Authorization: Bearer xitool_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      ]
     }
   }
 }

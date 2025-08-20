@@ -194,7 +194,7 @@ export async function mcpAuthMiddleware(
     }
 
     // 验证API密钥格式
-    if (!apiKey.startsWith('xitools_') || apiKey.length !== 40) {
+    if (!apiKey.startsWith('xitool_') || apiKey.length !== 71) {
       await reply.status(401).send({
         success: false,
         error: 'API密钥格式无效',
