@@ -332,6 +332,8 @@ XItools集成了MCP（Model Context Protocol）工具，支持通过AI编辑器�
 }
 ```
 
+> **重要提示**：确保你的API密钥具有 `mcp:read` 和 `mcp:write` 权限。配置完成后，重启Cursor，服务器状态应显示为绿色✅。
+
 **Claude Desktop配置**：
 ```json
 {
