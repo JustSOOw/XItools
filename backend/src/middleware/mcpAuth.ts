@@ -122,6 +122,42 @@ function extractApiKey(authorization?: string): string | null {
 
   return null;
 }
+/**
+ * 从请求中尽可能鲁棒地提取 API 密钥（开发期增强兼容）
+ * 支持以下来源：
+ * - Authorization: Bearer <token>
+ * - X-Api-Key: <token>
+ * - X-Authorization: Bearer <token> 或 <token>
+ * - 查询参数：api_key / apikey / token / key
+ * 注意：该函数仅用于增强不同 Host/传输下的兼容性，不改变现有 Cursor 的正常用法。
+ */
+function extractApiKeyFromRequest(request: FastifyRequest): string | null {
+  // 1) 标准 Authorization: Bearer ...
+  const auth = request.headers.authorization;
+  const bearer = extractApiKey(auth || undefined);
+  if (bearer) return bearer;
+
+  // 2) 兼容自定义头 X-Api-Key
+  const xApiKeyHeader = request.headers['x-api-key'];
+  if (typeof xApiKeyHeader === 'string' && xApiKeyHeader) return xApiKeyHeader;
+
+  // 3) 兼容 X-Authorization（可能包含 Bearer 或直接 token）
+  const xAuth = request.headers['x-authorization'];
+  if (typeof xAuth === 'string' && xAuth) {
+    const fromXAuth = extractApiKey(xAuth) || xAuth;
+    if (fromXAuth) return fromXAuth;
+  }
+
+  // 4) 查询参数（用于某些 Host 在握手/预检阶段不带头部时的兜底）
+  try {
+    const q = (request.query || {}) as Record<string, any>;
+    const qp = q.api_key || q.apikey || q.token || q.key;
+    if (typeof qp === 'string' && qp) return qp;
+  } catch {}
+
+  return null;
+}
+
 
 /**
  * 记录API使用情况
@@ -181,8 +217,8 @@ export async function mcpAuthMiddleware(
   const startTime = Date.now();
 
   try {
-    // 提取API密钥
-    const apiKey = extractApiKey(request.headers.authorization);
+    // 提取API密钥（增强兼容：Authorization / X-Api-Key / X-Authorization / query）
+    const apiKey = extractApiKeyFromRequest(request);
 
     if (!apiKey) {
       await reply.status(401).send({
@@ -194,6 +230,22 @@ export async function mcpAuthMiddleware(
     }
 
     // 验证API密钥格式
+    // 预检请求(CORS)直接放行，避免因未携带鉴权头导致Host连接失败（如Cursor的streamable-http预检）
+    if (request.method === 'OPTIONS') {
+      const origin = (request.headers['origin'] as string) || '*';
+      reply
+        .header('Access-Control-Allow-Origin', origin)
+        .header('Vary', 'Origin')
+        .header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        .header(
+          'Access-Control-Allow-Headers',
+          'Authorization, X-Api-Key, X-Authorization, Content-Type, Accept',
+        )
+        .header('Access-Control-Max-Age', '600');
+      await reply.status(204).send();
+      return;
+    }
+
     if (!apiKey.startsWith('xitool_') || apiKey.length !== 71) {
       await reply.status(401).send({
         success: false,
