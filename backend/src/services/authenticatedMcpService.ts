@@ -45,6 +45,18 @@ export async function setupAuthenticatedMCPService(
   });
 
   /**
+   * MCP OPTIONS端点 - 处理CORS预检请求
+   * 这是Cursor等客户端在发送实际请求前的必要步骤
+   */
+  server.options('/mcp-auth', async (_request, reply) => {
+    reply.header('Access-Control-Allow-Origin', '*');
+    reply.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    reply.header('Access-Control-Allow-Headers', 'Authorization, Content-Type, Accept');
+    reply.header('Access-Control-Max-Age', '86400'); // 24小时
+    reply.status(200).send();
+  });
+
+  /**
    * 通用MCP工具调用端点
    *
    * 所有MCP工具调用都通过这个统一端点进行，包含认证、速率限制和日志记录
@@ -114,41 +126,38 @@ export async function setupAuthenticatedMCPService(
         });
       }
 
+      // 检查Accept header是否包含text/event-stream
+      const acceptHeader = request.headers.accept || '';
+      if (!acceptHeader.includes('text/event-stream')) {
+        return reply.status(405).send({
+          error: 'Method Not Allowed',
+          message: 'GET endpoint requires Accept: text/event-stream header',
+        });
+      }
+
       try {
         // 设置SSE headers
         reply.header('Content-Type', 'text/event-stream');
         reply.header('Cache-Control', 'no-cache');
         reply.header('Connection', 'keep-alive');
         reply.header('Access-Control-Allow-Origin', '*');
-        reply.header('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+        reply.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        reply.header('Access-Control-Allow-Headers', 'Authorization, Content-Type, Accept');
 
-        // 发送连接确认事件
-        const connectionEvent = {
-          type: 'connection',
-          data: {
-            serverInfo: {
-              name: 'xitools-mcp-auth',
-              version: '1.0.0',
-              capabilities: {
-                tools: {},
-                resources: {},
-              },
-            },
-            userId: mcpUser.userId,
-            permissions: mcpUser.permissions,
-            timestamp: new Date().toISOString(),
+        // 发送初始连接事件（可选）
+        reply.raw.write(`event: connected\n`);
+        reply.raw.write(`data: ${JSON.stringify({
+          serverInfo: {
+            name: 'xitools-mcp-auth',
+            version: '1.0.0',
           },
-        };
-
-        // 发送SSE格式的数据
-        reply.raw.write(`event: connection\n`);
-        reply.raw.write(`data: ${JSON.stringify(connectionEvent.data)}\n\n`);
+          timestamp: new Date().toISOString()
+        })}\n\n`);
 
         // 保持连接开放，定期发送心跳
         const heartbeatInterval = setInterval(() => {
           try {
-            reply.raw.write(`event: heartbeat\n`);
-            reply.raw.write(`data: ${JSON.stringify({ timestamp: new Date().toISOString() })}\n\n`);
+            reply.raw.write(`: heartbeat\n\n`);
           } catch (error) {
             console.log('SSE连接已关闭，清理心跳');
             clearInterval(heartbeatInterval);
@@ -200,6 +209,27 @@ export async function setupAuthenticatedMCPService(
       }
 
       try {
+        // 设置CORS headers
+        reply.header('Access-Control-Allow-Origin', '*');
+        reply.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        reply.header('Access-Control-Allow-Headers', 'Authorization, Content-Type, Accept');
+
+        // 检查Accept header
+        const acceptHeader = request.headers.accept || '';
+        const supportsSSE = acceptHeader.includes('text/event-stream');
+        const supportsJSON = acceptHeader.includes('application/json');
+
+        if (!supportsJSON && !supportsSSE) {
+          return reply.status(400).send({
+            jsonrpc: '2.0',
+            error: {
+              code: -32600,
+              message: 'Invalid Accept header. Must include application/json or text/event-stream',
+            },
+            id: null,
+          });
+        }
+
         // 将认证信息注入到原有的MCP处理逻辑中
         const body = request.body as any;
 
@@ -256,12 +286,18 @@ export async function setupAuthenticatedMCPService(
 
         // 根据method分发处理
         if (body.method === 'initialize') {
+          // 设置正确的Content-Type为JSON响应，确保UTF-8编码
+          reply.header('Content-Type', 'application/json; charset=utf-8');
+
           return {
             jsonrpc: '2.0',
             result: {
               protocolVersion: '2024-11-05',
               capabilities: {
                 tools: {},
+                resources: {},
+                prompts: {},
+                logging: {},
               },
               serverInfo: {
                 name: 'xitools-mcp-auth',
@@ -271,74 +307,313 @@ export async function setupAuthenticatedMCPService(
             id: body.id,
           };
         } else if (body.method === 'tools/list') {
+          // 设置正确的Content-Type为JSON响应，确保UTF-8编码
+          reply.header('Content-Type', 'application/json; charset=utf-8');
+
           return {
             jsonrpc: '2.0',
             result: {
               tools: [
                 {
-                  name: 'get_task_schema',
-                  description: '获取任务Schema定义',
-                },
-                {
                   name: 'list_tasks',
                   description: '列出用户的任务',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {
+                      boardId: {
+                        type: 'string',
+                        description: '看板ID（可选）',
+                      },
+                      status: {
+                        type: 'string',
+                        description: '任务状态过滤（可选）',
+                      },
+                    },
+                  },
                 },
                 {
                   name: 'get_task_details',
                   description: '获取任务详情',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {
+                      taskId: {
+                        type: 'string',
+                        description: '任务ID',
+                      },
+                    },
+                    required: ['taskId'],
+                  },
                 },
                 {
                   name: 'submit_task_dataset',
-                  description: '批量创建任务',
+                  description:
+                    '批量创建任务（严格要求：每个任务必须提供 boardId 与 status，且 status 必须是该看板列的 UUID；禁止使用列名）。如不清楚列UUID，请先用 get_columns 获取。',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {
+                      tasks: {
+                        type: 'array',
+                        description:
+                          '任务数据数组。每个任务需包含 title、boardId（看板UUID）与 status（列UUID）。status 绝不能使用列名。',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            title: { type: 'string', description: '任务标题' },
+                            description: { type: 'string', description: '任务描述（可选）' },
+                            priority: {
+                              type: 'string',
+                              description: '优先级（可选）：High | Medium | Low',
+                            },
+                            boardId: {
+                              type: 'string',
+                              description: '看板ID（UUID）',
+                            },
+                            status: {
+                              type: 'string',
+                              description:
+                                '状态列ID（UUID，严格要求）。使用 get_columns(boardId) 获取列UUID，不要传列名。',
+                              pattern: '^[0-9a-fA-F-]{36}$',
+                            },
+                            dueDate: { type: 'string', description: '截止时间（可选，ISO字符串）' },
+                            tags: {
+                              type: 'array',
+                              description: '标签列表（可选）',
+                              items: { type: 'string' },
+                            },
+                          },
+                          required: ['title', 'boardId', 'status'],
+                          examples: [
+                            {
+                              title: '修复登录异常',
+                              boardId: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+                              status: 'yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy',
+                              priority: 'Medium',
+                            },
+                          ],
+                        },
+                      },
+                    },
+                    required: ['tasks'],
+                  },
                 },
                 {
                   name: 'update_task',
                   description: '更新任务',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {
+                      taskId: {
+                        type: 'string',
+                        description: '任务ID',
+                      },
+                      title: {
+                        type: 'string',
+                        description: '任务标题',
+                      },
+                      description: {
+                        type: 'string',
+                        description: '任务描述',
+                      },
+                      status: {
+                        type: 'string',
+                        description: '任务状态',
+                      },
+                      priority: {
+                        type: 'string',
+                        description: '优先级',
+                      },
+                    },
+                    required: ['taskId'],
+                  },
                 },
                 {
                   name: 'delete_task',
                   description: '删除任务',
-                },
-                {
-                  name: 'get_columns',
-                  description: '获取看板列',
-                },
-                {
-                  name: 'create_column',
-                  description: '创建看板列',
-                },
-                {
-                  name: 'update_column',
-                  description: '更新看板列',
-                },
-                {
-                  name: 'delete_column',
-                  description: '删除看板列',
-                },
-                {
-                  name: 'reorder_columns',
-                  description: '重新排序看板列',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {
+                      taskId: {
+                        type: 'string',
+                        description: '要删除的任务ID',
+                      },
+                    },
+                    required: ['taskId'],
+                  },
                 },
                 {
                   name: 'clear_all_tasks',
                   description: '清空所有任务',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {
+                      boardId: {
+                        type: 'string',
+                        description: '看板ID（可选）',
+                      },
+                    },
+                  },
+                },
+                {
+                  name: 'get_task_schema',
+                  description: '获取任务Schema定义',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {
+                      boardId: {
+                        type: 'string',
+                        description: '看板ID',
+                      },
+                    },
+                    required: ['boardId'],
+                  },
+                },
+                {
+                  name: 'get_columns',
+                  description: '获取看板列',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {
+                      boardId: {
+                        type: 'string',
+                        description: '看板ID',
+                      },
+                    },
+                  },
+                },
+                {
+                  name: 'create_column',
+                  description: '创建看板列',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {
+                      column_data: {
+                        type: 'object',
+                        properties: {
+                          name: { type: 'string', description: '列名称' },
+                          boardId: { type: 'string', description: '看板ID' },
+                          order: { type: 'number', description: '排序顺序' },
+                          color: { type: 'string', description: '列背景色' },
+                          isDefault: { type: 'boolean', description: '是否为默认列' },
+                        },
+                        required: ['name', 'boardId', 'order'],
+                      },
+                    },
+                    required: ['column_data'],
+                  },
+                },
+                {
+                  name: 'update_column',
+                  description: '更新看板列',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {
+                      column_id: { type: 'string', description: '列ID' },
+                      updates: {
+                        type: 'object',
+                        properties: {
+                          name: { type: 'string', description: '列名称' },
+                          color: { type: 'string', description: '列背景色' },
+                          order: { type: 'number', description: '排序顺序' },
+                        },
+                      },
+                    },
+                    required: ['column_id', 'updates'],
+                  },
+                },
+                {
+                  name: 'delete_column',
+                  description: '删除看板列',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {
+                      column_id: { type: 'string', description: '列ID' },
+                    },
+                    required: ['column_id'],
+                  },
+                },
+                {
+                  name: 'reorder_columns',
+                  description: '重新排序看板列',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {
+                      boardId: { type: 'string', description: '看板ID' },
+                      column_ids: {
+                        type: 'array',
+                        items: { type: 'string' },
+                        description: '列ID数组（按新顺序）',
+                      },
+                    },
+                    required: ['boardId', 'column_ids'],
+                  },
+                },
+                {
+                  name: 'update_task_color',
+                  description: '更新任务颜色',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {
+                      task_id: { type: 'string', description: '任务ID' },
+                      color: { type: 'string', description: '颜色值' },
+                    },
+                    required: ['task_id'],
+                  },
+                },
+                {
+                  name: 'get_user_hierarchy',
+                  description:
+                    '获取当前用户的完整层级结构：工作区→项目→看板→列，返回每个节点的 UUID 与名称。建议在创建任务前先调用此工具以获取 boardId 和列UUID（status）。',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {},
+                  },
                 },
                 {
                   name: 'get_workspaces',
                   description: '获取工作区列表',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {},
+                  },
                 },
                 {
                   name: 'get_projects',
                   description: '获取项目列表',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {},
+                  },
                 },
                 {
                   name: 'get_boards',
                   description: '获取看板列表',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {},
+                  },
                 },
               ],
             },
             id: body.id,
           };
+          // 新增：返回空的 prompts 列表，满足 Host 对 offerings 的校验
+          } else if (body.method === 'prompts/list') {
+            reply.header('Content-Type', 'application/json; charset=utf-8');
+            return {
+              jsonrpc: '2.0',
+              result: { prompts: [] },
+              id: body.id,
+            };
+          // 新增：返回空的 resources 列表
+          } else if (body.method === 'resources/list') {
+            reply.header('Content-Type', 'application/json; charset=utf-8');
+            return {
+              jsonrpc: '2.0',
+              result: { resources: [] },
+              id: body.id,
+            };
+
         } else if (body.method === 'tools/call') {
           // 处理工具调用
           const toolName = body.params?.name;
@@ -346,6 +621,9 @@ export async function setupAuthenticatedMCPService(
 
           if (toolName) {
             try {
+              // 设置正确的Content-Type为JSON响应，确保UTF-8编码
+              reply.header('Content-Type', 'application/json; charset=utf-8');
+
               // 将UserContext转换为McpUserContext
               const mcpUserContext: McpUserContext = {
                 userId: mcpUser.userId,
@@ -356,19 +634,26 @@ export async function setupAuthenticatedMCPService(
               };
 
               const result = await dispatchMcpTool(toolName, toolArgs, mcpUserContext, io);
+
+              // 确保结果以UTF-8编码正确序列化
+              const resultText = JSON.stringify(result, null, 2);
+
               return {
                 jsonrpc: '2.0',
                 result: {
                   content: [
                     {
                       type: 'text',
-                      text: JSON.stringify(result, null, 2),
+                      text: resultText,
                     },
                   ],
                 },
                 id: body.id,
               };
             } catch (error) {
+              // 设置错误响应的Content-Type
+              reply.header('Content-Type', 'application/json; charset=utf-8');
+
               return {
                 jsonrpc: '2.0',
                 error: {
@@ -477,6 +762,12 @@ async function dispatchMcpTool(
 
     case 'clear_all_tasks':
       return await handleClearAllTasks(contextParams, io);
+
+    case 'update_task_color':
+      return await handleUpdateTaskColor(contextParams, io);
+
+    case 'get_user_hierarchy':
+      return await handleGetUserHierarchy(contextParams);
 
     case 'get_workspaces':
       return await handleGetWorkspaces(contextParams);
@@ -729,8 +1020,16 @@ async function handleGetTaskDetails(params: any): Promise<any> {
 }
 
 async function handleSubmitTaskDataset(params: any, io: SocketIOServer): Promise<any> {
+  console.log('🔧 handleSubmitTaskDataset 被调用，参数:', JSON.stringify(params, null, 2));
+
   const mcpUser = params._mcpUser as McpUserContext;
-  const { tasks } = params;
+  const { tasks, boardId } = params;
+
+  console.log('🔧 解析参数:', {
+    mcpUser: mcpUser?.userId,
+    tasksLength: Array.isArray(tasks) ? tasks.length : 'not array',
+    boardId
+  });
 
   if (!Array.isArray(tasks) || tasks.length === 0) {
     throw new Error('任务数据不能为空');
@@ -740,17 +1039,111 @@ async function handleSubmitTaskDataset(params: any, io: SocketIOServer): Promise
 
   // 使用事务确保数据一致性
   await prisma.$transaction(async (tx) => {
-    for (const taskData of tasks) {
-      // 验证看板所有权
+    // 确定使用的看板ID
+    let targetBoardId = boardId;
+
+    if (!targetBoardId) {
+      // 如果没有指定boardId，获取用户的默认看板
+      const defaultBoard = await tx.board.findFirst({
+        where: {
+          ownerId: mcpUser.userId,
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+      });
+
+      if (!defaultBoard) {
+        // 如果用户没有任何看板，创建一个默认看板
+        const newBoard = await tx.board.create({
+          data: {
+            name: '我的看板',
+            description: '默认看板',
+            ownerId: mcpUser.userId,
+            order: 0,
+          },
+        });
+
+        // 创建默认列
+        const defaultColumns = [
+          { name: '待办', order: 0, isDefault: true },
+          { name: '进行中', order: 1, isDefault: true },
+          { name: '已完成', order: 2, isDefault: true },
+        ];
+
+        for (const column of defaultColumns) {
+          await tx.boardColumn.create({
+            data: {
+              ...column,
+              boardId: newBoard.id,
+            },
+          });
+        }
+
+        targetBoardId = newBoard.id;
+      } else {
+        targetBoardId = defaultBoard.id;
+      }
+    } else {
+      // 验证指定的看板所有权
       const board = await tx.board.findFirst({
         where: {
-          id: taskData.boardId,
+          id: targetBoardId,
           ownerId: mcpUser.userId,
         },
       });
 
       if (!board) {
-        throw new Error(`看板 ${taskData.boardId} 不存在或无权访问`);
+        throw new Error(`看板 ${targetBoardId} 不存在或无权访问`);
+      }
+    }
+
+    // 获取看板的默认列（用于没有指定status的任务）
+    const defaultColumn = await tx.boardColumn.findFirst({
+      where: {
+        boardId: targetBoardId,
+        isDefault: true,
+      },
+      orderBy: {
+        order: 'asc',
+      },
+    });
+
+    for (const taskData of tasks) {
+
+      // 确定任务状态（如果没有指定，使用默认列）
+      let taskStatus = taskData.status;
+      if (!taskStatus && defaultColumn) {
+        taskStatus = defaultColumn.id;
+      }
+
+      // 确保targetBoardId不为空
+      if (!targetBoardId) {
+        throw new Error('无法确定目标看板ID');
+      }
+
+      // 确保有有效的状态列ID
+      if (!taskStatus) {
+        throw new Error('无法确定任务状态列，请指定有效的status或确保看板有默认列');
+      }
+
+      console.log('创建任务数据:', {
+        title: taskData.title,
+        targetBoardId,
+        taskStatus,
+        userId: mcpUser.userId
+      });
+
+      // 验证状态列是否属于目标看板
+      const statusColumn = await tx.boardColumn.findFirst({
+        where: {
+          id: taskStatus,
+          boardId: targetBoardId,
+        },
+      });
+
+      if (!statusColumn) {
+        throw new Error(`状态列 ${taskStatus} 不属于看板 ${targetBoardId}`);
       }
 
       // 创建任务，确保设置正确的所有者
@@ -758,14 +1151,14 @@ async function handleSubmitTaskDataset(params: any, io: SocketIOServer): Promise
         data: {
           title: taskData.title,
           description: taskData.description || '',
-          status: taskData.status,
+          status: taskStatus, // 使用验证过的状态列ID
           priority: taskData.priority || null,
           dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
           assignee: taskData.assignee || null,
           acceptanceCriteria: taskData.acceptanceCriteria || '',
           estimatedEffort: taskData.estimatedEffort || null,
           loggedTime: taskData.loggedTime || null,
-          boardId: taskData.boardId,
+          boardId: targetBoardId,
           ownerId: mcpUser.userId, // 确保设置正确的所有者
         },
         include: {
@@ -974,8 +1367,17 @@ async function handleReorderColumns(params: any, io: SocketIOServer): Promise<an
     throw new Error('看板不存在或无权访问');
   }
 
-  // 更新列顺序
+  // 更新列顺序 - 先设置临时顺序避免唯一约束冲突
   const updatedColumns = await prisma.$transaction(async (tx) => {
+    // 第一步：将所有列设置为负数顺序，避免冲突
+    for (let i = 0; i < column_ids.length; i++) {
+      await tx.boardColumn.update({
+        where: { id: column_ids[i] },
+        data: { order: -(i + 1000) }, // 使用负数临时顺序
+      });
+    }
+
+    // 第二步：设置最终顺序
     const results = [];
     for (let i = 0; i < column_ids.length; i++) {
       const updatedColumn = await tx.boardColumn.update({
@@ -1095,4 +1497,75 @@ async function handleGetBoards(params: any): Promise<any> {
   });
 
   return boards;
+}
+/**
+ * 工具：获取用户完整层级（工作区→项目→看板→列）
+ * 返回所有节点的UUID+名称，用于在创建任务前查表使用
+ */
+async function handleGetUserHierarchy(params: any): Promise<any> {
+  const mcpUser = params._mcpUser as McpUserContext;
+
+  const workspaces = await prisma.workspace.findMany({
+    where: { ownerId: mcpUser.userId },
+    include: {
+      projects: {
+        include: {
+          boards: {
+            include: {
+              columns: { orderBy: { order: 'asc' } },
+            },
+          },
+        },
+      },
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  return workspaces.map((ws) => ({
+    id: ws.id,
+    name: ws.name,
+    projects: ws.projects.map((p) => ({
+      id: p.id,
+      name: p.name,
+      boards: p.boards.map((b) => ({
+        id: b.id,
+        name: b.name,
+        columns: b.columns.map((c) => ({ id: c.id, name: c.name })),
+      })),
+    })),
+  }));
+}
+
+
+async function handleUpdateTaskColor(params: any, io: SocketIOServer): Promise<any> {
+  const mcpUser = params._mcpUser as McpUserContext;
+  const { task_id, color } = params;
+
+  // 验证任务所有权
+  const existingTask = await prisma.task.findFirst({
+    where: {
+      id: task_id,
+      ownerId: mcpUser.userId,
+    },
+  });
+
+  if (!existingTask) {
+    throw new Error('任务不存在或无权修改');
+  }
+
+  const updatedTask = await prisma.task.update({
+    where: { id: task_id },
+    data: {
+      color: color || null,
+      updatedAt: new Date(),
+    },
+    include: {
+      tags: true,
+    },
+  });
+
+  // 广播任务更新事件
+  io.emit('task_updated', updatedTask);
+
+  return updatedTask;
 }

@@ -112,12 +112,13 @@ XItools/
 
 ### MCP工具集
 
-提供14个MCP工具用于AI交互，覆盖任务、看板列、实用工具和多看板管理。
+提供17个MCP工具用于AI交互，覆盖任务管理、看板列管理、项目管理和实用工具。
 - **任务管理**: `submit_task_dataset`, `list_tasks`, `get_task_details`, `update_task`, `delete_task`
 - **看板列管理**: `get_columns`, `create_column`, `update_column`, `delete_column`, `reorder_columns`
-- **实用工具**: `get_task_schema`, `clear_all_tasks`, `update_task_color`
+- **项目管理**: `get_workspaces`, `get_projects`, `get_boards`
+- **实用工具**: `get_task_schema`, `clear_all_tasks`, `update_task_color`, `get_user_hierarchy`
 
-> **重要**: 当前MCP工具不强制认证，未来将引入API Key机制。
+> **重要**: MCP 服务已支持 API Key 认证；请在客户端按下方配置方式携带 Authorization 头。
 
 ### WebSocket 事件
 - **任务事件**: `tasks_added`, `task_updated`, `task_deleted`
@@ -317,7 +318,7 @@ XItools集成了MCP（Model Context Protocol）工具，支持通过AI编辑器�
 1. **获取API Key**：在XItools网站的"设置" → "API密钥管理"中创建
 2. **配置AI客户端**：
 
-**Cursor配置**：
+**Cursor配置（远程服务器）**：
 ```json
 {
   "mcpServers": {
@@ -332,7 +333,22 @@ XItools集成了MCP（Model Context Protocol）工具，支持通过AI编辑器�
 }
 ```
 
-> **重要提示**：确保你的API密钥具有 `mcp:read` 和 `mcp:write` 权限。配置完成后，重启Cursor，服务器状态应显示为绿色✅。
+**Augment配置（远程服务器｜双通道推荐）**：
+```json
+{
+  "mcpServers": {
+    "xitools": {
+      "url": "https://xitools.furdow.com/mcp-auth?api_key=xitool_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "headers": {
+        "Authorization": "Bearer xitool_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "X-Api-Key": "xitool_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    }
+  }
+}
+```
+
+> **重要提示**：确保API密钥具有 `mcp:read` 和 `mcp:write` 权限。Cursor 必须包含 `type: "streamable-http"`；Augment Code 不支持 `type` 字段，且建议采用“URL 查询参数 + Headers（Authorization 与 X-Api-Key）”的双通道传递，以兼容其个别阶段可能不携带 Authorization 头的情况。
 
 **Claude Desktop配置**：
 ```json
@@ -353,8 +369,23 @@ XItools集成了MCP（Model Context Protocol）工具，支持通过AI编辑器�
 
 3. **开始使用**：重启AI客户端，询问"请列出我的任务"
 
+### 🧭 创建任务的推荐流程（强约束）
+
+1. 先调用 `get_user_hierarchy` 获取完整层级（工作区→项目→看板→列），记录目标 `boardId` 与列 `status`（列UUID）
+2. 使用 `submit_task_dataset` 批量创建任务。每个任务对象必须包含：
+   - `title`：任务标题
+   - `boardId`：看板UUID（不可用名称）
+   - `status`：列UUID（不可用列名）。如不清楚，请先调用 `get_user_hierarchy` 或 `get_columns`。
+
+示例：
+```json
+{
+  "jsonrpc":"2.0","id":"2","method":"tools/call",
+  "params":{"name":"submit_task_dataset","arguments":{
+    "tasks":[{"title":"修复登录异常","boardId":"<板UUID>","status":"<列UUID>"}]}}
+}
+```
+
 ### 📚 详细文档
 
 完整的配置指南请参考：[MCP设置指南](docs/mcp/mcp-setup-guide.md)
-
-
