@@ -112,10 +112,10 @@ XItools/
 
 ### MCP工具集
 
-提供17个MCP工具用于AI交互，覆盖任务管理、看板列管理、项目管理和实用工具。
+提供19个MCP工具用于AI交互，覆盖任务管理、看板列管理、项目管理和实用工具。
 - **任务管理**: `submit_task_dataset`, `list_tasks`, `get_task_details`, `update_task`, `delete_task`
 - **看板列管理**: `get_columns`, `create_column`, `update_column`, `delete_column`, `reorder_columns`
-- **项目管理**: `get_workspaces`, `get_projects`, `get_boards`
+- **项目管理**: `get_workspaces`, `get_projects`, `get_boards`, `create_project`, `create_board`
 - **实用工具**: `get_task_schema`, `clear_all_tasks`, `update_task_color`, `get_user_hierarchy`
 
 > **重要**: MCP 服务已支持 API Key 认证；请在客户端按下方配置方式携带 Authorization 头。
@@ -371,8 +371,13 @@ XItools集成了MCP（Model Context Protocol）工具，支持通过AI编辑器�
 
 ### 🧭 创建任务的推荐流程（强约束）
 
-1. 先调用 `get_user_hierarchy` 获取完整层级（工作区→项目→看板→列），记录目标 `boardId` 与列 `status`（列UUID）
-2. 使用 `submit_task_dataset` 批量创建任务。每个任务对象必须包含：
+1. 若无项目/看板/列：
+   - 调用 `create_project`（参数：name, workspaceId）
+   - 调用 `create_board`（参数：name, projectId）
+   - 调用 `create_column`（参数：column_data，包括 boardId、name、order 等）
+2. 若已存在：
+   - 调用 `get_user_hierarchy` 获取完整层级（工作区→项目→看板→列），记录目标 `boardId` 与列 `status`（列UUID）
+3. 使用 `submit_task_dataset` 批量创建任务。每个任务对象必须包含：
    - `title`：任务标题
    - `boardId`：看板UUID（不可用名称）
    - `status`：列UUID（不可用列名）。如不清楚，请先调用 `get_user_hierarchy` 或 `get_columns`。

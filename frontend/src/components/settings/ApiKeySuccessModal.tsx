@@ -25,7 +25,7 @@ export const ApiKeySuccessModal: React.FC<ApiKeySuccessModalProps> = ({
   const { t } = useTranslation();
   const [, toastAPI] = useToast();
   const [copied, setCopied] = useState(false);
-  const [selectedExample, setSelectedExample] = useState<'curl' | 'javascript' | 'python'>('curl');
+  const [selectedExample, setSelectedExample] = useState<'cursor' | 'augment' | 'claude'>('cursor');
 
   // 复制API密钥
   const copyApiKey = async () => {
@@ -50,6 +50,40 @@ export const ApiKeySuccessModal: React.FC<ApiKeySuccessModalProps> = ({
   };
 
   // 使用示例代码
+  // 配置示例（与 README 保持一致，动态注入 apiKey）
+  const examples: Record<'cursor' | 'augment' | 'claude', string> = {
+    cursor: `{
+  "mcpServers": {
+    "xitools": {
+      "type": "streamable-http",
+      "url": "https://xitools.furdow.com/mcp-auth",
+      "headers": { "Authorization": "Bearer ${apiKey}" }
+    }
+  }
+}`,
+    augment: `{
+  "mcpServers": {
+    "xitools": {
+      "url": "https://xitools.furdow.com/mcp-auth?api_key=${apiKey}",
+      "headers": { "Authorization": "Bearer ${apiKey}", "X-Api-Key": "${apiKey}" }
+    }
+  }
+}`,
+    claude: `{
+  "mcpServers": {
+    "xitools": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://xitools.furdow.com/mcp-auth",
+        "--header",
+        "Authorization: Bearer ${apiKey}"
+      ]
+    }
+  }
+}`,
+  };
+/*
   const examples = {
     curl: `# 获取看板列表
 curl -X POST http://localhost:3000/api/mcp/get_boards \\
@@ -79,7 +113,7 @@ async function callMcpTool(toolName, params = {}) {
     },
     body: JSON.stringify(params)
   });
-  
+
   return await response.json();
 }
 
@@ -106,7 +140,7 @@ def call_mcp_tool(tool_name, params=None):
         'Authorization': f'Bearer {API_KEY}',
         'Content-Type': 'application/json'
     }
-    
+
     response = requests.post(url, headers=headers, json=params or {})
     return response.json()
 
@@ -120,6 +154,7 @@ new_task = call_mcp_tool('create_task', {
     'description': '任务描述'
 })`,
   };
+  */
 
   return (
     <Modal
@@ -161,20 +196,20 @@ new_task = call_mcp_tool('create_task', {
             <i className="icon-alert-triangle"></i>
             <div className="warning-content">
               <strong>重要：</strong>
-              这是您唯一能看到完整API密钥的机会，请务必妥善保存。如果丢失，您需要重新创建新的密钥。
+              创建后可在密钥卡片点击“查看密钥”再次查看；请勿分享或提交到公共仓库。
             </div>
           </div>
         </div>
 
-        {/* 使用示例 */}
+        {/* 配置示例（与README一致，支持Tab切换与复制） */}
         <div className="usage-examples">
           <div className="examples-header">
-            <h4>使用示例</h4>
+            <h4>配置示例</h4>
             <div className="example-tabs">
               {[
-                { key: 'curl', label: 'cURL' },
-                { key: 'javascript', label: 'JavaScript' },
-                { key: 'python', label: 'Python' },
+                { key: 'cursor', label: 'Cursor' },
+                { key: 'augment', label: 'Augment' },
+                { key: 'claude', label: 'Claude Desktop' },
               ].map((tab) => (
                 <button
                   key={tab.key}
@@ -186,78 +221,21 @@ new_task = call_mcp_tool('create_task', {
               ))}
             </div>
           </div>
-
           <div className="example-content">
             <div className="code-header">
               <span className="code-language">{selectedExample.toUpperCase()}</span>
-              <button
-                className="copy-code-btn"
-                onClick={() => copyExample(examples[selectedExample])}
-                title="复制示例代码"
-              >
+              <button className="copy-code-btn" onClick={() => copyExample(examples[selectedExample])}>
                 <i className="icon-copy"></i>
                 复制代码
               </button>
             </div>
-            <pre className="code-block">
+            <pre className="code-block scrollable">
               <code>{examples[selectedExample]}</code>
             </pre>
           </div>
         </div>
 
-        {/* 快速入门提示 */}
-        <div className="quick-start">
-          <h4>快速入门</h4>
-          <div className="steps-grid">
-            <div className="step-item">
-              <div className="step-number">1</div>
-              <div className="step-content">
-                <h5>保存API密钥</h5>
-                <p>将API密钥保存在安全的位置，如环境变量或密钥管理服务</p>
-              </div>
-            </div>
-            <div className="step-item">
-              <div className="step-number">2</div>
-              <div className="step-content">
-                <h5>获取看板ID</h5>
-                <p>使用 get_boards 工具获取您的看板列表和对应的看板ID</p>
-              </div>
-            </div>
-            <div className="step-item">
-              <div className="step-number">3</div>
-              <div className="step-content">
-                <h5>开始调用API</h5>
-                <p>使用上面的示例代码开始调用MCP工具，管理您的任务数据</p>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* 相关链接 */}
-        <div className="helpful-links">
-          <h4>相关文档</h4>
-          <div className="links-grid">
-            <a href="#" className="link-item">
-              <i className="icon-book"></i>
-              <span>MCP API文档</span>
-            </a>
-            <a href="#" className="link-item">
-              <i className="icon-code"></i>
-              <span>SDK和示例</span>
-            </a>
-            <a href="#" className="link-item">
-              <i className="icon-help-circle"></i>
-              <span>常见问题</span>
-            </a>
-          </div>
-        </div>
-
-        {/* 关闭按钮 */}
-        <div className="modal-actions">
-          <button className="btn-primary btn-lg" onClick={onClose}>
-            我已保存密钥
-          </button>
-        </div>
       </div>
     </Modal>
   );
