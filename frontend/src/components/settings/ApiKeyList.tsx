@@ -8,8 +8,10 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import useToast from '../ui/Toast/useToast';
 import RevokeApiKeyModal from './RevokeApiKeyModal';
+import ViewApiKeyModal from './ViewApiKeyModal';
 import { apiKeyService } from '../../services/apiKeyService';
 
+import EditApiKeyModal from './EditApiKeyModal';
 interface ApiKey {
   id: string;
   name: string;
@@ -43,6 +45,14 @@ export const ApiKeyList: React.FC<ApiKeyListProps> = ({
     isOpen: false,
     apiKey: null,
   });
+
+  // 编辑&查看状态
+  const [editState, setEditState] = useState<{ open: boolean; key: ApiKey | null }>({ open: false, key: null });
+  const [viewState, setViewState] = useState<{ open: boolean; keyId: string | null; keyName?: string }>({ open: false, keyId: null });
+
+  const handleViewKey = (key: ApiKey) => {
+    setViewState({ open: true, keyId: key.id, keyName: key.name });
+  };
 
   // 权限标签映射
   const permissionLabels: Record<string, string> = {
@@ -213,93 +223,84 @@ export const ApiKeyList: React.FC<ApiKeyListProps> = ({
       {!isLoading && apiKeys.length > 0 && (
         <div className="api-keys-grid">
           {apiKeys.map((apiKey) => (
-            <div key={apiKey.id} className="api-key-card">
-              {/* 密钥名称 */}
-              <div className="card-section">
-                <div className="section-header">
-                  <h4 className="key-name">{apiKey.name}</h4>
+            <div key={apiKey.id} className="api-key-card compact">
+              {/* 顶部行：名称 + 前缀 + 操作图标 */}
+              <div className="card-row header-row">
+                <div className="title-block">
+                  <h4 className="key-name ellipsis">{apiKey.name}</h4>
+                  <code className="key-prefix-inline">{apiKey.keyPrefix}...</code>
+                </div>
+                <div className="actions-inline">
+                  <button
+                    className="btn-icon"
+                    title="查看密钥"
+                    onClick={() => handleViewKey(apiKey)}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  </button>
+                  <button
+                    className="btn-icon"
+                    title="编辑密钥"
+                    onClick={() => setEditState({ open: true, key: apiKey })}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                  <button
+                    className="btn-icon danger"
+                    title="撤销密钥"
+                    onClick={() => handleRevoke(apiKey)}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
                 </div>
               </div>
 
-              {/* 前缀显示 */}
-              <div className="card-section">
-                <label className="section-label">前缀</label>
-                <div className="key-prefix-container">
-                  <code className="key-prefix">{apiKey.keyPrefix}...</code>
-                </div>
-              </div>
-
-              {/* 权限标签 */}
-              <div className="card-section">
-                <label className="section-label">权限</label>
-                <div className="permissions-container">
+              {/* 第二行：权限标签 + 元信息（上次/创建/过期） */}
+              <div className="card-row meta-row">
+                <div className="permissions-inline">
                   {apiKey.permissions.map((permission) => (
-                    <span
-                      key={permission}
-                      className={`permission-badge ${getPermissionColor(permission)}`}
-                    >
+                    <span key={permission} className={`permission-chip ${getPermissionColor(permission)}`}>
                       {permissionLabels[permission] || permission}
                     </span>
                   ))}
                 </div>
-              </div>
-
-              {/* 上次使用信息 */}
-              <div className="card-section">
-                <label className="section-label">上次使用</label>
-                <div className="usage-info">
-                  <span className="usage-time">{formatRelativeTime(apiKey.lastUsedAt)}</span>
-                  {apiKey.lastUsedIp && <span className="usage-ip">(从 {apiKey.lastUsedIp})</span>}
+                <div className="info-inline">
+                  <span className="meta-item">上次 {formatRelativeTime(apiKey.lastUsedAt)}</span>
+                  <span className="divider">·</span>
+                  <span className="meta-item">创建 {formatDate(apiKey.createdAt)}</span>
+                  <span className="divider">·</span>
+                  <span className="meta-item">到期 {apiKey.expiresAt ? formatDate(apiKey.expiresAt) : '永不'}</span>
                 </div>
-              </div>
-
-              {/* 创建时间 */}
-              <div className="card-section">
-                <label className="section-label">创建于</label>
-                <span className="creation-date">{formatDate(apiKey.createdAt)}</span>
-              </div>
-
-              {/* 过期时间 */}
-              <div className="card-section">
-                <label className="section-label">过期时间</label>
-                <span className="expiry-date">
-                  {apiKey.expiresAt ? formatDate(apiKey.expiresAt) : '永不'}
-                </span>
-              </div>
-
-              {/* 操作按钮 */}
-              <div className="card-actions">
-                <button className="action-button edit-button" title="编辑密钥">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                    />
-                  </svg>
-                  编辑
-                </button>
-                <button
-                  className="action-button revoke-button"
-                  onClick={() => handleRevoke(apiKey)}
-                  title="撤销密钥"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                  撤销
-                </button>
               </div>
             </div>
           ))}
         </div>
       )}
+
+      {/* 查看密钥模态框 */}
+      <ViewApiKeyModal
+        isOpen={viewState.open}
+        onClose={() => setViewState({ open: false, keyId: null })}
+        keyId={viewState.keyId}
+        keyName={viewState.keyName}
+      />
+
+      {/* 编辑密钥模态框 */}
+      <EditApiKeyModal
+        isOpen={editState.open}
+        onClose={() => setEditState({ open: false, key: null })}
+        apiKey={editState.key}
+        onSaved={loadApiKeys}
+      />
+
+
 
       {/* 撤销确认模态框 */}
       <RevokeApiKeyModal

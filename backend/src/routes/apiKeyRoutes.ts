@@ -182,6 +182,68 @@ export default async function apiKeyRoutes(
   );
 
   /**
+   * 获取单个API密钥详情（仅所有者；返回完整apiKey）
+   */
+  fastify.get<{
+    Params: { keyId: string };
+  }>('/user/api-keys/:keyId', async (request, reply) => {
+    try {
+      const userId = requireAuth(request);
+      const { keyId } = request.params;
+
+      const key = await apiKeyService.getApiKeyById(userId, keyId, true);
+
+      return {
+        success: true,
+        data: key,
+      };
+    } catch (error) {
+      console.error('获取API密钥详情失败:', error);
+
+      if (error instanceof ApiKeyError) {
+        return reply.status(error.statusCode).send({
+          success: false,
+          error: error.message,
+          code: error.code,
+        });
+      }
+
+      return reply.status(500).send({ success: false, error: '获取API密钥详情失败' });
+    }
+  });
+
+  /**
+   * 更新API密钥（重命名/权限）
+   */
+  fastify.put<{
+    Params: { keyId: string };
+    Body: { name?: string; permissions?: Array<'mcp:read' | 'mcp:write' | 'mcp:admin'> };
+  }>('/user/api-keys/:keyId', async (request, reply) => {
+    try {
+      const userId = requireAuth(request);
+      const { keyId } = request.params;
+      const { name, permissions } = request.body || {};
+
+      const updated = await apiKeyService.updateApiKey(userId, keyId, { name, permissions });
+
+      return { success: true, data: updated };
+    } catch (error) {
+      console.error('更新API密钥失败:', error);
+
+      if (error instanceof ApiKeyError) {
+        return reply.status(error.statusCode).send({
+          success: false,
+          error: error.message,
+          code: error.code,
+        });
+      }
+
+      return reply.status(500).send({ success: false, error: '更新API密钥失败' });
+    }
+  });
+
+
+  /**
    * 删除API密钥
    */
   fastify.delete<{

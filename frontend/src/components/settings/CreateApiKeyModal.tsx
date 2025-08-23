@@ -315,10 +315,10 @@ export const CreateApiKeyModal: React.FC<CreateApiKeyModalProps> = ({
           <div className="notice-content">
             <h5>安全提示</h5>
             <ul>
-              <li>API密钥创建后只会显示一次，请务必妥善保存</li>
-              <li>不要在公共代码仓库或不安全的地方存储API密钥</li>
-              <li>建议定期轮换API密钥以提高安全性</li>
-              <li>如果密钥泄露，请立即删除并创建新的密钥</li>
+              <li>创建成功后会完整显示一次，之后可在密钥卡片点击“查看密钥”再次查看</li>
+              <li>不要在公共仓库或不安全位置存放API密钥，推荐使用环境变量或密钥管理器</li>
+              <li>建议定期轮换API密钥；如怀疑泄露请立即撤销并重新创建</li>
+              <li>为最小权限原则，仅勾选必要的读取/写入权限</li>
             </ul>
           </div>
         </div>
