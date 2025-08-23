@@ -179,10 +179,10 @@
 /* 卡片网格布局 */
 .api-keys-grid {
   display: grid;
-  gap: 1.5rem;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   overflow-y: auto;
-  padding-right: 0.5rem;
+  padding-right: 0.25rem;
 }
 
 /* 单个API密钥卡片 */
@@ -190,17 +190,114 @@
   background: var(--surface);
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  padding: 1.5rem;
+  padding: 1rem;
   transition: all 0.2s ease;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 0.75rem;
 }
 
 .api-key-card:hover {
   border-color: var(--primary);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   transform: translateY(-2px);
+}
+
+
+/* 紧凑布局（1/4高度目标） */
+.api-key-card.compact {
+  padding: 0.75rem 0.75rem 0.5rem 0.75rem;
+  gap: 0.5rem;
+}
+
+.card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.header-row .title-block {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.key-prefix-inline {
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+  background: var(--background-secondary);
+  border: 1px dashed var(--border-color);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.ellipsis {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--background-secondary);
+}
+
+.btn-icon:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.btn-icon.danger:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.permissions-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.permission-chip {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--background-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.info-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.info-inline .divider {
+  color: var(--text-tertiary);
 }
 
 /* 卡片区块 */
@@ -552,19 +649,19 @@
 
 /* 卡片内容 */
 .card-content {
-  padding: 0 1.5rem 1.5rem 1.5rem;
+  padding: 0 1rem 1rem 1rem;
 }
 
 .info-grid {
   display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 }
 
 .info-item {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.125rem;
 }
 
 .info-item label {
@@ -576,7 +673,7 @@
 }
 
 .info-item span {
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   color: var(--text-primary);
 }
 
@@ -869,8 +966,18 @@
 }
 
 /* API密钥成功显示模态框 */
-.api-key-success-modal .modal-content {
+.api-key-success-modal .modal-content,
+.api-key-success-modal .ModalContentAnimation,
+.api-key-success-modal .ModalContentAnimation-enter-done {
   max-width: 800px;
+  /* 隐藏滚动条，保持可滚动 */
+  scrollbar-width: none;         /* Firefox */
+  -ms-overflow-style: none;      /* IE 10+ */
+}
+.api-key-success-modal .modal-content::-webkit-scrollbar,
+.api-key-success-modal .ModalContentAnimation::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .success-content {
@@ -1088,11 +1195,15 @@
   border-color: rgb(var(--color-text-secondary) / 0.5);
   background: rgb(var(--color-text-secondary) / 0.05);
 }
+.code-block.scrollable { scrollbar-width: none; -ms-overflow-style: none; }
+.code-block.scrollable::-webkit-scrollbar { width: 0; height: 0; }
 
 .code-block {
   margin: 0;
   padding: 1rem;
   background: var(--surface);
+  max-height: 280px;
+  overflow: auto;
   font-family:
     'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
   font-size: 0.75rem;

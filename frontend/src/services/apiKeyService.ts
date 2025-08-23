@@ -45,6 +45,31 @@ export interface CreateApiKeyResponse {
   };
 }
 
+export interface ApiKeyDetailResponse {
+  success: true;
+  data: {
+    id: string;
+    name: string;
+    apiKey: string; // 完整密钥
+    keyPrefix: string;
+    permissions: string[];
+    expiresAt?: string | null;
+    createdAt: string;
+    updatedAt?: string;
+  };
+}
+
+export interface UpdateApiKeyPayload {
+  name?: string;
+  permissions?: string[];
+}
+
+export interface UpdateApiKeyResponse {
+  success: true;
+  data: ApiKeyInfo;
+}
+
+
 export interface ApiKeyUsageStats {
   totalRequests: number;
   successRequests: number;
@@ -185,6 +210,24 @@ class ApiKeyService {
     // XItools API密钥格式: xitool_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     const pattern = /^xitool_[a-f0-9]{64}$/;
     return pattern.test(apiKey);
+  }
+
+  /**
+   * 获取单个API密钥详情（包含完整密钥，需点击“查看密钥”触发）
+   */
+  async getApiKeyDetail(keyId: string): Promise<ApiKeyDetailResponse['data']> {
+    // 注意：apiService.get 返回的是响应体的 data 字段，因此泛型应传入“数据本体”的类型
+    const res = await apiService.get<ApiKeyDetailResponse['data']>(`/user/api-keys/${keyId}`);
+    return res;
+  }
+
+  /**
+   * 更新API密钥（重命名/权限）
+   */
+  async updateApiKey(keyId: string, payload: UpdateApiKeyPayload): Promise<ApiKeyInfo> {
+    // 同理：PUT 返回的也是 data 本体
+    const res = await apiService.put<ApiKeyInfo>(`/user/api-keys/${keyId}`, payload);
+    return res;
   }
 
   /**

@@ -593,6 +593,40 @@ export async function setupAuthenticatedMCPService(
                     properties: {},
                   },
                 },
+                {
+                  name: 'create_project',
+                  description: '创建项目（必须指定工作区UUID）',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {
+                      name: { type: 'string', description: '项目名称' },
+                      description: { type: 'string', description: '项目描述（可选）' },
+                      workspaceId: {
+                        type: 'string',
+                        description: '工作区ID（UUID，严格要求）',
+                        pattern: '^[0-9a-fA-F-]{36}$',
+                      },
+                    },
+                    required: ['name', 'workspaceId'],
+                  },
+                },
+                {
+                  name: 'create_board',
+                  description: '创建看板（必须指定项目UUID）',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {
+                      name: { type: 'string', description: '看板名称' },
+                      description: { type: 'string', description: '看板描述（可选）' },
+                      projectId: {
+                        type: 'string',
+                        description: '项目ID（UUID，严格要求）',
+                        pattern: '^[0-9a-fA-F-]{36}$',
+                      },
+                    },
+                    required: ['name', 'projectId'],
+                  },
+                },
               ],
             },
             id: body.id,
@@ -777,6 +811,12 @@ async function dispatchMcpTool(
 
     case 'get_boards':
       return await handleGetBoards(contextParams);
+
+    case 'create_project':
+      return await handleCreateProject(contextParams, io);
+
+    case 'create_board':
+      return await handleCreateBoard(contextParams, io);
 
     default:
       throw new Error(`未知的MCP工具: ${toolName}`);
@@ -1423,6 +1463,7 @@ async function handleClearAllTasks(params: any, io: SocketIOServer): Promise<any
 async function handleGetWorkspaces(params: any): Promise<any> {
   const mcpUser = params._mcpUser as McpUserContext;
 
+
   const workspaces = await prisma.workspace.findMany({
     where: { ownerId: mcpUser.userId },
     include: {
@@ -1568,4 +1609,65 @@ async function handleUpdateTaskColor(params: any, io: SocketIOServer): Promise<a
   io.emit('task_updated', updatedTask);
 
   return updatedTask;
+}
+
+
+/**
+ * 工具：创建项目
+ * 要求：workspaceId 必须属于当前用户；返回新项目的基础信息
+ */
+async function handleCreateProject(params: any, io: SocketIOServer): Promise<any> {
+  const mcpUser = params._mcpUser as McpUserContext;
+  const { name, description, workspaceId } = params;
+
+  if (!name || !workspaceId) {
+    throw new Error('缺少必要参数：name 与 workspaceId');
+  }
+
+  // 验证工作区归属
+  const ws = await prisma.workspace.findFirst({
+    where: { id: workspaceId, ownerId: mcpUser.userId },
+  });
+  if (!ws) throw new Error('工作区不存在或无权访问');
+
+  const project = await prisma.project.create({
+    data: {
+      name,
+      description: description || null,
+      workspaceId,
+      ownerId: mcpUser.userId,
+    },
+  });
+
+  return { id: project.id, name: project.name, description: project.description, workspaceId: project.workspaceId };
+}
+
+/**
+ * 工具：创建看板
+ * 要求：projectId 必须属于当前用户；返回新看板的基础信息
+ */
+async function handleCreateBoard(params: any, io: SocketIOServer): Promise<any> {
+  const mcpUser = params._mcpUser as McpUserContext;
+  const { name, description, projectId } = params;
+
+  if (!name || !projectId) {
+    throw new Error('缺少必要参数：name 与 projectId');
+  }
+
+  // 验证项目归属
+  const proj = await prisma.project.findFirst({
+    where: { id: projectId, ownerId: mcpUser.userId },
+  });
+  if (!proj) throw new Error('项目不存在或无权访问');
+
+  const board = await prisma.board.create({
+    data: {
+      name,
+      description: description || null,
+      projectId,
+      ownerId: mcpUser.userId,
+    },
+  });
+
+  return { id: board.id, name: board.name, description: board.description, projectId: board.projectId };
 }

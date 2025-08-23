@@ -10,7 +10,6 @@ import {
   UserApiKey,
   CreateApiKeyRequest,
   ApiKeyInfo,
-  McpUserContext,
   ApiKeyPermission,
   ApiKeyError,
   ApiKeyErrorCode,
@@ -115,10 +114,125 @@ export class ApiKeyService {
     });
 
     return apiKeys.map((key) => ({
-      ...key,
+      id: key.id,
+      name: key.name,
+      keyPrefix: key.keyPrefix,
       permissions: key.permissions as ApiKeyPermission[],
+      lastUsedAt: key.lastUsedAt,
+      lastUsedIp: key.lastUsedIp,
+      expiresAt: key.expiresAt,
+      isActive: key.isActive,
+      createdAt: key.createdAt,
+      updatedAt: key.updatedAt,
     }));
   }
+
+  /**
+   * 获取单个API密钥（可选择是否包含完整密钥）
+   */
+  async getApiKeyById(
+    userId: string,
+    apiKeyId: string,
+    includeSecret: boolean = false,
+  ): Promise<ApiKeyInfo | UserApiKey> {
+    const key = await this.prisma.userApiKey.findFirst({
+      where: { id: apiKeyId, userId, isActive: true },
+    });
+
+    if (!key) {
+      throw new ApiKeyError(ApiKeyErrorCode.API_KEY_NOT_FOUND, 'API密钥不存在或无权访问', 404);
+    }
+
+    if (includeSecret) {
+      return {
+        ...key,
+        permissions: key.permissions as ApiKeyPermission[],
+      } as UserApiKey;
+    }
+
+    return {
+      id: key.id,
+      name: key.name,
+      keyPrefix: key.keyPrefix,
+      permissions: key.permissions as ApiKeyPermission[],
+      lastUsedAt: key.lastUsedAt,
+      lastUsedIp: key.lastUsedIp,
+      expiresAt: key.expiresAt,
+      isActive: key.isActive,
+      createdAt: key.createdAt,
+      updatedAt: key.updatedAt,
+    } as ApiKeyInfo;
+  }
+
+  /**
+   * 更新API密钥（重命名/权限）
+   */
+  async updateApiKey(
+    userId: string,
+    apiKeyId: string,
+    updates: { name?: string; permissions?: ApiKeyPermission[] | string[] },
+  ): Promise<ApiKeyInfo> {
+    const key = await this.prisma.userApiKey.findFirst({ where: { id: apiKeyId, userId, isActive: true } });
+    if (!key) {
+      throw new ApiKeyError(ApiKeyErrorCode.API_KEY_NOT_FOUND, 'API密钥不存在或无权访问', 404);
+    }
+
+    const data: any = {};
+    if (typeof updates.name === 'string' && updates.name.trim().length > 0) {
+      // 重名检查
+      const dup = await this.prisma.userApiKey.findFirst({
+        where: { userId, name: updates.name.trim(), isActive: true, NOT: { id: apiKeyId } },
+      });
+      if (dup) {
+        throw new ApiKeyError(ApiKeyErrorCode.DUPLICATE_API_KEY_NAME, '该名称的API密钥已存在', 400);
+      }
+      data.name = updates.name.trim();
+    }
+
+    if (Array.isArray(updates.permissions)) {
+      const allowed = ['mcp:read', 'mcp:write', 'mcp:admin'];
+      const incoming = updates.permissions.map((p) => String(p));
+      if (incoming.length === 0 || incoming.some((p) => !allowed.includes(p))) {
+        throw new ApiKeyError(ApiKeyErrorCode.INVALID_API_KEY, '权限项无效', 400);
+      }
+      data.permissions = incoming;
+    }
+
+    if (Object.keys(data).length === 0) {
+      // 没有更新内容，返回当前信息
+      return {
+        id: key.id,
+        name: key.name,
+        keyPrefix: key.keyPrefix,
+        permissions: key.permissions as ApiKeyPermission[],
+        lastUsedAt: key.lastUsedAt,
+        lastUsedIp: key.lastUsedIp,
+        expiresAt: key.expiresAt,
+        isActive: key.isActive,
+        createdAt: key.createdAt,
+        updatedAt: key.updatedAt,
+      } as ApiKeyInfo;
+    }
+
+    const updated = await this.prisma.userApiKey.update({
+      where: { id: apiKeyId },
+      data: { ...data, updatedAt: new Date() },
+    });
+
+    return {
+      id: updated.id,
+      name: updated.name,
+      keyPrefix: updated.keyPrefix,
+      permissions: updated.permissions as ApiKeyPermission[],
+      lastUsedAt: updated.lastUsedAt,
+      lastUsedIp: updated.lastUsedIp,
+      expiresAt: updated.expiresAt,
+      isActive: updated.isActive,
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+    } as ApiKeyInfo;
+  }
+
 
   /**
    * 验证API密钥
