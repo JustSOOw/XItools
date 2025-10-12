@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Modal from './Modal';
 import ThemeSettings from './ThemeSettings';
-import LanguageSelector from './LanguageSelector';
+// import LanguageSelector from './LanguageSelector'; // 语言切换功能已禁用
 import { ApiKeyManagement } from './settings/ApiKeyManagement';
 import Button from './Button';
 import { useI18n } from '../hooks/useI18n';
@@ -40,20 +40,21 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         </svg>
       ),
     },
-    {
-      id: 'language' as const,
-      name: t('settings:categories.language'),
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
-          />
-        </svg>
-      ),
-    },
+    // 语言切换功能已禁用
+    // {
+    //   id: 'language' as const,
+    //   name: t('settings:categories.language'),
+    //   icon: (
+    //     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    //       <path
+    //         strokeLinecap="round"
+    //         strokeLinejoin="round"
+    //         strokeWidth={2}
+    //         d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
+    //       />
+    //     </svg>
+    //   ),
+    // },
     {
       id: 'general' as const,
       name: t('settings:categories.general'),
@@ -119,35 +120,36 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
           </div>
         );
 
-      case 'language':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-medium text-text-primary mb-4">
-                {t('settings:language.title')}
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-2">
-                    {t('settings:language.currentLanguage')}
-                  </label>
-                  <LanguageSelector
-                    variant="dropdown"
-                    showName={true}
-                    showFlag={true}
-                    className="w-full max-w-xs"
-                  />
-                </div>
-                <div className="text-sm text-text-secondary">
-                  <p>
-                    {t('settings:language.autoDetect')}: {t('common:actions.enable')}
-                  </p>
-                  <p className="mt-1">{t('settings:language.availableLanguages')}: 中文, English</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
+      // 语言切换功能已禁用
+      // case 'language':
+      //   return (
+      //     <div className="space-y-6">
+      //       <div>
+      //         <h3 className="text-lg font-medium text-text-primary mb-4">
+      //           {t('settings:language.title')}
+      //         </h3>
+      //         <div className="space-y-4">
+      //           <div>
+      //             <label className="block text-sm font-medium text-text-secondary mb-2">
+      //               {t('settings:language.currentLanguage')}
+      //             </label>
+      //             <LanguageSelector
+      //               variant="dropdown"
+      //               showName={true}
+      //               showFlag={true}
+      //               className="w-full max-w-xs"
+      //             />
+      //           </div>
+      //           <div className="text-sm text-text-secondary">
+      //             <p>
+      //               {t('settings:language.autoDetect')}: {t('common:actions.enable')}
+      //             </p>
+      //             <p className="mt-1">{t('settings:language.availableLanguages')}: 中文, English</p>
+      //           </div>
+      //         </div>
+      //       </div>
+      //     </div>
+      //   );
 
       case 'general':
         return (
