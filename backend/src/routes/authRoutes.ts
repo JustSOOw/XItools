@@ -11,6 +11,7 @@ import {
   UserLoginRequest,
   UserUpdateRequest,
   PasswordChangeRequest,
+  PasswordResetRequest,
   AuthResponse,
   AuthErrorResponse,
   UserInfoResponse,
@@ -594,6 +595,61 @@ export default async function authRoutes(fastify: FastifyInstance) {
         reply.status(400).send({
           success: false,
           error: error instanceof Error ? error.message : '修改密码失败',
+        });
+      }
+    },
+  );
+
+  /**
+   * 重置密码（简化版：用户名+邮箱验证）
+   */
+  fastify.post<{
+    Body: PasswordResetRequest;
+  }>(
+    '/auth/reset-password',
+    {
+      schema: {
+        description: '重置密码（无需登录，通过用户名+邮箱验证）',
+        tags: ['认证'],
+        body: {
+          type: 'object',
+          required: ['username', 'email', 'newPassword', 'confirmPassword'],
+          properties: {
+            username: { type: 'string', minLength: 1 },
+            email: { type: 'string', format: 'email' },
+            newPassword: { type: 'string', minLength: 6, maxLength: 50 },
+            confirmPassword: { type: 'string', minLength: 1 },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              message: { type: 'string' },
+            },
+          },
+          400: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              error: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Body: PasswordResetRequest }>, reply: FastifyReply) => {
+      try {
+        const result = await authService.resetPassword(request.body);
+
+        reply.status(200).send(result);
+      } catch (error) {
+        console.error('密码重置失败:', error);
+
+        reply.status(400).send({
+          success: false,
+          error: error instanceof Error ? error.message : '密码重置失败',
         });
       }
     },

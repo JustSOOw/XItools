@@ -2,9 +2,9 @@
  * @Author: XItools Team
  * @Date: 2025-07-01 17:30:00
  * @LastEditors: XItools Team
- * @LastEditTime: 2025-07-01 17:30:00
+ * @LastEditTime: 2025-10-12 10:00:00
  * @FilePath: \XItools\frontend\src\components\auth\ForgotPasswordForm.tsx
- * @Description: 忘记密码表单组件
+ * @Description: 忘记密码表单组件（简化版：用户名+邮箱验证）
  *
  * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
@@ -14,6 +14,8 @@ import { useTranslation } from 'react-i18next';
 import { useFormValidation } from '../../hooks/useFormValidation';
 import { useUserFeedback } from '../../hooks/useUserFeedback';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
+import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { apiClient } from '../../api/apiClient';
 
 interface ForgotPasswordFormProps {
   onSuccess?: () => void;
@@ -22,7 +24,10 @@ interface ForgotPasswordFormProps {
 }
 
 interface ForgotPasswordData {
+  username: string;
   email: string;
+  newPassword: string;
+  confirmPassword: string;
 }
 
 export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
@@ -33,7 +38,9 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
   const { t } = useTranslation('auth');
   const { showSuccess, showError } = useUserFeedback();
   const [isLoading, setIsLoading] = useState(false);
-  const [isEmailSent, setIsEmailSent] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // 表单验证
   const {
@@ -43,12 +50,35 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
     validateAll,
     hasErrors,
   } = useFormValidation<ForgotPasswordData>(
-    { email: '' },
     {
+      username: '',
+      email: '',
+      newPassword: '',
+      confirmPassword: '',
+    },
+    {
+      username: {
+        required: true,
+        message: t('validation.usernameRequired'),
+      },
       email: {
         required: true,
         email: true,
         message: t('validation.emailRequired'),
+      },
+      newPassword: {
+        required: true,
+        minLength: 6,
+        message: t('validation.passwordMinLength'),
+      },
+      confirmPassword: {
+        required: true,
+        custom: (value) => {
+          if (value !== formData.newPassword) {
+            return t('validation.passwordMismatch');
+          }
+          return '';
+        },
       },
     },
   );
@@ -70,19 +100,30 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
     setIsLoading(true);
 
     try {
-      // 模拟API调用 - 实际项目中需要调用真实的API
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // 成功发送重置邮件
-      setIsEmailSent(true);
-      showSuccess(t('forgotPassword.emailSent', { email: formData.email }), {
-        title: t('forgotPassword.checkEmail'),
-        duration: 6000,
+      // 调用后端重置密码 API
+      const response = await apiClient.post('/auth/reset-password', {
+        username: formData.username,
+        email: formData.email,
+        newPassword: formData.newPassword,
+        confirmPassword: formData.confirmPassword,
       });
 
-      onSuccess?.();
+      if (response.data.success) {
+        setIsSuccess(true);
+        showSuccess(response.data.message || t('forgotPassword.resetSuccess'), {
+          title: t('forgotPassword.successTitle'),
+          duration: 5000,
+        });
+
+        // 3秒后自动跳转到登录页
+        setTimeout(() => {
+          onBackToLogin?.();
+        }, 3000);
+      }
     } catch (error: any) {
-      showError(error.message || t('forgotPassword.sendFailed'), {
+      const errorMessage =
+        error.response?.data?.error || error.message || t('forgotPassword.resetFailed');
+      showError(errorMessage, {
         title: t('forgotPassword.error'),
         duration: 5000,
       });
@@ -91,70 +132,33 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
     }
   };
 
-  // 重新发送邮件
-  const handleResendEmail = async () => {
-    setIsLoading(true);
-
-    try {
-      // 模拟API调用
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      showSuccess(t('forgotPassword.emailResent'), {
-        title: t('forgotPassword.emailSent'),
-        duration: 4000,
-      });
-    } catch (error: any) {
-      showError(error.message || t('forgotPassword.resendFailed'), {
-        title: t('forgotPassword.error'),
-        duration: 5000,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (isEmailSent) {
+  // 成功状态界面
+  if (isSuccess) {
     return (
       <div className={`forgot-password-form success-state ${className}`}>
         <div className="form-header">
           <div className="success-icon">
-            <i className="icon-mail-check"></i>
+            <svg
+              className="w-16 h-16 text-green-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
           </div>
-          <h2 className="form-title">{t('forgotPassword.emailSentTitle')}</h2>
-          <p className="form-subtitle">
-            {t('forgotPassword.emailSentMessage', { email: formData.email })}
-          </p>
+          <h2 className="form-title">{t('forgotPassword.successTitle')}</h2>
+          <p className="form-subtitle">{t('forgotPassword.successMessage')}</p>
         </div>
 
         <div className="form-content">
-          <div className="success-instructions">
-            <h3>{t('forgotPassword.nextSteps')}</h3>
-            <ol className="steps-list">
-              <li>{t('forgotPassword.step1')}</li>
-              <li>{t('forgotPassword.step2')}</li>
-              <li>{t('forgotPassword.step3')}</li>
-            </ol>
-          </div>
-
           <div className="form-actions">
-            <button
-              type="button"
-              className="resend-button"
-              onClick={handleResendEmail}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <LoadingSpinner size="small" type="spinner" />
-                  <span>{t('forgotPassword.resending')}</span>
-                </>
-              ) : (
-                <span>{t('forgotPassword.resendEmail')}</span>
-              )}
-            </button>
-
-            <button type="button" className="back-button" onClick={onBackToLogin}>
-              <i className="icon-arrow-left"></i>
+            <button type="button" className="submit-button" onClick={onBackToLogin}>
               <span>{t('forgotPassword.backToLogin')}</span>
             </button>
           </div>
@@ -163,6 +167,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
     );
   }
 
+  // 重置密码表单
   return (
     <div className={`forgot-password-form ${className}`}>
       <div className="form-header">
@@ -171,6 +176,30 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
       </div>
 
       <form onSubmit={handleSubmit} className="form-content">
+        {/* 用户名输入 */}
+        <div className="form-group">
+          <label htmlFor="username" className="form-label">
+            {t('forgotPassword.usernameLabel')}
+          </label>
+          <div className="input-wrapper">
+            <input
+              type="text"
+              id="username"
+              name="username"
+              value={formData.username}
+              onChange={handleInputChange}
+              placeholder={t('forgotPassword.usernamePlaceholder')}
+              className={`form-input ${validationErrors.username ? 'error' : ''}`}
+              disabled={isLoading}
+              autoComplete="username"
+              autoFocus
+            />
+          </div>
+          {validationErrors.username && (
+            <span className="error-message">{validationErrors.username}</span>
+          )}
+        </div>
+
         {/* 邮箱输入 */}
         <div className="form-group">
           <label htmlFor="email" className="form-label">
@@ -187,12 +216,78 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
               className={`form-input ${validationErrors.email ? 'error' : ''}`}
               disabled={isLoading}
               autoComplete="email"
-              autoFocus
             />
-            <i className="input-icon icon-mail"></i>
           </div>
-          {validationErrors.email && (
-            <span className="error-message">{validationErrors.email}</span>
+          {validationErrors.email && <span className="error-message">{validationErrors.email}</span>}
+        </div>
+
+        {/* 新密码输入 */}
+        <div className="form-group">
+          <label htmlFor="newPassword" className="form-label">
+            {t('forgotPassword.newPasswordLabel')}
+          </label>
+          <div className="input-wrapper">
+            <input
+              type={showNewPassword ? 'text' : 'password'}
+              id="newPassword"
+              name="newPassword"
+              value={formData.newPassword}
+              onChange={handleInputChange}
+              placeholder={t('forgotPassword.newPasswordPlaceholder')}
+              className={`form-input ${validationErrors.newPassword ? 'error' : ''}`}
+              disabled={isLoading}
+              autoComplete="new-password"
+            />
+            <button
+              type="button"
+              className="password-toggle"
+              onClick={() => setShowNewPassword(!showNewPassword)}
+              disabled={isLoading}
+            >
+              {showNewPassword ? (
+                <EyeSlashIcon className="w-5 h-5" />
+              ) : (
+                <EyeIcon className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+          {validationErrors.newPassword && (
+            <span className="error-message">{validationErrors.newPassword}</span>
+          )}
+        </div>
+
+        {/* 确认密码输入 */}
+        <div className="form-group">
+          <label htmlFor="confirmPassword" className="form-label">
+            {t('forgotPassword.confirmPasswordLabel')}
+          </label>
+          <div className="input-wrapper">
+            <input
+              type={showConfirmPassword ? 'text' : 'password'}
+              id="confirmPassword"
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleInputChange}
+              placeholder={t('forgotPassword.confirmPasswordPlaceholder')}
+              className={`form-input ${validationErrors.confirmPassword ? 'error' : ''}`}
+              disabled={isLoading}
+              autoComplete="new-password"
+            />
+            <button
+              type="button"
+              className="password-toggle"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              disabled={isLoading}
+            >
+              {showConfirmPassword ? (
+                <EyeSlashIcon className="w-5 h-5" />
+              ) : (
+                <EyeIcon className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+          {validationErrors.confirmPassword && (
+            <span className="error-message">{validationErrors.confirmPassword}</span>
           )}
         </div>
 
@@ -205,7 +300,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
           {isLoading ? (
             <>
               <LoadingSpinner size="small" type="spinner" />
-              <span>{t('forgotPassword.sending')}</span>
+              <span>{t('forgotPassword.resetting')}</span>
             </>
           ) : (
             <span>{t('forgotPassword.submit')}</span>
@@ -215,7 +310,19 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
         {/* 返回登录 */}
         <div className="form-footer">
           <button type="button" className="back-link" onClick={onBackToLogin} disabled={isLoading}>
-            <i className="icon-arrow-left"></i>
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              />
+            </svg>
             <span>{t('forgotPassword.backToLogin')}</span>
           </button>
         </div>

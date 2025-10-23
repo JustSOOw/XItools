@@ -18,6 +18,8 @@ import {
   userUpdateSchema,
   passwordChangeSchema,
   PasswordChangeRequest,
+  passwordResetSchema,
+  PasswordResetRequest,
 } from '../types/userTypes';
 import { generateJWT, verifyJWT, JWTPayload } from '../utils/jwtUtils';
 
@@ -278,6 +280,47 @@ export class AuthService {
     });
 
     return { success: true, message: '密码修改成功，请重新登录' };
+  }
+
+  /**
+   * 重置密码（简化版：用户名+邮箱验证）
+   */
+  async resetPassword(data: PasswordResetRequest): Promise<{ success: boolean; message: string }> {
+    // 验证输入数据
+    const validatedData = passwordResetSchema.parse(data);
+
+    // 查找用户（必须同时匹配用户名和邮箱）
+    const user = await prisma.user.findFirst({
+      where: {
+        username: validatedData.username,
+        email: validatedData.email,
+        isActive: true,
+      },
+    });
+
+    if (!user) {
+      throw new Error('用户名或邮箱不匹配，请检查输入');
+    }
+
+    // 加密新密码
+    const newPasswordHash = await bcrypt.hash(validatedData.newPassword, this.saltRounds);
+
+    // 更新密码
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash: newPasswordHash,
+        updatedAt: new Date(),
+      },
+    });
+
+    // 撤销所有现有会话，强制重新登录
+    await prisma.userSession.updateMany({
+      where: { userId: user.id },
+      data: { isRevoked: true },
+    });
+
+    return { success: true, message: '密码重置成功，请使用新密码登录' };
   }
 
   /**
