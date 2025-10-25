@@ -42,15 +42,18 @@ RUN npm ci || (echo "⚠️ npm ci failed, falling back to npm install" && npm i
 # 阶段3: 开发环境
 FROM dependencies AS development
 
-# 复制源代码
-COPY . .
+# 复制源代码（排除已经在dependencies阶段复制的文件）
+COPY src ./src
+COPY tsconfig.json ./
+COPY docker-entrypoint.sh ./
 
 # 生成Prisma客户端
 RUN npx prisma generate
 
-# 复制并设置启动脚本权限
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+# 设��启动脚本权限
+RUN chmod +x ./docker-entrypoint.sh && \
+    cp ./docker-entrypoint.sh /usr/local/bin/ && \
+    chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # 暴露端口
 EXPOSE 3000

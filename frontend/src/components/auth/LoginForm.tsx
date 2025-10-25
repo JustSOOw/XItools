@@ -186,14 +186,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="form-content">
-          {/* 全局错误提示 */}
-          {error && (
-            <div className="error-message global-error">
-              <ExclamationTriangleIcon className="w-5 h-5" />
-              <span>{handleLoginError({ response: { data: { error } } })}</span>
-            </div>
-          )}
-
           {/* 用户名/邮箱输入 */}
           <div className="form-group">
             <label htmlFor="identifier" className="form-label">
@@ -207,15 +199,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 value={formData.identifier}
                 onChange={handleInputChange}
                 placeholder={t('login.identifierPlaceholder')}
-                className={`form-input ${validationErrors.identifier ? 'error' : ''}`}
+                className="form-input"
                 disabled={isLoading}
                 autoComplete="username"
               />
               <UserIcon className="input-icon w-5 h-5" />
             </div>
-            {validationErrors.identifier && (
-              <span className="error-message">{validationErrors.identifier}</span>
-            )}
           </div>
 
           {/* 密码输入 */}
@@ -231,7 +220,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 value={formData.password}
                 onChange={handleInputChange}
                 placeholder={t('login.passwordPlaceholder')}
-                className={`form-input ${validationErrors.password ? 'error' : ''}`}
+                className="form-input"
                 disabled={isLoading}
                 autoComplete="current-password"
               />
@@ -249,9 +238,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 )}
               </button>
             </div>
-            {validationErrors.password && (
-              <span className="error-message">{validationErrors.password}</span>
-            )}
           </div>
 
           {/* 记住我选项 */}

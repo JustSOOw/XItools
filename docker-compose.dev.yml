@@ -51,8 +51,7 @@ services:
       # 挂载Prisma schema和脚本文件
       - ./backend/prisma:/app/prisma:rw
       - ./backend/scripts:/app/scripts:ro
-      - ./backend/package.json:/app/package.json:rw
-      - ./backend/package-lock.json:/app/package-lock.json:rw
+      # 注意: package.json 和 package-lock.json 在镜像构建时已包含，不要挂载
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s

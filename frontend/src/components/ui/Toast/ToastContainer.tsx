@@ -41,13 +41,13 @@ const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onClose }) => {
       {Object.entries(toastsByPosition).map(([position, positionToasts]) => {
         // 为不同位置设置容器样式
         const containerClasses = {
-          'top-center': 'fixed top-4 left-1/2 transform -translate-x-1/2 z-40 pointer-events-none',
-          'top-right': 'fixed top-4 right-4 z-40 pointer-events-none',
-          'top-left': 'fixed top-4 left-4 z-40 pointer-events-none',
+          'top-center': 'fixed top-4 left-1/2 transform -translate-x-1/2 z-[9999] pointer-events-none',
+          'top-right': 'fixed top-4 right-4 z-[9999] pointer-events-none',
+          'top-left': 'fixed top-4 left-4 z-[9999] pointer-events-none',
           'bottom-center':
-            'fixed bottom-4 left-1/2 transform -translate-x-1/2 z-40 pointer-events-none',
-          'bottom-right': 'fixed bottom-4 right-4 z-40 pointer-events-none',
-          'bottom-left': 'fixed bottom-4 left-4 z-40 pointer-events-none',
+            'fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[9999] pointer-events-none',
+          'bottom-right': 'fixed bottom-4 right-4 z-[9999] pointer-events-none',
+          'bottom-left': 'fixed bottom-4 left-4 z-[9999] pointer-events-none',
         };
 
         return (

@@ -126,10 +126,20 @@ export type PasswordChangeRequest = z.infer<typeof passwordChangeSchema>;
 /**
  * 密码重置请求Schema（简化版：用户名+邮箱验证）
  */
-export const passwordResetSchema = z
-  .object({
-    username: z.string().min(1, '用户名不能为空'),
-    email: z.string().email('请输入有效的邮箱地址'),
+export const passwordResetInitSchema = z.object({
+  username: z.string().min(1, '用户名不能为空'),
+  email: z.string().email('请输入有效的邮箱地址'),
+});
+
+export type PasswordResetInitRequest = z.infer<typeof passwordResetInitSchema>;
+
+export const passwordResetSchema = passwordResetInitSchema
+  .extend({
+    verificationCode: z
+      .string()
+      .min(6, '验证码必须是6位数字')
+      .max(6, '验证码必须是6位数字')
+      .regex(/^\d+$/, '验证码必须是数字'),
     newPassword: z.string().min(6, '新密码至少6个字符').max(50, '新密码最多50个字符'),
     confirmPassword: z.string().min(1, '确认密码不能为空'),
   })

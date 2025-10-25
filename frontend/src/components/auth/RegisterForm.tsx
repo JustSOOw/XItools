@@ -143,14 +143,6 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
       </div>
 
       <form onSubmit={handleSubmit} className="form-content">
-        {/* 全局错误提示 */}
-        {error && (
-          <div className="error-message global-error">
-            <i className="icon-alert-circle"></i>
-            <span>{handleRegisterError({ response: { data: { error } } })}</span>
-          </div>
-        )}
-
         {/* 用户名输入 */}
         <div className="form-group">
           <label htmlFor="username" className="form-label">
@@ -164,15 +156,12 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
               value={formData.username}
               onChange={handleInputChange}
               placeholder={t('register.usernamePlaceholder')}
-              className={`form-input ${validationErrors.username ? 'error' : ''}`}
+              className="form-input"
               disabled={isLoading}
               autoComplete="username"
             />
             <i className="input-icon icon-user"></i>
           </div>
-          {validationErrors.username && (
-            <span className="error-message">{validationErrors.username}</span>
-          )}
         </div>
 
         {/* 邮箱输入 */}
@@ -188,15 +177,12 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
               value={formData.email}
               onChange={handleInputChange}
               placeholder={t('register.emailPlaceholder')}
-              className={`form-input ${validationErrors.email ? 'error' : ''}`}
+              className="form-input"
               disabled={isLoading}
               autoComplete="email"
             />
             <i className="input-icon icon-mail"></i>
           </div>
-          {validationErrors.email && (
-            <span className="error-message">{validationErrors.email}</span>
-          )}
         </div>
 
         {/* 密码输入 */}
@@ -212,7 +198,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
               value={formData.password}
               onChange={handleInputChange}
               placeholder={t('register.passwordPlaceholder')}
-              className={`form-input ${validationErrors.password ? 'error' : ''}`}
+              className="form-input"
               disabled={isLoading}
               autoComplete="new-password"
             />
@@ -226,9 +212,6 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
               <i className={`icon-${showPassword ? 'eye-off' : 'eye'}`}></i>
             </button>
           </div>
-          {validationErrors.password && (
-            <span className="error-message">{validationErrors.password}</span>
-          )}
           {/* 密码强度指示器 */}
           <PasswordStrengthIndicator password={formData.password} showDetails={true} />
         </div>
@@ -246,7 +229,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
               value={confirmPassword}
               onChange={handleInputChange}
               placeholder={t('register.confirmPasswordPlaceholder')}
-              className={`form-input ${validationErrors.confirmPassword ? 'error' : ''}`}
+              className="form-input"
               disabled={isLoading}
               autoComplete="new-password"
             />
@@ -260,9 +243,6 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
               <i className={`icon-${showConfirmPassword ? 'eye-off' : 'eye'}`}></i>
             </button>
           </div>
-          {validationErrors.confirmPassword && (
-            <span className="error-message">{validationErrors.confirmPassword}</span>
-          )}
         </div>
 
         {/* 提交按钮 */}
