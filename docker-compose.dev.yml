@@ -99,7 +99,7 @@ services:
     ports:
       - "8080:80"
     volumes:
-      - ./nginx/xitools-docker.conf:/etc/nginx/conf.d/xitools.conf:ro
+      - ./nginx/xitools-dev.conf:/etc/nginx/conf.d/xitools.conf:ro
     depends_on:
       - frontend
       - backend

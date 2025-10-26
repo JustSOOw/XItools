@@ -79,12 +79,33 @@ function getComposeFile(environment) {
   return filePath;
 }
 
+// 获取Docker Compose命令（兼容V1和V2）
+function getDockerComposeCmd() {
+  try {
+    execSync('docker-compose --version', { stdio: 'pipe' });
+    return 'docker-compose';
+  } catch {
+    try {
+      execSync('docker compose version', { stdio: 'pipe' });
+      return 'docker compose';
+    } catch {
+      return null;
+    }
+  }
+}
+
 // 执行Docker Compose命令
 function runDockerCompose(composeFile, command, options = {}) {
   const { detached = false, build = false, service = '' } = options;
-  
-  let cmd = `docker-compose -f ${composeFile}`;
-  
+
+  const dockerComposeCmd = getDockerComposeCmd();
+  if (!dockerComposeCmd) {
+    error('Docker Compose未找到');
+    process.exit(1);
+  }
+
+  let cmd = `${dockerComposeCmd} -f ${composeFile}`;
+
   if (command === 'up') {
     cmd += ` up`;
     if (build) cmd += ` --build`;
@@ -103,11 +124,11 @@ function runDockerCompose(composeFile, command, options = {}) {
   } else {
     cmd += ` ${command}`;
   }
-  
+
   info(`执行命令: ${cmd}`);
-  
+
   try {
-    const result = execSync(cmd, { 
+    const result = execSync(cmd, {
       stdio: 'inherit',
       cwd: process.cwd(),
       encoding: 'utf8'
@@ -123,10 +144,16 @@ function runDockerCompose(composeFile, command, options = {}) {
 function checkDocker() {
   try {
     execSync('docker --version', { stdio: 'pipe' });
-    execSync('docker-compose --version', { stdio: 'pipe' });
   } catch (err) {
-    error('Docker或Docker Compose未安装或未运行');
-    error('请确保Docker Desktop正在运行');
+    error('Docker未安装或未运行');
+    error('请确保Docker服务正在运行');
+    process.exit(1);
+  }
+
+  const dockerComposeCmd = getDockerComposeCmd();
+  if (!dockerComposeCmd) {
+    error('Docker Compose未安装');
+    error('请安装Docker Compose V1或V2');
     process.exit(1);
   }
 }
