@@ -116,6 +116,32 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     }
   };
 
+  // 处理字段失焦验证
+  const handleFieldBlur = (fieldName: string) => {
+    const errors: Record<string, string> = {};
+
+    switch (fieldName) {
+      case 'identifier':
+        if (!formData.identifier.trim()) {
+          errors.identifier = t('validation.identifierRequired');
+        }
+        break;
+
+      case 'password':
+        if (!formData.password) {
+          errors.password = t('validation.passwordRequired');
+        } else if (formData.password.length < 6) {
+          errors.password = t('validation.passwordMinLength');
+        }
+        break;
+    }
+
+    setValidationErrors((prev) => ({
+      ...prev,
+      ...errors,
+    }));
+  };
+
   // 处理表单提交
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -198,13 +224,17 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 name="identifier"
                 value={formData.identifier}
                 onChange={handleInputChange}
+                onBlur={() => handleFieldBlur('identifier')}
                 placeholder={t('login.identifierPlaceholder')}
-                className="form-input"
+                className={`form-input ${validationErrors.identifier ? 'input-error' : ''}`}
                 disabled={isLoading}
                 autoComplete="username"
               />
               <UserIcon className="input-icon w-5 h-5" />
             </div>
+            {validationErrors.identifier && (
+              <p className="error-message">{validationErrors.identifier}</p>
+            )}
           </div>
 
           {/* 密码输入 */}
@@ -219,8 +249,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 name="password"
                 value={formData.password}
                 onChange={handleInputChange}
+                onBlur={() => handleFieldBlur('password')}
                 placeholder={t('login.passwordPlaceholder')}
-                className="form-input"
+                className={`form-input ${validationErrors.password ? 'input-error' : ''}`}
                 disabled={isLoading}
                 autoComplete="current-password"
               />
@@ -238,6 +269,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 )}
               </button>
             </div>
+            {validationErrors.password && (
+              <p className="error-message">{validationErrors.password}</p>
+            )}
           </div>
 
           {/* 记住我选项 */}

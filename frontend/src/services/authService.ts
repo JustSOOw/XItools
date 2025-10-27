@@ -34,6 +34,27 @@ class AuthService {
   private userKey = 'xi-user-info';
 
   /**
+   * 发送注册验证码
+   */
+  async requestRegisterVerification(email: string): Promise<{
+    success: boolean;
+    message: string;
+    data: { expiresAt: string; maskedEmail: string };
+  }> {
+    try {
+      const response = await axios.post(`${this.baseURL}/auth/request-register-verification`, {
+        email,
+      });
+
+      return response.data;
+    } catch (error: any) {
+      console.error('发送注册验证码失败:', error);
+      // 直接抛出原始错误,保留error.response供错误处理器使用
+      throw error;
+    }
+  }
+
+  /**
    * 用户注册
    */
   async register(userData: UserRegisterRequest): Promise<AuthResponse> {
@@ -51,11 +72,8 @@ class AuthService {
       return response.data;
     } catch (error: any) {
       console.error('用户注册失败:', error);
-
-      if (error.response?.data) {
-        throw new Error(error.response.data.error || '注册失败');
-      }
-      throw new Error('网络错误，请稍后重试');
+      // 直接抛出原始错误,保留error.response供错误处理器使用
+      throw error;
     }
   }
 
@@ -77,11 +95,8 @@ class AuthService {
       return response.data;
     } catch (error: any) {
       console.error('用户登录失败:', error);
-
-      if (error.response?.data) {
-        throw new Error(error.response.data.error || '登录失败');
-      }
-      throw new Error('网络错误，请稍后重试');
+      // 直接抛出原始错误,保留error.response供错误处理器使用
+      throw error;
     }
   }
 

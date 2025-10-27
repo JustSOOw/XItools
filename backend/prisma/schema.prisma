@@ -89,6 +89,25 @@ model PasswordResetToken {
   @@index([isUsed])
 }
 
+// 注册验证码模型 - 管理注册邮箱验证码（不依赖userId）
+model RegisterVerificationToken {
+  id           String   @id @default(uuid())
+  email        String   // 注册邮箱
+  codeHash     String   // SHA256 哈希后的验证码
+  expiresAt    DateTime // 过期时间
+  consumedAt   DateTime?
+  attemptCount Int      @default(0)
+  isUsed       Boolean  @default(false)
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([email])
+  @@index([expiresAt])
+  @@index([isUsed])
+}
+
 // 用户API密钥模型 - MCP认证
 model UserApiKey {
   id          String    @id @default(uuid())

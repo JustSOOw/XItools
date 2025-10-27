@@ -9,7 +9,7 @@
  * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUserStore } from '../../store/userStore';
 import { UserRegisterRequest } from '../../types/User';
 import { useTranslation } from 'react-i18next';
@@ -17,6 +17,7 @@ import { useAuthError } from '../../hooks/useAuthError';
 import { useUserFeedback } from '../../hooks/useUserFeedback';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { PasswordStrengthIndicator } from '../ui/PasswordStrengthIndicator';
+import { authService } from '../../services/authService';
 
 interface RegisterFormProps {
   onSuccess?: () => void;
@@ -37,6 +38,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   const [formData, setFormData] = useState<UserRegisterRequest>({
     username: '',
     email: '',
+    verificationCode: '',
     password: '',
   });
 
@@ -44,6 +46,20 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
+  // 验证码发送相关状态
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [codeSent, setCodeSent] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [maskedEmail, setMaskedEmail] = useState<string>('');
+
+  // 倒计时效果
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [countdown]);
 
   // 表单验证
   const validateForm = (): boolean => {
@@ -63,6 +79,13 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
       errors.email = t('validation.emailRequired');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       errors.email = t('validation.emailFormat');
+    }
+
+    // 验证码验证
+    if (!formData.verificationCode.trim()) {
+      errors.verificationCode = t('validation.verificationCodeRequired');
+    } else if (formData.verificationCode.length !== 6) {
+      errors.verificationCode = '验证码必须是6位数字';
     }
 
     // 密码验证 - 放宽要求，只要求最小长度
@@ -107,6 +130,98 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
     // 清除全局错误
     if (error) {
       clearError();
+    }
+  };
+
+  // 处理字段失焦验证
+  const handleFieldBlur = (fieldName: string) => {
+    const errors: Record<string, string> = {};
+
+    switch (fieldName) {
+      case 'username':
+        if (!formData.username.trim()) {
+          errors.username = t('validation.usernameRequired');
+        } else if (formData.username.length < 3) {
+          errors.username = t('validation.usernameMinLength');
+        } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
+          errors.username = t('validation.usernameFormat');
+        }
+        break;
+
+      case 'email':
+        if (!formData.email.trim()) {
+          errors.email = t('validation.emailRequired');
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+          errors.email = t('validation.emailFormat');
+        }
+        break;
+
+      case 'verificationCode':
+        if (!formData.verificationCode.trim()) {
+          errors.verificationCode = t('validation.verificationCodeRequired');
+        } else if (formData.verificationCode.length !== 6) {
+          errors.verificationCode = '验证码必须是6位数字';
+        }
+        break;
+
+      case 'password':
+        if (!formData.password) {
+          errors.password = t('validation.passwordRequired');
+        } else if (formData.password.length < 6) {
+          errors.password = t('validation.passwordMinLength');
+        }
+        break;
+
+      case 'confirmPassword':
+        if (!confirmPassword) {
+          errors.confirmPassword = t('validation.confirmPasswordRequired');
+        } else if (confirmPassword !== formData.password) {
+          errors.confirmPassword = t('validation.passwordMismatch');
+        }
+        break;
+    }
+
+    setValidationErrors((prev) => ({
+      ...prev,
+      ...errors,
+    }));
+  };
+
+  // 发送邮箱验证码
+  const handleSendCode = async () => {
+    // 验证邮箱
+    if (!formData.email.trim()) {
+      authFeedback.registerError({ message: t('validation.emailRequired') });
+      return;
+    }
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(formData.email)) {
+      authFeedback.registerError({ message: t('validation.emailFormat') });
+      return;
+    }
+
+    setIsSendingCode(true);
+
+    try {
+      const response = await authService.requestRegisterVerification(formData.email);
+
+      if (response.success) {
+        setCodeSent(true);
+        setCountdown(60); // 60秒倒计时
+        setMaskedEmail(response.data.maskedEmail);
+
+        authFeedback.registerSuccess(
+          response.message || '验证码已发送',
+        );
+      }
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.error || error.message || '发送验证码失败';
+
+      authFeedback.registerError({ message: errorMessage });
+    } finally {
+      setIsSendingCode(false);
     }
   };
 
@@ -155,13 +270,17 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
               name="username"
               value={formData.username}
               onChange={handleInputChange}
+              onBlur={() => handleFieldBlur('username')}
               placeholder={t('register.usernamePlaceholder')}
-              className="form-input"
+              className={`form-input ${validationErrors.username ? 'input-error' : ''}`}
               disabled={isLoading}
               autoComplete="username"
             />
             <i className="input-icon icon-user"></i>
           </div>
+          {validationErrors.username && (
+            <p className="error-message">{validationErrors.username}</p>
+          )}
         </div>
 
         {/* 邮箱输入 */}
@@ -176,13 +295,68 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
               name="email"
               value={formData.email}
               onChange={handleInputChange}
+              onBlur={() => handleFieldBlur('email')}
               placeholder={t('register.emailPlaceholder')}
-              className="form-input"
-              disabled={isLoading}
+              className={`form-input ${validationErrors.email ? 'input-error' : ''}`}
+              disabled={isLoading || codeSent}
               autoComplete="email"
             />
             <i className="input-icon icon-mail"></i>
           </div>
+          {validationErrors.email && (
+            <p className="error-message">{validationErrors.email}</p>
+          )}
+          {maskedEmail && (
+            <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              验证码已发送至: {maskedEmail}
+            </div>
+          )}
+        </div>
+
+        {/* 验证码输入和发送按钮 */}
+        <div className="form-group">
+          <label htmlFor="verificationCode" className="form-label">
+            邮箱验证码
+          </label>
+          <div className="flex gap-2">
+            <div className="input-wrapper flex-1">
+              <input
+                type="text"
+                id="verificationCode"
+                name="verificationCode"
+                value={formData.verificationCode}
+                onChange={handleInputChange}
+                onBlur={() => handleFieldBlur('verificationCode')}
+                placeholder="请输入6位验证码"
+                className={`form-input ${validationErrors.verificationCode ? 'input-error' : ''}`}
+                disabled={isLoading || !codeSent}
+                autoComplete="off"
+                maxLength={6}
+              />
+            </div>
+            <button
+              type="button"
+              className={`send-code-button ${countdown > 0 ? 'disabled' : ''}`}
+              onClick={handleSendCode}
+              disabled={isSendingCode || countdown > 0 || isLoading}
+            >
+              {isSendingCode ? (
+                <>
+                  <LoadingSpinner size="small" type="spinner" />
+                  <span>发送中...</span>
+                </>
+              ) : countdown > 0 ? (
+                <span>{countdown}秒后重发</span>
+              ) : codeSent ? (
+                <span>重新发送</span>
+              ) : (
+                <span>获取验证码</span>
+              )}
+            </button>
+          </div>
+          {validationErrors.verificationCode && (
+            <p className="error-message">{validationErrors.verificationCode}</p>
+          )}
         </div>
 
         {/* 密码输入 */}
@@ -197,8 +371,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
               name="password"
               value={formData.password}
               onChange={handleInputChange}
+              onBlur={() => handleFieldBlur('password')}
               placeholder={t('register.passwordPlaceholder')}
-              className="form-input"
+              className={`form-input ${validationErrors.password ? 'input-error' : ''}`}
               disabled={isLoading}
               autoComplete="new-password"
             />
@@ -212,6 +387,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
               <i className={`icon-${showPassword ? 'eye-off' : 'eye'}`}></i>
             </button>
           </div>
+          {validationErrors.password && (
+            <p className="error-message">{validationErrors.password}</p>
+          )}
           {/* 密码强度指示器 */}
           <PasswordStrengthIndicator password={formData.password} showDetails={true} />
         </div>
@@ -228,8 +406,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
               name="confirmPassword"
               value={confirmPassword}
               onChange={handleInputChange}
+              onBlur={() => handleFieldBlur('confirmPassword')}
               placeholder={t('register.confirmPasswordPlaceholder')}
-              className="form-input"
+              className={`form-input ${validationErrors.confirmPassword ? 'input-error' : ''}`}
               disabled={isLoading}
               autoComplete="new-password"
             />
@@ -243,6 +422,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
               <i className={`icon-${showConfirmPassword ? 'eye-off' : 'eye'}`}></i>
             </button>
           </div>
+          {validationErrors.confirmPassword && (
+            <p className="error-message">{validationErrors.confirmPassword}</p>
+          )}
         </div>
 
         {/* 提交按钮 */}
