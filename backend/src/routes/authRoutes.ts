@@ -11,9 +11,13 @@ import {
   UserLoginRequest,
   UserUpdateRequest,
   PasswordChangeRequest,
+  PasswordResetInitRequest,
+  PasswordResetRequest,
+  RegisterVerificationInitRequest,
   AuthResponse,
   AuthErrorResponse,
   UserInfoResponse,
+  AuthError,
 } from '../types/userTypes';
 import { extractBearerToken, generateJWT } from '../utils/jwtUtils';
 
@@ -22,7 +26,70 @@ import { extractBearerToken, generateJWT } from '../utils/jwtUtils';
  */
 export default async function authRoutes(fastify: FastifyInstance) {
   /**
-   * 用户注册
+   * 发送注册验证码
+   */
+  fastify.post<{
+    Body: RegisterVerificationInitRequest;
+  }>(
+    '/auth/request-register-verification',
+    {
+      schema: {
+        description: '发送注册验证码',
+        tags: ['认证'],
+        body: {
+          type: 'object',
+          required: ['email'],
+          properties: {
+            email: { type: 'string', format: 'email' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              message: { type: 'string' },
+              data: {
+                type: 'object',
+                properties: {
+                  expiresAt: { type: 'string', format: 'date-time' },
+                  maskedEmail: { type: 'string' },
+                },
+              },
+            },
+          },
+          400: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              error: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Body: RegisterVerificationInitRequest }>, reply: FastifyReply) => {
+      try {
+        const userAgent = request.headers['user-agent'];
+        const result = await authService.requestRegisterVerification(request.body, {
+          userAgent: typeof userAgent === 'string' ? userAgent : undefined,
+          ipAddress: request.ip,
+        });
+
+        reply.status(200).send(result);
+      } catch (error) {
+        console.error('发送注册验证码失败:', error);
+
+        reply.status(400).send({
+          success: false,
+          error: error instanceof Error ? error.message : '发送验证码失败',
+        });
+      }
+    },
+  );
+
+  /**
+   * 用户注册（需要验证码）
    */
   fastify.post<{
     Body: UserRegisterRequest;
@@ -30,14 +97,15 @@ export default async function authRoutes(fastify: FastifyInstance) {
     '/auth/register',
     {
       schema: {
-        description: '用户注册',
+        description: '用户注册（需要邮箱验证码）',
         tags: ['认证'],
         body: {
           type: 'object',
-          required: ['username', 'email', 'password'],
+          required: ['username', 'email', 'verificationCode', 'password'],
           properties: {
             username: { type: 'string', minLength: 3, maxLength: 20 },
             email: { type: 'string', format: 'email' },
+            verificationCode: { type: 'string', minLength: 6, maxLength: 6 },
             password: { type: 'string', minLength: 6, maxLength: 50 },
             avatar: { type: 'string', format: 'uri' },
           },
@@ -81,10 +149,12 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
         const errorResponse: AuthErrorResponse = {
           success: false,
-          error: error instanceof Error ? error.message : '注册失败',
+          error: error instanceof AuthError ? error.message : (error instanceof Error ? error.message : '注册失败'),
+          code: error instanceof AuthError ? error.code : undefined,
         };
 
-        reply.status(400).send(errorResponse);
+        const statusCode = error instanceof AuthError ? error.statusCode : 400;
+        reply.status(statusCode).send(errorResponse);
       }
     },
   );
@@ -148,10 +218,12 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
         const errorResponse: AuthErrorResponse = {
           success: false,
-          error: error instanceof Error ? error.message : '登录失败',
+          error: error instanceof AuthError ? error.message : (error instanceof Error ? error.message : '登录失败'),
+          code: error instanceof AuthError ? error.code : undefined,
         };
 
-        reply.status(401).send(errorResponse);
+        const statusCode = error instanceof AuthError ? error.statusCode : 401;
+        reply.status(statusCode).send(errorResponse);
       }
     },
   );
@@ -598,4 +670,125 @@ export default async function authRoutes(fastify: FastifyInstance) {
       }
     },
   );
+
+  /**
+   * 发送密码重置验证码（用户名 + 邮箱校验）
+   */
+  fastify.post<{
+    Body: PasswordResetInitRequest;
+  }>(
+    '/auth/request-password-reset',
+    {
+      schema: {
+        description: '发送密码重置验证码（用户名 + 邮箱验证）',
+        tags: ['认证'],
+        body: {
+          type: 'object',
+          required: ['username', 'email'],
+          properties: {
+            username: { type: 'string', minLength: 1 },
+            email: { type: 'string', format: 'email' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              message: { type: 'string' },
+              data: {
+                type: 'object',
+                properties: {
+                  expiresAt: { type: 'string', format: 'date-time' },
+                  maskedEmail: { type: 'string' },
+                },
+              },
+            },
+          },
+          400: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              error: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Body: PasswordResetInitRequest }>, reply: FastifyReply) => {
+      try {
+        const userAgent = request.headers['user-agent'];
+        const result = await authService.requestPasswordReset(request.body, {
+          userAgent: typeof userAgent === 'string' ? userAgent : undefined,
+          ipAddress: request.ip,
+        });
+
+        reply.status(200).send(result);
+      } catch (error) {
+        console.error('发送密码重置验证码失败:', error);
+
+        reply.status(400).send({
+          success: false,
+          error: error instanceof Error ? error.message : '发送验证码失败',
+        });
+      }
+    },
+  );
+
+  /**
+   * 重置密码（用户名 + 邮箱 + 验证码验证）
+   */
+  fastify.post<{
+    Body: PasswordResetRequest;
+  }>(
+    '/auth/reset-password',
+    {
+      schema: {
+        description: '重置密码（无需登录，基于用户名 + 邮箱 + 验证码）',
+        tags: ['认证'],
+        body: {
+          type: 'object',
+          required: ['username', 'email', 'verificationCode', 'newPassword', 'confirmPassword'],
+          properties: {
+            username: { type: 'string', minLength: 1 },
+            email: { type: 'string', format: 'email' },
+            verificationCode: { type: 'string', minLength: 6, maxLength: 6 },
+            newPassword: { type: 'string', minLength: 6, maxLength: 50 },
+            confirmPassword: { type: 'string', minLength: 1 },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              message: { type: 'string' },
+            },
+          },
+          400: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              error: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Body: PasswordResetRequest }>, reply: FastifyReply) => {
+      try {
+        const result = await authService.resetPassword(request.body);
+
+        reply.status(200).send(result);
+      } catch (error) {
+        console.error('密码重置失败:', error);
+
+        reply.status(400).send({
+          success: false,
+          error: error instanceof Error ? error.message : '密码重置失败',
+        });
+      }
+    },
+  );
 }
+

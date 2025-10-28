@@ -116,6 +116,32 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     }
   };
 
+  // 处理字段失焦验证
+  const handleFieldBlur = (fieldName: string) => {
+    const errors: Record<string, string> = {};
+
+    switch (fieldName) {
+      case 'identifier':
+        if (!formData.identifier.trim()) {
+          errors.identifier = t('validation.identifierRequired');
+        }
+        break;
+
+      case 'password':
+        if (!formData.password) {
+          errors.password = t('validation.passwordRequired');
+        } else if (formData.password.length < 6) {
+          errors.password = t('validation.passwordMinLength');
+        }
+        break;
+    }
+
+    setValidationErrors((prev) => ({
+      ...prev,
+      ...errors,
+    }));
+  };
+
   // 处理表单提交
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,14 +212,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="form-content">
-          {/* 全局错误提示 */}
-          {error && (
-            <div className="error-message global-error">
-              <ExclamationTriangleIcon className="w-5 h-5" />
-              <span>{handleLoginError({ response: { data: { error } } })}</span>
-            </div>
-          )}
-
           {/* 用户名/邮箱输入 */}
           <div className="form-group">
             <label htmlFor="identifier" className="form-label">
@@ -206,15 +224,16 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 name="identifier"
                 value={formData.identifier}
                 onChange={handleInputChange}
+                onBlur={() => handleFieldBlur('identifier')}
                 placeholder={t('login.identifierPlaceholder')}
-                className={`form-input ${validationErrors.identifier ? 'error' : ''}`}
+                className={`form-input ${validationErrors.identifier ? 'input-error' : ''}`}
                 disabled={isLoading}
                 autoComplete="username"
               />
               <UserIcon className="input-icon w-5 h-5" />
             </div>
             {validationErrors.identifier && (
-              <span className="error-message">{validationErrors.identifier}</span>
+              <p className="error-message">{validationErrors.identifier}</p>
             )}
           </div>
 
@@ -230,8 +249,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 name="password"
                 value={formData.password}
                 onChange={handleInputChange}
+                onBlur={() => handleFieldBlur('password')}
                 placeholder={t('login.passwordPlaceholder')}
-                className={`form-input ${validationErrors.password ? 'error' : ''}`}
+                className={`form-input ${validationErrors.password ? 'input-error' : ''}`}
                 disabled={isLoading}
                 autoComplete="current-password"
               />
@@ -250,7 +270,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
               </button>
             </div>
             {validationErrors.password && (
-              <span className="error-message">{validationErrors.password}</span>
+              <p className="error-message">{validationErrors.password}</p>
             )}
           </div>
 
