@@ -52,10 +52,10 @@
     "@types/bcrypt": "^5.0.2",
     "@types/jsonwebtoken": "^9.0.10",
     "bcrypt": "^6.0.0",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "resend": "^6.2.2"
   },
   "main": ".eslintrc.js",
-  "devDependencies": {},
   "type": "commonjs",
   "bugs": {
     "url": "https://github.com/your-org/xitools/issues"

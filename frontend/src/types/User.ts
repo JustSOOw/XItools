@@ -26,6 +26,7 @@ export interface User {
 export interface UserRegisterRequest {
   username: string;
   email: string;
+  verificationCode: string; // 注册验证码
   password: string;
   avatar?: string;
   bio?: string;

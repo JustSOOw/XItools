@@ -60,7 +60,16 @@ export interface UserRole {
 // ================================
 
 /**
- * 用户注册请求Schema
+ * 注册验证码请求Schema（发送验证码）
+ */
+export const registerVerificationInitSchema = z.object({
+  email: z.string().email('请输入有效的邮箱地址'),
+});
+
+export type RegisterVerificationInitRequest = z.infer<typeof registerVerificationInitSchema>;
+
+/**
+ * 用户注册请求Schema（需要验证码）
  */
 export const userRegisterSchema = z.object({
   username: z
@@ -69,6 +78,11 @@ export const userRegisterSchema = z.object({
     .max(20, '用户名最多20个字符')
     .regex(/^[a-zA-Z0-9_-]+$/, '用户名只能包含字母、数字、下划线和连字符'),
   email: z.string().email('请输入有效的邮箱地址').max(100, '邮箱地址过长'),
+  verificationCode: z
+    .string()
+    .min(6, '验证码必须是6位数字')
+    .max(6, '验证码必须是6位数字')
+    .regex(/^\d+$/, '验证码必须是数字'),
   password: z.string().min(6, '密码至少6个字符').max(50, '密码最多50个字符'),
   avatar: z.string().url('头像必须是有效的URL').optional(),
   bio: z.string().max(500, '个人简介最多500个字符').optional(),
@@ -126,10 +140,20 @@ export type PasswordChangeRequest = z.infer<typeof passwordChangeSchema>;
 /**
  * 密码重置请求Schema（简化版：用户名+邮箱验证）
  */
-export const passwordResetSchema = z
-  .object({
-    username: z.string().min(1, '用户名不能为空'),
-    email: z.string().email('请输入有效的邮箱地址'),
+export const passwordResetInitSchema = z.object({
+  username: z.string().min(1, '用户名不能为空'),
+  email: z.string().email('请输入有效的邮箱地址'),
+});
+
+export type PasswordResetInitRequest = z.infer<typeof passwordResetInitSchema>;
+
+export const passwordResetSchema = passwordResetInitSchema
+  .extend({
+    verificationCode: z
+      .string()
+      .min(6, '验证码必须是6位数字')
+      .max(6, '验证码必须是6位数字')
+      .regex(/^\d+$/, '验证码必须是数字'),
     newPassword: z.string().min(6, '新密码至少6个字符').max(50, '新密码最多50个字符'),
     confirmPassword: z.string().min(1, '确认密码不能为空'),
   })

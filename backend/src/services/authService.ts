@@ -4,6 +4,7 @@
  * 提供用户注册、登录、密码验证、会话管理等核心认证功能
  */
 
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
 import {
@@ -18,10 +19,17 @@ import {
   userUpdateSchema,
   passwordChangeSchema,
   PasswordChangeRequest,
+  passwordResetInitSchema,
+  PasswordResetInitRequest,
   passwordResetSchema,
   PasswordResetRequest,
+  registerVerificationInitSchema,
+  RegisterVerificationInitRequest,
+  AuthError,
+  AuthErrorCode,
 } from '../types/userTypes';
 import { generateJWT, verifyJWT, JWTPayload } from '../utils/jwtUtils';
+import { sendPasswordResetCodeEmail, sendRegisterVerificationCodeEmail } from './emailService';
 
 const prisma = new PrismaClient();
 
@@ -30,9 +38,105 @@ const prisma = new PrismaClient();
  */
 export class AuthService {
   private readonly saltRounds = 12; // bcrypt盐轮数
+  private readonly resetTokenTTLMinutes = 15; // 验证码有效分钟数
+  private readonly resetTokenMaxAttempts = 5; // 验证码最大尝试次数
+  private readonly resetTokenResendIntervalSeconds = 60; // 重发冷却秒数
+  private readonly registerTokenTTLMinutes = 15; // 注册验证码有效分钟数
+  private readonly registerTokenMaxAttempts = 5; // 注册验证码最大尝试次数
+  private readonly registerTokenResendIntervalSeconds = 60; // 注册验证码重发冷却秒数
 
   /**
-   * 用户注册
+   * 发送注册验证码
+   */
+  async requestRegisterVerification(
+    data: RegisterVerificationInitRequest,
+    meta?: { userAgent?: string; ipAddress?: string },
+  ): Promise<{ success: boolean; message: string; data: { expiresAt: Date; maskedEmail: string } }> {
+    const validatedData = registerVerificationInitSchema.parse(data);
+
+    // 检查邮箱是否已被注册
+    const existingUser = await prisma.user.findUnique({
+      where: { email: validatedData.email },
+    });
+
+    if (existingUser) {
+      throw new Error('该邮箱已被注册，请直接登录或使用其他邮箱');
+    }
+
+    const now = new Date();
+
+    // 标记过期的验证码为已使用
+    await prisma.registerVerificationToken.updateMany({
+      where: {
+        email: validatedData.email,
+        isUsed: false,
+        expiresAt: { lt: now },
+      },
+      data: {
+        isUsed: true,
+        consumedAt: now,
+      },
+    });
+
+    // 检查是否有未过期的验证码（防止重复发送）
+    const lastToken = await prisma.registerVerificationToken.findFirst({
+      where: {
+        email: validatedData.email,
+        isUsed: false,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (lastToken) {
+      const lastCreatedAt = new Date(lastToken.createdAt ?? now);
+      const elapsedMs = now.getTime() - lastCreatedAt.getTime();
+      const cooldownMs = this.registerTokenResendIntervalSeconds * 1000;
+
+      if (elapsedMs < cooldownMs) {
+        const secondsLeft = Math.max(1, Math.ceil((cooldownMs - elapsedMs) / 1000));
+        throw new Error('验证码已发送，请 ' + secondsLeft + ' 秒后再试');
+      }
+    }
+
+    // 生成6位数验证码
+    const verificationCode = this.generateVerificationCode();
+    const expiresAt = new Date(now.getTime() + this.registerTokenTTLMinutes * 60 * 1000);
+
+    // 保存验证码（哈希后）
+    await prisma.registerVerificationToken.create({
+      data: {
+        email: validatedData.email,
+        codeHash: this.hashVerificationCode(verificationCode),
+        expiresAt,
+        ipAddress: meta?.ipAddress ?? null,
+        userAgent: meta?.userAgent ?? null,
+      },
+    });
+
+    // 开发环境下打印验证码到控制台
+    if (process.env.NODE_ENV !== 'production') {
+      console.info('[RegisterVerification] Verification code for ' + validatedData.email + ': ' + verificationCode);
+    }
+
+    // 发送邮件
+    await sendRegisterVerificationCodeEmail({
+      to: validatedData.email,
+      code: verificationCode,
+      expiresAt,
+    });
+
+    return {
+      success: true,
+      message: '验证码已发送，请检查您的邮箱。',
+      data: {
+        expiresAt,
+        maskedEmail: this.maskEmail(validatedData.email),
+      },
+    };
+  }
+
+  /**
+   * 用户注册（需要验证码）
    */
   async register(
     data: UserRegisterRequest,
@@ -42,12 +146,67 @@ export class AuthService {
     // 验证输入数据
     const validatedData = userRegisterSchema.parse(data);
 
+    const now = new Date();
+
+    // 验证邮箱验证码
+    const activeToken = await prisma.registerVerificationToken.findFirst({
+      where: {
+        email: validatedData.email,
+        isUsed: false,
+        expiresAt: { gt: now },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!activeToken) {
+      throw new AuthError(
+        AuthErrorCode.INVALID_CREDENTIALS,
+        '验证码无效或已过期，请重新获取验证码',
+        400
+      );
+    }
+
+    // 验证验证码
+    const providedHash = this.hashVerificationCode(validatedData.verificationCode);
+
+    if (providedHash !== activeToken.codeHash) {
+      const nextAttempts = activeToken.attemptCount + 1;
+      const shouldLock = nextAttempts >= this.registerTokenMaxAttempts;
+
+      await prisma.registerVerificationToken.update({
+        where: { id: activeToken.id },
+        data: {
+          attemptCount: nextAttempts,
+          ...(shouldLock ? { isUsed: true, consumedAt: now } : {}),
+        },
+      });
+
+      if (shouldLock) {
+        throw new AuthError(
+          AuthErrorCode.RATE_LIMITED,
+          '验证码尝试次数过多，请重新获取验证码',
+          429
+        );
+      }
+
+      throw new AuthError(AuthErrorCode.INVALID_CREDENTIALS, '验证码不正确，请重新输入', 400);
+    }
+
+    // 标记验证码为已使用
+    await prisma.registerVerificationToken.update({
+      where: { id: activeToken.id },
+      data: {
+        isUsed: true,
+        consumedAt: now,
+      },
+    });
+
     // 检查用户名是否已存在
     const existingUsername = await prisma.user.findUnique({
       where: { username: validatedData.username },
     });
     if (existingUsername) {
-      throw new Error('用户名已存在');
+      throw new AuthError(AuthErrorCode.USERNAME_TAKEN, '用户名已存在', 400);
     }
 
     // 检查邮箱是否已存在
@@ -55,7 +214,7 @@ export class AuthService {
       where: { email: validatedData.email },
     });
     if (existingEmail) {
-      throw new Error('邮箱已被注册');
+      throw new AuthError(AuthErrorCode.EMAIL_TAKEN, '邮箱已被注册', 400);
     }
 
     // 加密密码
@@ -72,6 +231,18 @@ export class AuthService {
         role: validatedData.role || 'user', // 设置默认角色为普通用户
         isActive: true,
         lastLoginAt: new Date(),
+      },
+    });
+
+    // 撤销该邮箱的所有未使用验证码
+    await prisma.registerVerificationToken.updateMany({
+      where: {
+        email: validatedData.email,
+        isUsed: false,
+      },
+      data: {
+        isUsed: true,
+        consumedAt: now,
       },
     });
 
@@ -106,7 +277,7 @@ export class AuthService {
     // 验证输入数据
     const validatedData = userLoginSchema.parse(data);
 
-    // 查找用户（支持用户名或邮箱登录）
+    // 查找用户(支持用户名或邮箱登录)
     const user = await prisma.user.findFirst({
       where: {
         OR: [{ username: validatedData.identifier }, { email: validatedData.identifier }],
@@ -115,13 +286,13 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new Error('用户不存在或账户已被禁用');
+      throw new AuthError(AuthErrorCode.USER_NOT_FOUND, '用户不存在或账户已被禁用', 401);
     }
 
     // 验证密码
     const isPasswordValid = await bcrypt.compare(validatedData.password, user.passwordHash);
     if (!isPasswordValid) {
-      throw new Error('密码错误');
+      throw new AuthError(AuthErrorCode.INVALID_CREDENTIALS, '密码错误', 401);
     }
 
     // 更新最后登录时间
@@ -283,10 +454,103 @@ export class AuthService {
   }
 
   /**
-   * 重置密码（简化版：用户名+邮箱验证）
+   * 请求密码重置验证码（用户名 + 邮箱验证）
+   */
+  async requestPasswordReset(
+    data: PasswordResetInitRequest,
+    meta?: { userAgent?: string; ipAddress?: string },
+  ): Promise<{ success: boolean; message: string; data: { expiresAt: Date; maskedEmail: string } }> {
+    const validatedData = passwordResetInitSchema.parse(data);
+
+    const user = await prisma.user.findFirst({
+      where: {
+        username: validatedData.username,
+        email: validatedData.email,
+        isActive: true,
+      },
+    });
+
+    if (!user) {
+      throw new Error('用户名与邮箱不匹配或账号已被禁用');
+    }
+
+    const now = new Date();
+
+    // 标记过期的验证码为已使用
+    await prisma.passwordResetToken.updateMany({
+      where: {
+        userId: user.id,
+        isUsed: false,
+        expiresAt: { lt: now },
+      },
+      data: {
+        isUsed: true,
+        consumedAt: now,
+      },
+    });
+
+    // 检查是否有未过期的验证码（防止重复发送）
+    const lastToken = await prisma.passwordResetToken.findFirst({
+      where: {
+        userId: user.id,
+        isUsed: false,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (lastToken) {
+      const lastCreatedAt = new Date(lastToken.createdAt ?? now);
+      const elapsedMs = now.getTime() - lastCreatedAt.getTime();
+      const cooldownMs = this.resetTokenResendIntervalSeconds * 1000;
+
+      if (elapsedMs < cooldownMs) {
+        const secondsLeft = Math.max(1, Math.ceil((cooldownMs - elapsedMs) / 1000));
+        throw new Error('验证码已发送，请 ' + secondsLeft + ' 秒后再试');
+      }
+    }
+
+    // 生成6位数验证码
+    const verificationCode = this.generateVerificationCode();
+    const expiresAt = new Date(now.getTime() + this.resetTokenTTLMinutes * 60 * 1000);
+
+    // 保存验证码（哈希后）
+    await prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        codeHash: this.hashVerificationCode(verificationCode),
+        expiresAt,
+        ipAddress: meta?.ipAddress ?? null,
+        userAgent: meta?.userAgent ?? null,
+      },
+    });
+
+    // 开发环境下打印验证码到控制台
+    if (process.env.NODE_ENV !== 'production') {
+      console.info('[PasswordReset] Verification code for ' + user.email + ': ' + verificationCode);
+    }
+
+    // 发送邮件
+    await sendPasswordResetCodeEmail({
+      to: user.email,
+      username: user.username,
+      code: verificationCode,
+      expiresAt,
+    });
+
+    return {
+      success: true,
+      message: '验证码已发送，请检查您的邮箱。',
+      data: {
+        expiresAt,
+        maskedEmail: this.maskEmail(user.email),
+      },
+    };
+  }
+
+  /**
+   * 重置密码（用户名 + 邮箱 + 验证码验证）
    */
   async resetPassword(data: PasswordResetRequest): Promise<{ success: boolean; message: string }> {
-    // 验证输入数据
     const validatedData = passwordResetSchema.parse(data);
 
     // 查找用户（必须同时匹配用户名和邮箱）
@@ -299,8 +563,55 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new Error('用户名或邮箱不匹配，请检查输入');
+      throw new Error('用户名与邮箱不匹配或账号已被禁用');
     }
+
+    const now = new Date();
+
+    // 查找有效的验证码
+    const activeToken = await prisma.passwordResetToken.findFirst({
+      where: {
+        userId: user.id,
+        isUsed: false,
+        expiresAt: { gt: now },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!activeToken) {
+      throw new Error('验证码无效或已过期，请重新获取验证码');
+    }
+
+    // 验证验证码
+    const providedHash = this.hashVerificationCode(validatedData.verificationCode);
+
+    if (providedHash !== activeToken.codeHash) {
+      const nextAttempts = activeToken.attemptCount + 1;
+      const shouldLock = nextAttempts >= this.resetTokenMaxAttempts;
+
+      await prisma.passwordResetToken.update({
+        where: { id: activeToken.id },
+        data: {
+          attemptCount: nextAttempts,
+          ...(shouldLock ? { isUsed: true, consumedAt: now } : {}),
+        },
+      });
+
+      if (shouldLock) {
+        throw new Error('验证码尝试次数过多，请重新获取验证码');
+      }
+
+      throw new Error('验证码不正确，请重新输入');
+    }
+
+    // 标记验证码为已使用
+    await prisma.passwordResetToken.update({
+      where: { id: activeToken.id },
+      data: {
+        isUsed: true,
+        consumedAt: now,
+      },
+    });
 
     // 加密新密码
     const newPasswordHash = await bcrypt.hash(validatedData.newPassword, this.saltRounds);
@@ -310,7 +621,19 @@ export class AuthService {
       where: { id: user.id },
       data: {
         passwordHash: newPasswordHash,
-        updatedAt: new Date(),
+        updatedAt: now,
+      },
+    });
+
+    // 撤销该用户的所有未使用验证码
+    await prisma.passwordResetToken.updateMany({
+      where: {
+        userId: user.id,
+        isUsed: false,
+      },
+      data: {
+        isUsed: true,
+        consumedAt: now,
       },
     });
 
@@ -320,7 +643,7 @@ export class AuthService {
       data: { isRevoked: true },
     });
 
-    return { success: true, message: '密码重置成功，请使用新密码登录' };
+    return { success: true, message: '密码重置成功，请使用新密码登录。' };
   }
 
   /**
@@ -374,6 +697,40 @@ export class AuthService {
 
     const { passwordHash, ...sanitizedUser } = user;
     return sanitizedUser;
+  }
+
+  /**
+   * 生成六位数验证码
+   */
+  private generateVerificationCode(): string {
+    return String(crypto.randomInt(100000, 1000000));
+  }
+
+  /**
+   * 哈希化验证码以避免明文存储
+   */
+  private hashVerificationCode(code: string): string {
+    return crypto.createHash('sha256').update(code.trim()).digest('hex');
+  }
+
+  /**
+   * 屏蔽邮箱部分字符用于界面展示
+   */
+  private maskEmail(email: string): string {
+    const parts = email.split('@');
+    const localPart = parts[0] || '';
+    const domain = parts[1] || '';
+    if (!domain) {
+      return email.replace(/.(?=.{0,2}$)/g, '*');
+    }
+
+    if (localPart.length <= 2) {
+      return localPart.padEnd(2, '*') + '@' + domain;
+    }
+
+    const visible = localPart.slice(0, 2);
+    const masked = '*'.repeat(Math.max(1, localPart.length - 2));
+    return visible + masked + '@' + domain;
   }
 }
 
