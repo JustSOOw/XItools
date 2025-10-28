@@ -142,6 +142,17 @@ jobs:
         sed -i "s|ghcr.io/${REPO_LOWERCASE}/backend:latest|ghcr.io/${REPO_LOWERCASE}/backend:${{ steps.version.outputs.version }}|g" docker-compose.staging.yml
         sed -i "s|ghcr.io/${REPO_LOWERCASE}/frontend:latest|ghcr.io/${REPO_LOWERCASE}/frontend:${{ steps.version.outputs.version }}|g" docker-compose.staging.yml
 
+        # 修改nginx配置为预生产环境专用配置（不包含SSL）
+        echo "🔧 配置预生产环境nginx（仅HTTP，无SSL）..."
+        sed -i 's|xitools-docker.conf|xitools-staging.conf|g' docker-compose.staging.yml
+        # 移除SSL相关的卷挂载
+        sed -i '/\/etc\/letsencrypt:/d' docker-compose.staging.yml
+        sed -i '/\/var\/www\/certbot:/d' docker-compose.staging.yml
+        # 移除443端口映射
+        sed -i '/- "443:443"/d' docker-compose.staging.yml
+        # 修改nginx健康检查为HTTP（移除SSL）
+        sed -i 's|curl -f -k https://localhost/health|curl -f http://localhost/health|g' docker-compose.staging.yml
+
         # 创建环境变量文件
         cat > .env.staging << EOF
         NODE_ENV=staging
