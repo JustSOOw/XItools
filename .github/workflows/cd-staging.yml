@@ -134,8 +134,13 @@ jobs:
 
         # 准备配置文件
         cp docker-compose.prod.yml docker-compose.staging.yml
-        sed -i 's/8080:80/8081:80/g' docker-compose.staging.yml
-        sed -i 's/5432:5432/5433:5432/g' docker-compose.staging.yml
+        # 修改nginx端口从80改为8081（注意：原配置是"80:80"不是"8080:80"）
+        sed -i 's/"80:80"/"8081:80"/g' docker-compose.staging.yml
+        # postgres端口已经是5433，无需修改
+
+        # 验证端口修改是否成功
+        echo "📋 验证nginx端口配置:"
+        grep -A 2 "ports:" docker-compose.staging.yml | grep "8081:80" && echo "✅ Nginx端口已成功修改为8081" || echo "❌ 警告: Nginx端口修改失败"
 
         # 修改 docker-compose.staging.yml 使用版本化的镜像标签
         REPO_LOWERCASE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
@@ -258,6 +263,12 @@ jobs:
         # 等待nginx容器启动
         echo "⏳ 等待nginx容器启动..."
         sleep 5
+
+        # 删除nginx默认配置文件（避免干扰）
+        echo "🔧 删除nginx默认配置文件..."
+        docker exec xitools-nginx-prod rm -f /etc/nginx/conf.d/default.conf
+        docker exec xitools-nginx-prod nginx -s reload
+        echo "✅ Nginx配置已重载"
 
         # 验证nginx配置文件
         echo "🔍 验证nginx配置..."
