@@ -153,6 +153,15 @@ jobs:
         # 修改nginx健康检查为HTTP（移除SSL）
         sed -i 's|curl -f -k https://localhost/health|curl -f http://localhost/health|g' docker-compose.staging.yml
 
+        # 验证docker-compose.staging.yml修改是否正确
+        echo "📋 验证docker-compose.staging.yml中的nginx配置:"
+        echo "   Nginx配置文件路径:"
+        grep "xitools-staging.conf" docker-compose.staging.yml || echo "   ⚠️ 警告: 未找到xitools-staging.conf"
+        echo "   Nginx健康检查:"
+        grep "curl.*localhost/health" docker-compose.staging.yml || echo "   ⚠️ 警告: 未找到健康检查配置"
+        echo "   端口映射:"
+        grep -A 2 "ports:" docker-compose.staging.yml | grep -E "80|443" || echo "   无端口配置"
+
         # 创建环境变量文件
         cat > .env.staging << EOF
         NODE_ENV=staging
@@ -246,9 +255,42 @@ jobs:
         echo "🚀 启动预发布环境服务（强制重新创建容器）..."
         docker compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans || docker-compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
 
+        # 等待nginx容器启动
+        echo "⏳ 等待nginx容器启动..."
+        sleep 5
+
+        # 验证nginx配置文件
+        echo "🔍 验证nginx配置..."
+        echo "1. 检查配置文件是否存在:"
+        if [ -f "nginx/xitools-staging.conf" ]; then
+          echo "   ✅ nginx/xitools-staging.conf 存在"
+          echo "   📄 配置文件前10行:"
+          head -10 nginx/xitools-staging.conf
+        else
+          echo "   ❌ nginx/xitools-staging.conf 不存在"
+        fi
+
+        echo "2. 检查nginx容器中的配置文件:"
+        docker exec xitools-nginx-prod ls -la /etc/nginx/conf.d/ || echo "   ❌ 无法列出nginx配置目录"
+
+        echo "3. 验证nginx配置语法:"
+        if docker exec xitools-nginx-prod nginx -t 2>&1; then
+          echo "   ✅ nginx配置语法正确"
+        else
+          echo "   ❌ nginx配置语法错误"
+          echo "   📋 nginx配置详情:"
+          docker exec xitools-nginx-prod cat /etc/nginx/conf.d/xitools.conf || echo "无法读取配置文件"
+        fi
+
+        echo "4. 检查nginx加载的配置:"
+        docker exec xitools-nginx-prod nginx -T 2>&1 | grep -A 5 "location.*health" || echo "   ⚠️ 未找到health location配置"
+
+        echo "5. 测试nginx内部health端点:"
+        docker exec xitools-nginx-prod curl -v http://localhost/health 2>&1 | head -20 || echo "   ❌ 无法从容器内部访问health端点"
+
         # 验证容器启动状态（初步检查）
         echo "🔍 验证容器启动状态..."
-        sleep 15
+        sleep 10
 
         # 检查所有容器状态
         EXPECTED_CONTAINERS=("xitools-postgres-prod" "xitools-backend-prod" "xitools-frontend-prod" "xitools-nginx-prod")
