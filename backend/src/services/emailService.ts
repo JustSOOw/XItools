@@ -21,9 +21,22 @@ interface RegisterVerificationEmailPayload {
 }
 
 /**
- * 初始化 Resend 客户端
+ * 初始化 Resend 客户端（延迟初始化）
+ * 只在配置了 API Key 的情况下才创建实例
  */
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resend: Resend | null = null;
+
+function getResendClient(): Resend | null {
+  if (!process.env.RESEND_API_KEY) {
+    return null;
+  }
+
+  if (!resend) {
+    resend = new Resend(process.env.RESEND_API_KEY);
+  }
+
+  return resend;
+}
 
 /**
  * 获取发件人地址（从环境变量或使用默认值）
@@ -40,8 +53,11 @@ export async function sendRegisterVerificationCodeEmail({
   code,
   expiresAt
 }: RegisterVerificationEmailPayload): Promise<void> {
-  // 检查是否配置了 Resend API Key
-  if (!process.env.RESEND_API_KEY) {
+  // 获取 Resend 客户端
+  const client = getResendClient();
+
+  // 如果未配置 API Key，仅在控制台输出（开发环境）
+  if (!client) {
     console.warn('[EmailService] 未配置 RESEND_API_KEY，邮件发送已跳过');
     console.info(`[EmailService][DEV] 注册验证码: ${code} (邮箱: ${to})`);
     return;
@@ -51,7 +67,7 @@ export async function sendRegisterVerificationCodeEmail({
     const expiresLabel = formatExpiryTime(expiresAt);
 
     // 发送邮件
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await client.emails.send({
       from: getFromAddress(),
       to: [to],
       subject: 'XItools - 注册验证码',
@@ -79,8 +95,11 @@ export async function sendPasswordResetCodeEmail({
   code,
   expiresAt
 }: PasswordResetEmailPayload): Promise<void> {
-  // 检查是否配置了 Resend API Key
-  if (!process.env.RESEND_API_KEY) {
+  // 获取 Resend 客户端
+  const client = getResendClient();
+
+  // 如果未配置 API Key，仅在控制台输出（开发环境）
+  if (!client) {
     console.warn('[EmailService] 未配置 RESEND_API_KEY，邮件发送已跳过');
     console.info(`[EmailService][DEV] 密码重置验证码: ${code} (用户: ${username}, 邮箱: ${to})`);
     return;
@@ -90,7 +109,7 @@ export async function sendPasswordResetCodeEmail({
     const expiresLabel = formatExpiryTime(expiresAt);
 
     // 发送邮件
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await client.emails.send({
       from: getFromAddress(),
       to: [to],
       subject: 'XItools - 密码重置验证码',

@@ -650,6 +650,12 @@ jobs:
                   return 0
                 else
                   echo "⚠️ $container: 运行中但健康检查失败 ($status, $health)"
+
+                  # 如果是后端容器且已经重试3次以上，输出日志帮助诊断
+                  if [[ "$container" == *"backend"* ]] && [ $i -ge 3 ]; then
+                    echo "📋 后端容器日志 (用于诊断，最近100行):"
+                    docker logs --tail 100 $container 2>&1 || echo "无法获取日志"
+                  fi
                 fi
                 ;;
               "restarting")
