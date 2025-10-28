@@ -235,7 +235,7 @@ GitHub → 简化 CI/CD → Docker Registry → Production Server
    ↓           ↓              ↓                    ↓
 代码推送 → 代码检查构建 → 镜像存储 → 自动部署更新
 ```
-
+   
 ### 工作流程
 
 #### 持续集成 (CI)
