@@ -91,20 +91,28 @@ jobs:
         REPO_LOWERCASE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
         echo "📦 使用镜像仓库: ghcr.io/${REPO_LOWERCASE}"
 
-        # 构建前端镜像
+        # 构建前端镜像（带版本标签）
         echo "🔨 构建前端镜像..."
-        docker build -t ghcr.io/${REPO_LOWERCASE}/frontend:staging ./frontend --target production
+        docker build -t ghcr.io/${REPO_LOWERCASE}/frontend:${{ steps.version.outputs.version }} ./frontend --target production
 
-        # 构建后端镜像
+        # 同时打上 staging 标签
+        docker tag ghcr.io/${REPO_LOWERCASE}/frontend:${{ steps.version.outputs.version }} ghcr.io/${REPO_LOWERCASE}/frontend:staging
+
+        # 构建后端镜像（带版本标签）
         echo "🔨 构建后端镜像..."
-        docker build -t ghcr.io/${REPO_LOWERCASE}/backend:staging ./backend --target production
+        docker build -t ghcr.io/${REPO_LOWERCASE}/backend:${{ steps.version.outputs.version }} ./backend --target production
 
-        # 推送前端镜像
+        # 同时打上 staging 标签
+        docker tag ghcr.io/${REPO_LOWERCASE}/backend:${{ steps.version.outputs.version }} ghcr.io/${REPO_LOWERCASE}/backend:staging
+
+        # 推送前端镜像（包括版本标签和 staging）
         echo "📤 推送前端镜像..."
+        docker push ghcr.io/${REPO_LOWERCASE}/frontend:${{ steps.version.outputs.version }}
         docker push ghcr.io/${REPO_LOWERCASE}/frontend:staging
 
-        # 推送后端镜像
+        # 推送后端镜像（包括版本标签和 staging）
         echo "📤 推送后端镜像..."
+        docker push ghcr.io/${REPO_LOWERCASE}/backend:${{ steps.version.outputs.version }}
         docker push ghcr.io/${REPO_LOWERCASE}/backend:staging
 
         echo "✅ 镜像构建和推送完成"
@@ -128,7 +136,11 @@ jobs:
         cp docker-compose.prod.yml docker-compose.staging.yml
         sed -i 's/8080:80/8081:80/g' docker-compose.staging.yml
         sed -i 's/5432:5432/5433:5432/g' docker-compose.staging.yml
-        # 确保nginx配置文件挂载路径正确（已经在生产配置中修复）
+
+        # 修改 docker-compose.staging.yml 使用版本化的镜像标签
+        REPO_LOWERCASE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+        sed -i "s|ghcr.io/${REPO_LOWERCASE}/backend:latest|ghcr.io/${REPO_LOWERCASE}/backend:${{ steps.version.outputs.version }}|g" docker-compose.staging.yml
+        sed -i "s|ghcr.io/${REPO_LOWERCASE}/frontend:latest|ghcr.io/${REPO_LOWERCASE}/frontend:${{ steps.version.outputs.version }}|g" docker-compose.staging.yml
 
         # 创建环境变量文件
         cat > .env.staging << EOF
@@ -140,74 +152,398 @@ jobs:
         POSTGRES_DB=xitools_staging
         VITE_BACKEND_URL=http://xitools.furdow.com:8081/api
         CORS_ORIGINS=http://xitools.furdow.com:8081
+        RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
+        EMAIL_FROM=${{ secrets.EMAIL_FROM }}
         EOF
+
+        # 创建版本标记文件
+        echo "${{ steps.version.outputs.version }}" > .version
 
         # 上传文件
         scp -o StrictHostKeyChecking=no docker-compose.staging.yml ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools-staging/releases/${{ steps.version.outputs.version }}/docker-compose.prod.yml
         scp -o StrictHostKeyChecking=no .env.staging ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools-staging/releases/${{ steps.version.outputs.version }}/.env.production
+        scp -o StrictHostKeyChecking=no .version ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools-staging/releases/${{ steps.version.outputs.version }}/
         scp -r -o StrictHostKeyChecking=no nginx/ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools-staging/releases/${{ steps.version.outputs.version }}/
 
         # 执行部署
         ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
         cd /opt/xitools-staging
 
+        # 基础设施检查
+        echo "🔍 执行基础设施检查..."
+
+        # 检查Docker服务状态
+        if ! systemctl is-active --quiet docker; then
+          echo "启动Docker服务..."
+          systemctl start docker
+          sleep 5
+        fi
+
+        # 检查Docker daemon连接
+        if ! docker info > /dev/null 2>&1; then
+          echo "重启Docker服务..."
+          systemctl restart docker
+          sleep 10
+          if ! docker info > /dev/null 2>&1; then
+            echo "❌ Docker daemon连接失败"
+            exit 1
+          fi
+        fi
+
+        echo "✅ 基础设施检查完成"
+
         # 彻底清理预发布环境
         echo "🧹 清理预发布环境..."
 
-        # 停止并删除所有XItools相关容器（包括staging）
-        echo "🛑 停止XItools容器..."
-        docker stop $(docker ps -q --filter "name=xitools") 2>/dev/null || true
-        docker rm $(docker ps -aq --filter "name=xitools") 2>/dev/null || true
+        # 停止并删除所有XItools-staging相关容器
+        echo "🛑 停止XItools-staging容器..."
+        docker stop $(docker ps -q --filter "name=xitools-staging") 2>/dev/null || true
+        docker rm $(docker ps -aq --filter "name=xitools-staging") 2>/dev/null || true
 
         # 停止当前服务
         if [ -f current/docker-compose.prod.yml ]; then
-          docker-compose -f current/docker-compose.prod.yml down --remove-orphans || true
+          echo "🔄 使用docker-compose停止服务..."
+          docker compose -f current/docker-compose.prod.yml down --remove-orphans || docker-compose -f current/docker-compose.prod.yml down --remove-orphans || true
         fi
 
-        # 清理Docker系统缓存和资源
+        # 清理Docker系统缓存
         echo "🗑️ 清理Docker系统缓存..."
         docker system prune -f
 
-        # 清理XItools相关的Docker网络
-        echo "🌐 清理XItools网络..."
-        docker network ls --filter "name=xitools" -q | xargs -r docker network rm 2>/dev/null || true
-
-        # 清理XItools相关的Docker卷
-        echo "💾 清理XItools数据卷...（跳过以保护数据库）"
+        # 清理XItools-staging相关的Docker网络
+        echo "🌐 清理XItools-staging网络..."
+        docker network ls --filter "name=xitools-staging" -q | xargs -r docker network rm 2>/dev/null || true
 
         echo "✅ 预发布环境清理完成"
+
+        # 登录到GitHub Container Registry
+        echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
         # 切换到新版本
         ln -sfn releases/${{ steps.version.outputs.version }} current
         cd current
 
-        # 启动服务（强制重新创建）
-        echo "🚀 启动预发布环境服务..."
-        docker-compose -f docker-compose.prod.yml pull
-        docker-compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
+        # 验证配置文件
+        echo "验证Docker Compose配置..."
+        docker compose -f docker-compose.prod.yml config || docker-compose -f docker-compose.prod.yml config
+
+        # 拉取最新镜像
+        echo "拉取最新镜像..."
+        docker compose -f docker-compose.prod.yml pull || docker-compose -f docker-compose.prod.yml pull
+
+        # 启动服务（强制重新创建容器）
+        echo "🚀 启动预发布环境服务（强制重新创建容器）..."
+        docker compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans || docker-compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
+
+        # 验证容器启动状态（初步检查）
+        echo "🔍 验证容器启动状态..."
+        sleep 15
+
+        # 检查所有容器状态
+        EXPECTED_CONTAINERS=("xitools-postgres-prod" "xitools-backend-prod" "xitools-frontend-prod" "xitools-nginx-prod")
+        CRITICAL_FAILED_CONTAINERS=()
+
+        echo "📊 容器启动状态检查:"
+        for container in "${EXPECTED_CONTAINERS[@]}"; do
+          status=$(docker inspect --format='{{.State.Status}}' $container 2>/dev/null || echo "not-found")
+          restart_count=$(docker inspect --format='{{.RestartCount}}' $container 2>/dev/null || echo "0")
+
+          case "$status" in
+            "running")
+              echo "✅ $container: 运行中 (重启次数: $restart_count)"
+              ;;
+            "restarting")
+              echo "🔄 $container: 重启中 (重启次数: $restart_count)"
+              ;;
+            "exited")
+              exit_code=$(docker inspect --format='{{.State.ExitCode}}' $container 2>/dev/null || echo "unknown")
+              echo "❌ $container: 已退出 (退出码: $exit_code, 重启次数: $restart_count)"
+              CRITICAL_FAILED_CONTAINERS+=("$container")
+              ;;
+            "not-found")
+              echo "❌ $container: 容器不存在"
+              CRITICAL_FAILED_CONTAINERS+=("$container")
+              ;;
+            *)
+              echo "⚠️ $container: 状态 $status (重启次数: $restart_count)"
+              ;;
+          esac
+        done
+
+        # 只有在容器完全无法启动时才退出
+        if [ ${#CRITICAL_FAILED_CONTAINERS[@]} -gt 0 ]; then
+          echo "❌ 以下容器启动严重失败: ${CRITICAL_FAILED_CONTAINERS[*]}"
+          echo "📋 显示容器状态和日志..."
+          docker compose -f docker-compose.prod.yml ps || docker-compose -f docker-compose.prod.yml ps
+
+          for container in "${CRITICAL_FAILED_CONTAINERS[@]}"; do
+            echo "📋 容器 $container 的日志:"
+            docker logs $container --tail 50 2>&1 || echo "无法获取容器日志"
+          done
+
+          exit 1
+        fi
+
+        echo "✅ 容器初步启动检查完成"
+
+        # 显示容器状态
+        echo "📊 所有容器状态："
+        docker compose -f docker-compose.prod.yml ps || docker-compose -f docker-compose.prod.yml ps
+
+        # 清理旧镜像
+        docker image prune -f
 
         echo "✅ 预生产环境部署完成"
         EOF
 
 
-    - name: 基础健康检查
+    - name: 全面健康检查
       run: |
-        echo "🏥 等待服务启动并进行健康检查..."
-        sleep 30
+        echo "🏥 执行全面健康检查..."
 
-        # 简单的健康检查
-        for i in {1..10}; do
-          if curl -f -s --connect-timeout 5 "http://xitools.furdow.com:${{ env.STAGING_PORT }}/" > /dev/null; then
-            echo "✅ 预生产环境健康检查通过"
-            break
-          else
-            echo "⏳ 等待服务启动... ($i/10)"
-            if [ $i -eq 10 ]; then
-              echo "⚠️ 健康检查超时，但部署已完成"
+        # 等待服务完全启动
+        echo "⏳ 等待服务完全启动..."
+        echo "  给予容器足够的启动时间..."
+        sleep 60
+
+        # 检查容器健康状态（带重试机制）
+        echo "🔍 检查容器健康状态..."
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'HEALTH_EOF'
+        cd /opt/xitools-staging/current
+
+        # 定义容器检查函数
+        check_container_health() {
+          local container=$1
+          local max_retries=6
+          local retry_interval=10
+
+          for ((i=1; i<=max_retries; i++)); do
+            echo "🔍 检查 $container 状态 (尝试 $i/$max_retries)..."
+
+            health=$(docker inspect --format='{{.State.Health.Status}}' $container 2>/dev/null || echo "no-healthcheck")
+            status=$(docker inspect --format='{{.State.Status}}' $container 2>/dev/null || echo "not-found")
+            restart_count=$(docker inspect --format='{{.RestartCount}}' $container 2>/dev/null || echo "0")
+
+            echo "  状态: $status, 健康: $health, 重启次数: $restart_count"
+
+            # 检查后端容器是否在不断重启
+            if [[ "$container" == *"backend"* ]] && [ "$restart_count" -gt 3 ]; then
+              echo "❌ $container: 重启次数过多 ($restart_count 次)，可能启动失败"
+              echo "📋 后端容器日志 (最近100行):"
+              docker logs --tail 100 $container 2>&1 || echo "无法获取日志"
+              return 1
             fi
-            sleep 10
+
+            # 检查容器状态
+            case "$status" in
+              "running")
+                if [ "$health" = "healthy" ] || [ "$health" = "no-healthcheck" ]; then
+                  echo "✅ $container: 运行正常 ($status, $health)"
+                  return 0
+                else
+                  echo "⚠️ $container: 运行中但健康检查失败 ($status, $health)"
+                fi
+                ;;
+              "restarting")
+                echo "🔄 $container: 正在重启中，等待启动完成..."
+                ;;
+              "exited")
+                exit_code=$(docker inspect --format='{{.State.ExitCode}}' $container 2>/dev/null || echo "unknown")
+                echo "❌ $container: 已退出 (退出码: $exit_code)"
+                echo "📋 容器日志 (最近30行):"
+                docker logs --tail 30 $container 2>&1 || echo "无法获取日志"
+                return 1
+                ;;
+              "not-found")
+                echo "❌ $container: 容器不存在"
+                return 1
+                ;;
+              *)
+                echo "⚠️ $container: 未知状态 ($status)"
+                ;;
+            esac
+
+            # 如果不是最后一次尝试，等待后重试
+            if [ $i -lt $max_retries ]; then
+              echo "  等待 ${retry_interval} 秒后重试..."
+              sleep $retry_interval
+            fi
+          done
+
+          # 所有重试都失败
+          echo "❌ $container: 健康检查失败，已达到最大重试次数"
+          echo "📋 最终状态: $status, 健康: $health, 重启次数: $restart_count"
+
+          # 显示详细的容器信息
+          if [[ "$container" == *"backend"* ]]; then
+            echo "📋 后端容器日志 (最近100行):"
+            docker logs --tail 100 $container 2>&1 || echo "无法获取日志"
+          else
+            echo "📋 容器日志 (最近30行):"
+            docker logs --tail 30 $container 2>&1 || echo "无法获取日志"
+          fi
+
+          return 1
+        }
+
+        # 检查所有容器
+        FAILED_CONTAINERS=()
+        CONTAINERS=("xitools-postgres-prod" "xitools-backend-prod" "xitools-frontend-prod" "xitools-nginx-prod")
+
+        for container in "${CONTAINERS[@]}"; do
+          if ! check_container_health "$container"; then
+            FAILED_CONTAINERS+=("$container")
           fi
         done
+
+        # 检查是否有失败的容器
+        if [ ${#FAILED_CONTAINERS[@]} -gt 0 ]; then
+          echo "❌ 以下容器健康检查失败: ${FAILED_CONTAINERS[*]}"
+          echo "📊 所有容器当前状态:"
+          docker compose -f docker-compose.prod.yml ps || docker-compose -f docker-compose.prod.yml ps
+          exit 1
+        fi
+
+        echo "✅ 所有容器健康检查通过"
+
+        # 检查端口监听状态
+        echo "🔌 检查端口监听状态..."
+        echo "HTTP端口8081:"
+        netstat -tlnp | grep :8081 || echo "⚠️ 端口8081未监听"
+
+        # 检查本地连通性
+        echo "🔗 检查本地连通性..."
+        if curl -f -s --connect-timeout 5 "http://127.0.0.1:8081/health" > /dev/null; then
+          echo "✅ HTTP端口可访问"
+        else
+          echo "❌ 本地健康检查失败，无法访问应用"
+          exit 1
+        fi
+
+        # 检查应用可访问性
+        echo "🌐 检查应用可访问性..."
+        HEALTH_CHECK_FAILED=false
+
+        # 检查前端HTTP访问
+        echo "检查前端应用HTTP可访问性..."
+        FRONTEND_ACCESSIBLE=false
+
+        for i in {1..8}; do
+          if curl -f -s --connect-timeout 15 "http://xitools.furdow.com:8081/" > /dev/null; then
+            echo "✅ 前端应用HTTP可访问"
+            FRONTEND_ACCESSIBLE=true
+            break
+          else
+            echo "⏳ 等待前端启动... ($i/8)"
+            sleep 15
+          fi
+        done
+
+        if [ "$FRONTEND_ACCESSIBLE" = false ]; then
+          echo "❌ 前端应用HTTP访问失败"
+          HEALTH_CHECK_FAILED=true
+        fi
+
+        # 检查后端API HTTP访问
+        echo "检查后端API HTTP可访问性..."
+        API_ACCESSIBLE=false
+
+        for i in {1..10}; do
+          echo "  尝试访问后端API ($i/10)..."
+
+          API_RESPONSE=$(curl -s -w "HTTP_CODE:%{http_code};TOTAL_TIME:%{time_total}" --connect-timeout 15 "http://xitools.furdow.com:8081/api/health" 2>&1)
+          HTTP_CODE=$(echo "$API_RESPONSE" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2)
+
+          echo "  响应状态码: $HTTP_CODE"
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ 后端API HTTP可访问"
+            API_ACCESSIBLE=true
+            break
+          elif [ -n "$HTTP_CODE" ] && [ "$HTTP_CODE" != "000" ]; then
+            echo "  收到HTTP响应但状态码不是200: $HTTP_CODE"
+            RESPONSE_BODY=$(echo "$API_RESPONSE" | sed 's/HTTP_CODE:.*//g' | head -c 100)
+            echo "  响应内容: $RESPONSE_BODY"
+          else
+            echo "  无法连接到API端点"
+          fi
+
+          if [ $i -lt 10 ]; then
+            echo "  等待15秒后重试..."
+            sleep 15
+          fi
+        done
+
+        if [ "$API_ACCESSIBLE" = false ]; then
+          echo "❌ 后端API HTTP访问失败"
+
+          # 额外的诊断信息
+          echo "🔍 API访问诊断信息:"
+          echo "  1. 检查nginx配置中的API路由"
+          echo "  2. 检查后端容器是否正常运行"
+
+          # 尝试直接访问后端容器
+          echo "📋 尝试直接访问后端容器:"
+          if curl -f -s --connect-timeout 5 "http://127.0.0.1:3000/health" > /dev/null; then
+            echo "  ✅ 后端容器直接访问正常，问题可能在nginx代理配置"
+          else
+            echo "  ❌ 后端容器直接访问也失败，问题在后端服务"
+          fi
+
+          HEALTH_CHECK_FAILED=true
+        fi
+
+        # 验证认证接口
+        echo "🔐 验证认证接口（登录失败应返回401）..."
+        LOGIN_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://xitools.furdow.com:8081/api/auth/login" -H "Content-Type: application/json" --data '{"identifier":"non-exist","password":"wrong"}')
+        echo "  /api/auth/login 状态码: $LOGIN_STATUS"
+        if [ "$LOGIN_STATUS" != "401" ] && [ "$LOGIN_STATUS" != "400" ]; then
+          echo "❌ 认证接口返回异常（期望401/400），可能数据库未初始化或后端异常"
+          HEALTH_CHECK_FAILED=true
+        fi
+
+        # 如果健康检查失败，标记部署失败
+        if [ "$HEALTH_CHECK_FAILED" = true ]; then
+          echo "❌ 健康检查失败，预生产部署被标记为失败"
+          echo ""
+          echo "🔧 故障排查指南:"
+          echo "1. 检查容器日志: docker logs xitools-backend-prod"
+          echo "2. 检查nginx配置: docker exec xitools-nginx-prod nginx -t"
+          echo "3. 检查网络连接: docker exec xitools-backend-prod curl http://localhost:3000/health"
+          echo ""
+          exit 1
+        fi
+
+        HEALTH_EOF
+
+        # 捕获健康检查的退出码
+        HEALTH_CHECK_EXIT_CODE=$?
+
+        # 如果健康检查失败，获取详细诊断信息
+        if [ $HEALTH_CHECK_EXIT_CODE -ne 0 ]; then
+          echo "📋 健康检查失败 (退出码: $HEALTH_CHECK_EXIT_CODE)，获取详细诊断信息..."
+
+          # 获取诊断信息
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+            cd /opt/xitools-staging/current
+            echo '=== 容器状态 ==='
+            docker compose -f docker-compose.prod.yml ps || docker-compose -f docker-compose.prod.yml ps
+            echo ''
+            echo '=== 后端容器日志（最近50行）==='
+            docker logs xitools-backend-prod --tail 50 2>&1 || echo '无法获取后端日志'
+            echo ''
+            echo '=== Nginx容器日志（最近30行）==='
+            docker logs xitools-nginx-prod --tail 30 2>&1 || echo '无法获取nginx日志'
+          "
+
+          exit 1
+        fi
+
+        echo "✅ 所有健康检查通过，预生产部署成功"
+        echo ""
+        echo "🌐 访问地址:"
+        echo "   HTTP: http://xitools.furdow.com:8081"
+        echo "   API:  http://xitools.furdow.com:8081/api"
 
     - name: 部署完成通知
       if: always()
@@ -215,5 +551,18 @@ jobs:
         echo "📢 预生产环境部署完成"
         echo "版本: ${{ steps.version.outputs.version }}"
         echo "分支: ${{ github.event.inputs.deploy_branch || 'develop' }}"
-        echo "访问地址: http://xitools.furdow.com:${{ env.STAGING_PORT }}"
         echo "部署时间: $(date)"
+        echo ""
+        echo "🌐 访问地址:"
+        echo "  HTTP: http://xitools.furdow.com:${{ env.STAGING_PORT }}"
+        echo "  API:  http://xitools.furdow.com:${{ env.STAGING_PORT }}/api"
+        echo "  健康检查: http://xitools.furdow.com:${{ env.STAGING_PORT }}/health"
+        echo ""
+        if [ "${{ job.status }}" = "success" ]; then
+          echo "✅ 部署状态: 成功"
+          echo "💡 预生产环境验证通过，可以安全部署到生产环境"
+        else
+          echo "❌ 部署状态: 失败"
+          echo "⚠️ 请修复问题后再部署到生产环境"
+        fi
+

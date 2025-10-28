@@ -96,20 +96,28 @@ jobs:
 
         # 构建前端镜像
         echo "🔨 构建前端镜像..."
-        docker build -t ghcr.io/${REPO_LOWERCASE}/frontend:latest ./frontend --target production \
+        docker build -t ghcr.io/${REPO_LOWERCASE}/frontend:${{ steps.version.outputs.version }} ./frontend --target production \
           --build-arg VITE_BACKEND_URL=${{ secrets.VITE_BACKEND_URL }} \
           --build-arg VITE_NODE_ENV=production
 
+        # 同时打上 latest 标签
+        docker tag ghcr.io/${REPO_LOWERCASE}/frontend:${{ steps.version.outputs.version }} ghcr.io/${REPO_LOWERCASE}/frontend:latest
+
         # 构建后端镜像
         echo "🔨 构建后端镜像..."
-        docker build -t ghcr.io/${REPO_LOWERCASE}/backend:latest ./backend --target production
+        docker build -t ghcr.io/${REPO_LOWERCASE}/backend:${{ steps.version.outputs.version }} ./backend --target production
 
-        # 推送前端镜像
+        # 同时打上 latest 标签
+        docker tag ghcr.io/${REPO_LOWERCASE}/backend:${{ steps.version.outputs.version }} ghcr.io/${REPO_LOWERCASE}/backend:latest
+
+        # 推送前端镜像（包括版本标签和 latest）
         echo "📤 推送前端镜像..."
+        docker push ghcr.io/${REPO_LOWERCASE}/frontend:${{ steps.version.outputs.version }}
         docker push ghcr.io/${REPO_LOWERCASE}/frontend:latest
 
-        # 推送后端镜像
+        # 推送后端镜像（包括版本标签和 latest）
         echo "📤 推送后端镜像..."
+        docker push ghcr.io/${REPO_LOWERCASE}/backend:${{ steps.version.outputs.version }}
         docker push ghcr.io/${REPO_LOWERCASE}/backend:latest
 
         echo "✅ 镜像构建和推送完成"
@@ -140,12 +148,23 @@ jobs:
         POSTGRES_DB=${{ secrets.POSTGRES_DB }}
         VITE_BACKEND_URL=${{ secrets.VITE_BACKEND_URL }}
         CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}
+        RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
+        EMAIL_FROM=${{ secrets.EMAIL_FROM }}
         EOF
+
+        # 创建版本标记文件
+        echo "${{ steps.version.outputs.version }}" > .version
+
+        # 修改 docker-compose.prod.yml 使用版本化的镜像标签
+        REPO_LOWERCASE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+        sed -i "s|ghcr.io/${REPO_LOWERCASE}/backend:latest|ghcr.io/${REPO_LOWERCASE}/backend:${{ steps.version.outputs.version }}|g" docker-compose.prod.yml
+        sed -i "s|ghcr.io/${REPO_LOWERCASE}/frontend:latest|ghcr.io/${REPO_LOWERCASE}/frontend:${{ steps.version.outputs.version }}|g" docker-compose.prod.yml
 
         # 上传文件
         echo "📤 上传部署文件..."
         scp -o StrictHostKeyChecking=no docker-compose.prod.yml ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools/releases/${{ steps.version.outputs.version }}/
         scp -o StrictHostKeyChecking=no .env.production ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools/releases/${{ steps.version.outputs.version }}/
+        scp -o StrictHostKeyChecking=no .version ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools/releases/${{ steps.version.outputs.version }}/
         scp -r -o StrictHostKeyChecking=no nginx/ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/xitools/releases/${{ steps.version.outputs.version }}/
 
         # 检查SSL证书目录
@@ -615,6 +634,14 @@ jobs:
 
             echo "  状态: $status, 健康: $health, 重启次数: $restart_count"
 
+            # 检查后端容器是否在不断重启（重启次数过多或一直处于 starting）
+            if [[ "$container" == *"backend"* ]] && [ "$restart_count" -gt 3 ]; then
+              echo "❌ $container: 重启次数过多 ($restart_count 次)，可能启动失败"
+              echo "📋 后端容器日志 (最近50行):"
+              docker logs --tail 50 $container 2>&1 || echo "无法获取日志"
+              return 1
+            fi
+
             # 检查容器状态
             case "$status" in
               "running")
@@ -664,9 +691,14 @@ jobs:
           echo "📋 容器详细信息:"
           docker inspect $container --format='{{json .State}}' 2>/dev/null | jq '.' 2>/dev/null || docker inspect $container --format='{{.State}}' 2>/dev/null || echo "无法获取容器信息"
 
-          # 显示容器日志
-          echo "📋 容器日志 (最近20行):"
-          docker logs --tail 20 $container 2>&1 || echo "无法获取日志"
+          # 显示容器日志（后端容器显示更多日志）
+          if [[ "$container" == *"backend"* ]]; then
+            echo "📋 后端容器日志 (最近100行):"
+            docker logs --tail 100 $container 2>&1 || echo "无法获取日志"
+          else
+            echo "📋 容器日志 (最近20行):"
+            docker logs --tail 20 $container 2>&1 || echo "无法获取日志"
+          fi
 
           return 1
         }
@@ -1019,7 +1051,7 @@ jobs:
     - name: 自动回滚处理
       if: failure()
       run: |
-        echo "🔄 检测到部署失败，执行自动回滚..."
+        echo "🔄 检测到部署失败，执行智能回滚..."
 
         ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ROLLBACK_EOF'
         cd /opt/xitools
@@ -1028,10 +1060,11 @@ jobs:
         PREVIOUS_VERSION=$(ls -1t releases/ | grep -v "$(readlink current | sed 's/releases\///')" | head -1)
 
         if [ -n "$PREVIOUS_VERSION" ] && [ -d "releases/$PREVIOUS_VERSION" ]; then
-          echo "🔄 回滚到上一个版本: $PREVIOUS_VERSION"
+          echo "🔄 准备回滚到版本: $PREVIOUS_VERSION"
 
           # 停止当前失败的服务
           if [ -f current/docker-compose.prod.yml ]; then
+            echo "🛑 停止当前失败的服务..."
             docker compose -f current/docker-compose.prod.yml down || docker-compose -f current/docker-compose.prod.yml down || true
           fi
 
@@ -1040,15 +1073,55 @@ jobs:
           cd current
 
           # 启动上一个版本的服务（强制重新创建）
+          echo "🚀 启动回滚版本服务..."
           docker compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans || docker-compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
 
-          echo "✅ 回滚完成，服务已恢复到上一个稳定版本"
+          # 等待服务启动
+          echo "⏳ 等待回滚服务启动..."
+          sleep 30
+
+          # 验证回滚后的服务健康状态
+          echo "🏥 验证回滚后的服务健康状态..."
+          ROLLBACK_SUCCESS=false
+
+          # 检查容器是否运行
+          RUNNING_CONTAINERS=$(docker compose -f docker-compose.prod.yml ps --services --filter "status=running" | wc -l)
+          EXPECTED_CONTAINERS=4  # postgres, backend, frontend, nginx
+
+          if [ "$RUNNING_CONTAINERS" -ge 3 ]; then
+            echo "✅ 容器启动正常 ($RUNNING_CONTAINERS/$EXPECTED_CONTAINERS)"
+
+            # 尝试访问健康检查端点
+            if curl -f -s --connect-timeout 10 "http://127.0.0.1:3000/health" > /dev/null 2>&1; then
+              echo "✅ 后端健康检查通过"
+              ROLLBACK_SUCCESS=true
+            else
+              echo "⚠️ 后端健康检查失败，但容器正在运行"
+              # 显示后端日志
+              echo "📋 后端容器日志："
+              docker logs xitools-backend-prod --tail 30 2>&1 || true
+            fi
+          else
+            echo "❌ 部分容器启动失败 ($RUNNING_CONTAINERS/$EXPECTED_CONTAINERS)"
+            docker compose -f docker-compose.prod.yml ps
+          fi
+
+          if [ "$ROLLBACK_SUCCESS" = true ]; then
+            echo "✅ 回滚成功，服务已恢复"
+          else
+            echo "⚠️ 回滚完成但服务可能不稳定，请手动检查"
+            echo "📋 当前容器状态："
+            docker compose -f docker-compose.prod.yml ps
+          fi
         else
-          echo "⚠️ 没有找到可回滚的版本"
+          echo "❌ 没有找到可回滚的版本"
+          echo "📋 可用版本列表："
+          ls -lt releases/ || true
         fi
         ROLLBACK_EOF
 
         echo "❌ 部署失败，已尝试自动回滚"
+        echo "⚠️ 请手动验证生产环境状态"
         exit 1
 
     - name: 部署完成通知
