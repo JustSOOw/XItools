@@ -179,3 +179,9 @@ rsync-exclude.txt
 # Claude AI 配置文件
 .claude/
 *.claude
+
+#openspec
+openspec/*
+AGENTS.md
+CLAUDE.md
+.augment/
