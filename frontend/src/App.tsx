@@ -54,7 +54,7 @@ import { setGlobalConfirmDialogAPI } from './services/globalConfirmDialog';
 import useMcpConnection from './hooks/useMcpConnection';
 import useTaskStore from './store/taskStore';
 import { useNavigationStore } from './store/navigationStore';
-import mcpService from './services/mcpService';
+import taskService from './services/taskService';
 import columnService from './services/columnService';
 import { Task as TaskType, PartialTask } from './types/Task';
 import { useI18n } from './hooks/useI18n';
@@ -144,7 +144,7 @@ function App() {
 
         // 并行加载任务和列数据
         const [tasks, columns] = await Promise.all([
-          mcpService.getTasksByBoard(boardId),
+          taskService.getTasksByBoard(boardId),
           columnService.getColumnsByBoard(boardId),
         ]);
 
@@ -384,7 +384,7 @@ function App() {
         statusColumnId,
       });
 
-      await mcpService.submitTaskDataset([taskData]);
+      await taskService.submitTaskDataset([taskData]);
 
       // 任务创建成功后，重新加载当前看板的数据
       if (currentBoard?.id) {
@@ -555,7 +555,7 @@ function App() {
           // 空列，立即更新本地状态
           moveTask(activeId, finalColumn);
           // 后台持久化
-          mcpService.updateTask(activeId, { status: finalColumn }).catch((error) => {
+          taskService.updateTask(activeId, { status: finalColumn }).catch((error) => {
             console.error('空列移动持久化失败:', error);
             toast.warning(t('common:messages.saveFailed'));
           });
@@ -614,7 +614,7 @@ function App() {
 
       // 后台调用API进行数据持久化（不阻塞UI）
       console.log(`拖拽操作: ${activeId} -> ${finalColumn} (${insertPosition} ${targetTaskId})`);
-      mcpService
+      taskService
         .sortTask(activeId, targetTaskId, finalColumn, insertPosition)
         .then(() => {
           console.log(`任务拖拽持久化成功: ${activeId}`);
@@ -751,7 +751,7 @@ function App() {
   const handleTaskColorChange = async (taskId: string, color: string) => {
     console.log('开始更新任务颜色:', { taskId: taskId?.substring(0, 8) || taskId, color });
     try {
-      const result = await mcpService.updateTaskColor(taskId, color);
+      const result = await taskService.updateTaskColor(taskId, color);
       console.log('任务颜色更新API响应:', result);
 
       // 不需要手动更新状态，Socket.IO会自动广播更新事件
@@ -776,7 +776,7 @@ function App() {
       },
       async () => {
         try {
-          await mcpService.deleteTask(taskId);
+          await taskService.deleteTask(taskId);
           // 重新加载当前看板的任务列表
           const currentBoard = getCurrentBoard();
           if (currentBoard?.id) {
@@ -812,7 +812,7 @@ function App() {
       setColumnSort(columnId, sortOption as any);
 
       // 调用后端排序API
-      const result = await mcpService.sortColumnTasks(columnId, sortOption);
+      const result = await taskService.sortColumnTasks(columnId, sortOption);
 
       console.log(`列排序完成:`, result);
 
@@ -883,7 +883,7 @@ function App() {
             onTaskClick={handleTaskClick}
             onTaskUpdate={(taskId, updates) => {
               // 通过MCP服务更新任务
-              mcpService.updateTask(taskId, updates).catch((error) => {
+              taskService.updateTask(taskId, updates).catch((error) => {
                 console.error('更新任务失败:', error);
                 toast.error(t('feedback:messages.taskUpdateFailed'));
               });
@@ -907,7 +907,7 @@ function App() {
             onTaskClick={handleTaskClick}
             onTaskUpdate={(taskId, updates) => {
               // 通过MCP服务更新任务
-              mcpService.updateTask(taskId, updates).catch((error) => {
+              taskService.updateTask(taskId, updates).catch((error) => {
                 console.error('更新任务失败:', error);
                 toast.error('更新任务失败，请重试');
               });
@@ -1314,7 +1314,7 @@ function App() {
                         try {
                           // 删除所有任务
                           for (const task of tasks) {
-                            await mcpService.deleteTask(task.id);
+                            await taskService.deleteTask(task.id);
                           }
                           // 重新加载当前看板的任务列表
                           const currentBoard = getCurrentBoard();

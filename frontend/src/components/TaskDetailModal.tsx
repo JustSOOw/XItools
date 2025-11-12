@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Task, TaskUpdate } from '../types/Task';
 import Modal from './Modal';
-import mcpService from '../services/mcpService';
+import taskService from '../services/taskService';
 import useTaskStore from '../store/taskStore';
 import { toast } from './ui/Toast';
 import {
@@ -34,7 +34,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
 
       setIsLoading(true);
       try {
-        const taskDetails = await mcpService.getTaskDetails(taskId);
+        const taskDetails = await taskService.getTaskDetails(taskId);
         setTask(taskDetails);
       } catch (error) {
         console.error('获取任务详情失败:', error);
@@ -54,7 +54,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
     setIsSaving(true);
     try {
       const updateData = { [field]: value };
-      const updatedTask = await mcpService.updateTask(taskId, updateData);
+      const updatedTask = await taskService.updateTask(taskId, updateData);
       if (updatedTask) {
         // 同时更新本地状态和全局状态
         setTask(updatedTask);
@@ -458,7 +458,7 @@ const ActionsTab: React.FC<{
 
   const handleDelete = async () => {
     try {
-      await mcpService.deleteTask(task.id);
+      await taskService.deleteTask(task.id);
       // 同时更新全局状态
       deleteTaskFromStore(task.id);
       toast.success(t('feedback:messages.taskDeleted'));
