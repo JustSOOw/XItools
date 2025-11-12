@@ -72,6 +72,103 @@ XItools采用了完全容器化的Nginx反向代理架构，解决了前端在�
 
 本应用采用三层组织结构：**工作区 (Workspace)** → **项目 (Project)** → **看板 (Board)**。每个层级都支持直属看板，并通过 `ownerId` 实现用户数据隔离。
 
+## 🏗️ 双通道架构设计
+
+XItools 采用**双通道架构**，前端用户操作和 MCP 工具操作完全分离，通过 WebSocket 实现数据实时同步：
+
+### 通道 1：前端用户操作（浏览器）
+
+```
+浏览器 → taskService.ts → REST API (/api/tasks/*)
+                          ↓
+                     JWT Token 认证
+                          ↓
+                   taskRoutes.ts → Prisma ORM
+                          ↓
+              WebSocket 广播 (tasks_batch_created, task_created)
+```
+
+**关键特点**：
+- 使用标准 REST API（GET、POST、PUT、DELETE）
+- JWT Token 认证（用户登录后自动获取）
+- 适用于所有浏览器中的用户操作
+
+### 通道 2：MCP 工具操作（外部 AI）
+
+```
+Cursor/Claude → 内置 MCP 客户端 → MCP 协议 (/mcp-auth)
+                                      ↓
+                                API Key 认证
+                                      ↓
+                        authenticatedMcpService.ts → Prisma ORM
+                                      ↓
+                      WebSocket 广播 (tasks_added)
+```
+
+**关键特点**：
+- 使用 JSON-RPC 2.0 协议（MCP 标准）
+- API Key 认证（在网站"设置"中创建）
+- 外部独立程序（不依赖前端代码）
+
+### 实时同步机制
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    数据流完整图示                             │
+└─────────────────────────────────────────────────────────────┘
+
+通道 1: 浏览器用户创建任务
+    ↓
+taskService.ts (REST API)
+    ↓
+后端 taskRoutes.ts → Prisma.create() → WebSocket 广播
+    ↓                                         ↓
+数据库                                  所有客户端接收
+    ↑                                         ↑
+后端 authenticatedMcpService.ts → Prisma.create() → WebSocket 广播
+    ↑
+MCP 工具 (JSON-RPC)
+    ↑
+通道 2: Cursor/Claude 创建任务
+```
+
+### 核心原则
+
+| 特性 | 前端用户操作 | MCP 工具操作 |
+|------|------------|-------------|
+| **运行环境** | 浏览器 JavaScript | 桌面应用（Cursor.app、Claude.app） |
+| **代码位置** | `frontend/src/services/taskService.ts` | Cursor/Claude 内置客户端 |
+| **通信协议** | REST API（HTTP） | JSON-RPC 2.0（MCP 标准） |
+| **认证方式** | JWT Token | API Key |
+| **API 端点** | `/api/tasks/*`, `/api/boards/*` 等 | `/mcp-auth` |
+| **数据存储** | Prisma ORM → PostgreSQL | Prisma ORM → PostgreSQL（相同） |
+| **实时同步** | WebSocket (`tasks_batch_created`) | WebSocket (`tasks_added`) |
+| **依赖关系** | 依赖后端 REST API | **不依赖前端代码** |
+
+**重要说明**：
+- ✅ 前端 **不使用** MCP 协议，只使用 REST API
+- ✅ MCP 工具是**外部独立程序**，修改前端代码不会影响 MCP 工具
+- ✅ 两个通道通过 **WebSocket** 实现数据实时同步
+- ✅ 数据格式完全一致（都来自 Prisma Schema）
+
+### 前端核心服务文件
+
+**taskService.ts**
+- **作用**：前端用户操作的核心服务
+- **使用场景**：浏览器中的所有任务操作（创建、更新、删除等）
+- **协议**：REST API（**不是** MCP 协议！）
+- **认证**：JWT Token
+- **与 MCP 关系**：完全独立，修改此文件不影响 MCP 工具
+
+**socketService.ts**
+- **作用**：WebSocket 实时同步服务
+- **监听事件**：
+  - `tasks_added` - MCP 工具创建的任务
+  - `tasks_batch_created` - 前端批量创建的任务
+  - `task_created` - 前端单个创建的任务
+  - 其他更新、删除事件
+- **核心功能**：确保所有客户端（MCP 工具和浏览器）的数据实时同步
+
 ## 项目结构
 
 ```

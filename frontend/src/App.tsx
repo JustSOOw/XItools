@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import classNames from 'classnames';
 import {
   DndContext,
@@ -101,6 +101,41 @@ function App() {
     tasks: TaskType[];
     activeTaskId: string | null;
   } | null>(null);
+
+  // 拖拽操作队列 - 防止快速连续拖拽导致的API并发混乱
+  const dragOperationQueue = useRef<{
+    queue: Array<() => Promise<void>>;
+    processing: boolean;
+  }>({
+    queue: [],
+    processing: false,
+  });
+
+  // 串行化拖拽操作的辅助函数
+  const enqueueDragOperation = useCallback(async (operation: () => Promise<void>) => {
+    const queue = dragOperationQueue.current;
+
+    // 将操作添加到队列
+    queue.queue.push(operation);
+
+    // 如果没有正在处理的操作，开始处理队列
+    if (!queue.processing) {
+      queue.processing = true;
+
+      while (queue.queue.length > 0) {
+        const op = queue.queue.shift();
+        if (op) {
+          try {
+            await op();
+          } catch (error) {
+            console.error('拖拽操作执行失败:', error);
+          }
+        }
+      }
+
+      queue.processing = false;
+    }
+  }, []);
 
   // 注意：列数据现在通过看板切换时按需加载，不再全局加载
 
@@ -613,17 +648,18 @@ function App() {
       }
 
       // 后台调用API进行数据持久化（不阻塞UI）
+      // 使用操作队列串行化拖拽请求，防止快速连续拖拽导致的并发混乱
       console.log(`拖拽操作: ${activeId} -> ${finalColumn} (${insertPosition} ${targetTaskId})`);
-      taskService
-        .sortTask(activeId, targetTaskId, finalColumn, insertPosition)
-        .then(() => {
+      enqueueDragOperation(async () => {
+        try {
+          await taskService.sortTask(activeId, targetTaskId, finalColumn, insertPosition);
           console.log(`任务拖拽持久化成功: ${activeId}`);
-        })
-        .catch((error) => {
+        } catch (error) {
           console.error('任务拖拽持久化失败:', error);
           // 持久化失败时，可以选择显示警告但不回滚UI
           toast.warning('任务保存失败，但界面已更新');
-        });
+        }
+      });
     } catch (error) {
       console.error('任务拖拽失败:', error);
       toast.error('任务移动失败');

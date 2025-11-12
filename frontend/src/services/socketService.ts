@@ -81,11 +81,26 @@ class SocketService {
       useTaskStore.getState().addTasks([task]);
     });
 
-    // 更新任务事件 - 重新启用，支持任务颜色等属性更新
+    // 更新任务事件 - 只更新拖拽无关的属性，避免覆盖乐观更新
     this.socket.on('task_updated', (task: Task) => {
       console.log('收到任务更新:', task.id);
-      // 启用WebSocket自动更新，确保任务颜色等属性能正确同步
-      useTaskStore.getState().updateTask(task);
+      const localTask = useTaskStore.getState().tasks.find(t => t.id === task.id);
+
+      if (localTask) {
+        // 只更新拖拽无关的属性，保留本地的 sortOrder 和 status
+        // 这样可以避免 WebSocket 事件覆盖前端的乐观更新导致位置跳变
+        const updatedTask = {
+          ...task,
+          sortOrder: localTask.sortOrder,  // 保留本地排序
+          status: localTask.status,        // 保留本地状态（列）
+        };
+        useTaskStore.getState().updateTask(updatedTask);
+        console.log('任务更新（保留本地排序和状态）:', task.id);
+      } else {
+        // 如果本地没有该任务，直接添加
+        useTaskStore.getState().updateTask(task);
+        console.log('任务更新（新任务）:', task.id);
+      }
     });
 
     // 删除任务事件

@@ -185,3 +185,4 @@ openspec/*
 AGENTS.md
 CLAUDE.md
 .augment/
+tmp/*
