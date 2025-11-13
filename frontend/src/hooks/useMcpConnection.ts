@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import socketService from '../services/socketService';
-import mcpService from '../services/mcpService';
+import taskService from '../services/taskService';
 import useTaskStore from '../store/taskStore';
 import { getBackendUrl, log } from '../utils/env';
 
