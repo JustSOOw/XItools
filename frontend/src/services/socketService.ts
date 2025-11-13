@@ -63,17 +63,44 @@ class SocketService {
   private setupTaskEventListeners(): void {
     if (!this.socket) return;
 
-    // 添加任务事件
+    // 添加任务事件（MCP 工具创建）
     this.socket.on('tasks_added', (tasks: Task[]) => {
-      console.log('收到新增任务:', tasks);
+      console.log('收到新增任务 (MCP):', tasks);
       useTaskStore.getState().addTasks(tasks);
     });
 
-    // 更新任务事件 - 重新启用，支持任务颜色等属性更新
+    // 批量添加任务事件（前端用户创建）
+    this.socket.on('tasks_batch_created', (tasks: Task[]) => {
+      console.log('收到批量新增任务 (前端):', tasks);
+      useTaskStore.getState().addTasks(tasks);
+    });
+
+    // 单个任务创建事件（前端用户创建）
+    this.socket.on('task_created', (task: Task) => {
+      console.log('收到任务创建 (前端):', task);
+      useTaskStore.getState().addTasks([task]);
+    });
+
+    // 更新任务事件 - 只更新拖拽无关的属性，避免覆盖乐观更新
     this.socket.on('task_updated', (task: Task) => {
       console.log('收到任务更新:', task.id);
-      // 启用WebSocket自动更新，确保任务颜色等属性能正确同步
-      useTaskStore.getState().updateTask(task);
+      const localTask = useTaskStore.getState().tasks.find(t => t.id === task.id);
+
+      if (localTask) {
+        // 只更新拖拽无关的属性，保留本地的 sortOrder 和 status
+        // 这样可以避免 WebSocket 事件覆盖前端的乐观更新导致位置跳变
+        const updatedTask = {
+          ...task,
+          sortOrder: localTask.sortOrder,  // 保留本地排序
+          status: localTask.status,        // 保留本地状态（列）
+        };
+        useTaskStore.getState().updateTask(updatedTask);
+        console.log('任务更新（保留本地排序和状态）:', task.id);
+      } else {
+        // 如果本地没有该任务，直接添加
+        useTaskStore.getState().updateTask(task);
+        console.log('任务更新（新任务）:', task.id);
+      }
     });
 
     // 删除任务事件
@@ -156,9 +183,9 @@ class SocketService {
         return;
       }
 
-      // 动态导入mcpService以避免循环依赖
-      const { default: mcpService } = await import('./mcpService');
-      const tasks = await mcpService.getTasksByBoard(currentBoardId);
+      // 动态导入taskService以避免循环依赖
+      const { default: taskService } = await import('./taskService');
+      const tasks = await taskService.getTasksByBoard(currentBoardId);
       useTaskStore.getState().setTasks(tasks);
       console.log('当前看板任务列表已刷新:', currentBoardId);
     } catch (error) {
