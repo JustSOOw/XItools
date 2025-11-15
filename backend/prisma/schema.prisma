@@ -24,9 +24,9 @@ model User {
   id           String    @id @default(uuid())
   username     String    @unique // 用户名，唯一
   email        String    @unique // 邮箱，唯一
-  passwordHash String    // 加密后的密码
-  avatar       String?   // 头像URL，可选
-  bio          String?   // 个人简介，可选
+  passwordHash String // 加密后的密码
+  avatar       String? // 头像URL，可选
+  bio          String? // 个人简介，可选
   role         String    @default("user") // 用户角色，默认为普通用户
   isActive     Boolean   @default(true) // 账户是否激活
   lastLoginAt  DateTime? // 最后登录时间
@@ -34,15 +34,23 @@ model User {
   updatedAt    DateTime  @updatedAt
 
   // 关联关系
-  sessions   UserSession[] // 用户会话
+  sessions            UserSession[] // 用户会话
   passwordResetTokens PasswordResetToken[] // 密码重置令牌
-  apiKeys    UserApiKey[]  // API密钥
-  mcpLogs    McpUsageLog[] // MCP使用日志
-  workspaces Workspace[]   // 拥有的工作区
-  projects   Project[]     // 拥有的项目
-  boards     Board[]       // 拥有的看板
-  tasks      Task[]        // 拥有的任务
-  tags       Tag[]         // 拥有的标签
+  apiKeys             UserApiKey[] // API密钥
+  mcpLogs             McpUsageLog[] // MCP使用日志
+  workspaces          Workspace[] // 拥有的工作区
+  projects            Project[] // 拥有的项目
+  boards              Board[] // 拥有的看板
+  tasks               Task[] // 拥有的任务
+  tags                Tag[] // 拥有的标签
+
+  // 团队协作关联
+  ownedTeam           Team?            @relation("TeamOwner") // 创建的团队(一对一)
+  teamMembership      TeamMember? // 加入的团队成员记录(一对一)
+  sentInvitations     TeamInvitation[] @relation("InvitationInviter") // 发送的邀请
+  receivedInvitations TeamInvitation[] @relation("InvitationInvitee") // 收到的邀请
+  taskComments        TaskComment[] // 任务评论
+  notifications       Notification[] // 通知
 
   @@index([email])
   @@index([username])
@@ -52,16 +60,16 @@ model User {
 
 // 用户会话模型 - 会话管理
 model UserSession {
-  id        String    @id @default(uuid())
-  userId    String    // 关联用户
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash String    @unique // token哈希值
-  expiresAt DateTime  // 过期时间
-  isRevoked Boolean   @default(false) // 是否已撤销
-  userAgent String?   // 用户代理信息
-  ipAddress String?   // IP地址
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id        String   @id @default(uuid())
+  userId    String // 关联用户
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique // token哈希值
+  expiresAt DateTime // 过期时间
+  isRevoked Boolean  @default(false) // 是否已撤销
+  userAgent String? // 用户代理信息
+  ipAddress String? // IP地址
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([tokenHash])
@@ -71,18 +79,18 @@ model UserSession {
 
 // 密码重置令牌模型 - 管理邮箱验证码
 model PasswordResetToken {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  codeHash     String   // SHA256 哈希后的验证码
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash     String // SHA256 哈希后的验证码
   expiresAt    DateTime // 过期时间
   consumedAt   DateTime?
-  attemptCount Int      @default(0)
-  isUsed       Boolean  @default(false)
+  attemptCount Int       @default(0)
+  isUsed       Boolean   @default(false)
   ipAddress    String?
   userAgent    String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([userId])
   @@index([expiresAt])
@@ -91,17 +99,17 @@ model PasswordResetToken {
 
 // 注册验证码模型 - 管理注册邮箱验证码（不依赖userId）
 model RegisterVerificationToken {
-  id           String   @id @default(uuid())
-  email        String   // 注册邮箱
-  codeHash     String   // SHA256 哈希后的验证码
+  id           String    @id @default(uuid())
+  email        String // 注册邮箱
+  codeHash     String // SHA256 哈希后的验证码
   expiresAt    DateTime // 过期时间
   consumedAt   DateTime?
-  attemptCount Int      @default(0)
-  isUsed       Boolean  @default(false)
+  attemptCount Int       @default(0)
+  isUsed       Boolean   @default(false)
   ipAddress    String?
   userAgent    String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([email])
   @@index([expiresAt])
@@ -111,21 +119,21 @@ model RegisterVerificationToken {
 // 用户API密钥模型 - MCP认证
 model UserApiKey {
   id          String    @id @default(uuid())
-  userId      String    // 关联用户
+  userId      String // 关联用户
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name        String    // 密钥名称，便于用户识别
+  name        String // 密钥名称，便于用户识别
   apiKey      String    @unique // API密钥值
-  keyPrefix   String    // 密钥前缀，用于展示
-  permissions String[]  // 权限列表，如["mcp:read", "mcp:write"]
+  keyPrefix   String // 密钥前缀，用于展示
+  permissions String[] // 权限列表，如["mcp:read", "mcp:write"]
   lastUsedAt  DateTime? // 最后使用时间
-  lastUsedIp  String?   // 最后使用IP
+  lastUsedIp  String? // 最后使用IP
   expiresAt   DateTime? // 过期时间，NULL表示永不过期
   isActive    Boolean   @default(true) // 是否激活
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   // 关联关系
-  mcpLogs     McpUsageLog[] // 使用日志
+  mcpLogs McpUsageLog[] // 使用日志
 
   @@index([userId])
   @@index([apiKey])
@@ -135,19 +143,19 @@ model UserApiKey {
 
 // MCP使用日志模型 - 审计和监控
 model McpUsageLog {
-  id              String      @id @default(uuid())
-  apiKeyId        String      // 关联API密钥
-  apiKey          UserApiKey  @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
-  userId          String      // 关联用户
-  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  toolName        String      // 调用的工具名称
-  requestParams   Json?       // 请求参数（JSON格式）
-  responseStatus  Int?        // HTTP响应状态码
-  errorMessage    String?     // 错误信息
-  ipAddress       String?     // 请求IP地址
-  userAgent       String?     // 用户代理
-  executionTimeMs Int?        // 执行时间（毫秒）
-  createdAt       DateTime    @default(now())
+  id              String     @id @default(uuid())
+  apiKeyId        String // 关联API密钥
+  apiKey          UserApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  userId          String // 关联用户
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  toolName        String // 调用的工具名称
+  requestParams   Json? // 请求参数（JSON格式）
+  responseStatus  Int? // HTTP响应状态码
+  errorMessage    String? // 错误信息
+  ipAddress       String? // 请求IP地址
+  userAgent       String? // 用户代理
+  executionTimeMs Int? // 执行时间（毫秒）
+  createdAt       DateTime   @default(now())
 
   @@index([userId, createdAt])
   @@index([apiKeyId, createdAt])
@@ -159,8 +167,8 @@ model McpUsageLog {
 model UserRole {
   id          String   @id @default(uuid())
   name        String   @unique // 角色名称，如 "admin", "member", "viewer"
-  displayName String   // 角色显示名称
-  description String?  // 角色描述
+  displayName String // 角色显示名称
+  description String? // 角色描述
   permissions String[] // 权限列表，JSON数组格式
   isSystem    Boolean  @default(false) // 是否为系统角色
   createdAt   DateTime @default(now())
@@ -172,47 +180,54 @@ model UserRole {
 
 // 工作区模型 - 顶层容器
 model Workspace {
-  id          String    @id @default(uuid())
-  name        String    // 工作区名称
-  description String?   // 工作区描述
-  isDefault   Boolean   @default(false) // 是否为默认工作区
+  id          String  @id @default(uuid())
+  name        String // 工作区名称
+  description String? // 工作区描述
+  isDefault   Boolean @default(false) // 是否为默认工作区
 
   // 用户关联
-  ownerId     String    // 工作区所有者
-  owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId String // 工作区所有者
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // 团队关联
+  teamId String? // 所属团队ID, NULL表示个人工作区
+  team   Team?   @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
   // 关联关系
-  projects    Project[] // 包含的项目
-  boards      Board[]   // 直接在工作区下的看板
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  projects  Project[] // 包含的项目
+  boards    Board[] // 直接在工作区下的看板
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@index([ownerId])
   @@index([isDefault])
   @@index([ownerId, isDefault]) // 复合索引，用于查询用户的默认工作区
+  @@index([teamId]) // 新增：团队工作区索引
+  @@index([ownerId, teamId]) // 新增：复合索引
 }
 
 // 项目模型 - 项目级容器
 model Project {
-  id          String    @id @default(uuid())
-  name        String    // 项目名称
-  description String?   // 项目描述
-  color       String?   // 项目主题色
-  icon        String?   // 项目图标
+  id          String  @id @default(uuid())
+  name        String // 项目名称
+  description String? // 项目描述
+  color       String? // 项目主题色
+  icon        String? // 项目图标
 
   // 层级关系
-  workspaceId String    // 所属工作区
+  workspaceId String // 所属工作区
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   // 用户关联
-  ownerId     String    // 项目所有者
-  owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId String // 项目所有者
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
   // 关联关系
-  boards      Board[]   // 项目下的看板
-  order       Int       @default(0) // 在工作区中的排序
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  boards      Board[] // 项目下的看板
+  permissions ProjectPermission[] // 项目权限
+  order       Int                 @default(0) // 在工作区中的排序
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
 
   @@index([workspaceId])
   @@index([ownerId])
@@ -222,46 +237,46 @@ model Project {
 
 // 看板模型
 model Board {
-  id          String        @id @default(uuid())
-  name        String        // 看板名称
-  description String?       // 看板描述
-  color       String?       // 看板主题色
-  icon        String?       // 看板图标
+  id          String  @id @default(uuid())
+  name        String // 看板名称
+  description String? // 看板描述
+  color       String? // 看板主题色
+  icon        String? // 看板图标
 
   // 层级关系 - 看板可以属于工作区或项目
-  workspaceId String?       // 直接属于工作区
-  workspace   Workspace?    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  projectId   String?       // 属于项目
-  project     Project?      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workspaceId String? // 直接属于工作区
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  projectId   String? // 属于项目
+  project     Project?   @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   // 用户关联
-  ownerId     String        // 看板所有者
-  owner       User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId String // 看板所有者
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
   // 关联关系
-  columns     BoardColumn[] // 看板列
-  tasks       Task[]        // 看板任务
-  order       Int           @default(0) // 排序
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  columns   BoardColumn[] // 看板列
+  tasks     Task[] // 看板任务
+  order     Int           @default(0) // 排序
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 
   @@index([workspaceId])
   @@index([projectId])
   @@index([ownerId])
   @@index([order])
   @@index([ownerId, workspaceId]) // 复合索引，用于查询用户在特定工作区的看板
-  @@index([ownerId, projectId])   // 复合索引，用于查询用户在特定项目的看板
+  @@index([ownerId, projectId]) // 复合索引，用于查询用户在特定项目的看板
 }
 
 // 看板列模型 - 更新关联关系
 model BoardColumn {
   id         String   @id @default(uuid())
-  name       String   // 列名称，如"待办"、"进行中"、"已完成"
-  order      Int      // 列的排序顺序（移除unique约束，因为现在是按看板分组）
-  color      String?  // 列的背景色（可选）
+  name       String // 列名称，如"待办"、"进行中"、"已完成"
+  order      Int // 列的排序顺序（移除unique约束，因为现在是按看板分组）
+  color      String? // 列的背景色（可选）
   sortOption String?  @default("manual") // 列的排序方式：manual, priority, created_asc, created_desc, title_asc, title_desc, due_date
   isDefault  Boolean  @default(false) // 是否为默认列
-  boardId    String   // 所属看板
+  boardId    String // 所属看板
   board      Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @default(now()) @updatedAt
@@ -273,54 +288,55 @@ model BoardColumn {
 
 // 任务模型
 model Task {
-  id                 String   @id @default(uuid())
+  id                 String    @id @default(uuid())
   title              String
-  description        String   @default("")
-  status             String   // 对应BoardColumn的id
+  description        String    @default("")
+  status             String // 对应BoardColumn的id
   priority           String?
   dueDate            DateTime?
-  assignee           String?
-  color              String?  // 任务卡片颜色（可选）
+  assignees          String[] // 修改：支持多负责人
+  color              String? // 任务卡片颜色（可选）
   parentId           String?
-  acceptanceCriteria String   @default("")
+  acceptanceCriteria String    @default("")
   estimatedEffort    Float?
   loggedTime         Float?
-  sortOrder          Int      @default(0) // 用于列内排序
+  sortOrder          Int       @default(0) // 用于列内排序
 
   // 层级关系
-  boardId            String   // 所属看板
-  board              Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  boardId String // 所属看板
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
 
   // 用户关联
-  ownerId            String   // 任务所有者
-  owner              User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId String // 任务所有者
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
   // 关联关系
-  tags               Tag[]    @relation("TaskToTag")
+  tags     Tag[]         @relation("TaskToTag")
+  comments TaskComment[] // 任务评论
 
   // 自引用关系定义 - 父子任务
   parent   Task?  @relation("ParentChild", fields: [parentId], references: [id], onDelete: SetNull)
   subTasks Task[] @relation("ParentChild")
 
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @default(now()) @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   @@index([status])
   @@index([parentId])
   @@index([boardId])
   @@index([ownerId])
   @@index([ownerId, boardId]) // 复合索引，用于查询用户在特定看板的任务
-  @@index([ownerId, status])  // 复合索引，用于查询用户特定状态的任务
+  @@index([ownerId, status]) // 复合索引，用于查询用户特定状态的任务
 }
 
 // 标签模型
 model Tag {
-  id        String   @id @default(uuid())
-  name      String   // 标签名称（移除unique约束，因为现在按用户分组）
+  id   String @id @default(uuid())
+  name String // 标签名称（移除unique约束，因为现在按用户分组）
 
   // 用户关联
-  ownerId   String   // 标签所有者
-  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId String // 标签所有者
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
   // 关联关系
   tasks     Task[]   @relation("TaskToTag")
@@ -346,9 +362,174 @@ model MCPSession {
 model MCPMessage {
   id        String     @id @default(uuid())
   sessionId String
-  role      String     // user, assistant
+  role      String // user, assistant
   content   String     @db.Text
   session   MCPSession @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
+}
+
+// ================================
+// 团队协作相关模型
+// ================================
+
+// 团队模型
+model Team {
+  id          String  @id @default(uuid())
+  name        String // 团队名称
+  description String? // 团队描述
+  avatar      String? // 团队头像
+  isActive    Boolean @default(true) // 团队是否激活
+
+  // 团队所有者（创建者）
+  ownerId String @unique // 一对一：一个用户只能创建一个团队
+  owner   User   @relation("TeamOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // 关联关系
+  members     TeamMember[] // 团队成员
+  invitations TeamInvitation[] // 团队邀请
+  workspaces  Workspace[] // 团队工作区
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+  @@index([isActive])
+}
+
+// 团队成员模型
+model TeamMember {
+  id     String @id @default(uuid())
+  role   String @default("member") // 角色：member
+  status String @default("active") // 状态：active, inactive
+
+  // 所属团队
+  teamId String // 所属团队
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  // 用户关联（一对一：一个用户只能加入一个团队）
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 关联关系
+  projectPermissions ProjectPermission[] // 项目权限
+
+  joinedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([teamId, userId]) // 确保同一团队中用户唯一
+  @@index([teamId])
+  @@index([userId])
+  @@index([role])
+}
+
+// 团队邀请模型
+model TeamInvitation {
+  id           String   @id @default(uuid())
+  inviteCode   String   @unique // 邀请码
+  invitedEmail String // 被邀请者邮箱
+  status       String   @default("pending") // 状态：pending, accepted, rejected, expired, cancelled
+  expiresAt    DateTime // 过期时间
+
+  // 所属团队
+  teamId String // 所属团队
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  // 邀请者
+  inviterId String // 邀请者
+  inviter   User   @relation("InvitationInviter", fields: [inviterId], references: [id], onDelete: Cascade)
+
+  // 被邀请用户（可能为空，如果邮箱未注册）
+  invitedUserId String? // 被邀请用户ID
+  invitedUser   User?   @relation("InvitationInvitee", fields: [invitedUserId], references: [id], onDelete: Cascade)
+
+  acceptedAt  DateTime? // 接受时间
+  rejectedAt  DateTime? // 拒绝时间
+  cancelledAt DateTime? // 撤销时间
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([teamId])
+  @@index([invitedEmail])
+  @@index([invitedUserId])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([inviteCode])
+}
+
+// 项目权限模型
+model ProjectPermission {
+  id         String   @id @default(uuid())
+  permission String // 权限类型：view, edit
+  grantedAt  DateTime @default(now()) // 授予时间
+
+  // 所属项目
+  projectId String // 所属项目
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  // 团队成员
+  memberId String // 团队成员ID
+  member   TeamMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  // 授予者
+  grantedBy String // 授予者用户ID
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, memberId]) // 同一项目中每个成员只有一条权限记录
+  @@index([projectId])
+  @@index([memberId])
+  @@index([permission])
+}
+
+// 任务评论模型
+model TaskComment {
+  id        String  @id @default(uuid())
+  content   String  @db.Text // 评论内容
+  isDeleted Boolean @default(false) // 是否已删除（软删除）
+
+  // 所属任务
+  taskId String // 所属任务
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  // 评论者
+  userId String // 评论者
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime? // 删除时间
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([isDeleted])
+}
+
+// 通知模型
+model Notification {
+  id           String  @id @default(uuid())
+  type         String // 通知类型：task_assigned, task_commented, team_invitation等
+  title        String // 通知标题
+  content      String // 通知内容
+  isRead       Boolean @default(false) // 是否已读
+  resourceType String? // 关联资源类型：task, project等
+  resourceId   String? // 关联资源ID
+
+  // 接收者
+  userId String // 接收者
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  readAt    DateTime? // 阅读时间
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([type])
+  @@index([createdAt])
+  @@index([userId, isRead]) // 复合索引：查询用户未读通知
 }
