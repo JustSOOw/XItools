@@ -21,6 +21,10 @@ import {
   TeamMemberStatus,
   TeamRole,
 } from '../types/teamTypes';
+import {
+  sendTeamInvitationEmail,
+  sendInvitationAcceptedEmail,
+} from './emailService';
 
 const prisma = new PrismaClient();
 
@@ -516,6 +520,45 @@ export class TeamService {
       invitations.push(invitation as TeamInvitationDTO);
     }
 
+    // 发送邀请邮件
+    if (invitations.length > 0) {
+      // 获取邀请者信息
+      const inviter = await prisma.user.findUnique({
+        where: { id: inviterId },
+        select: {
+          username: true,
+        },
+      });
+
+      const inviterName = inviter?.username || '团队管理员';
+
+      // 为每个邀请发送邮件
+      for (const invitation of invitations) {
+        try {
+          // 构建邀请链接（前端接受邀请页面的URL）
+          const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+          const inviteLink = `${baseUrl}/invite/${invitation.inviteCode}`;
+
+          await sendTeamInvitationEmail({
+            to: invitation.invitedEmail,
+            teamName: team.name,
+            teamDescription: team.description || undefined,
+            inviterName,
+            inviteLink,
+            expiresAt: invitation.expiresAt,
+          });
+
+          console.log(`[TeamService] 邀请邮件已发送到 ${invitation.invitedEmail}`);
+        } catch (error) {
+          console.error(
+            `[TeamService] 发送邀请邮件失败 (${invitation.invitedEmail}):`,
+            error
+          );
+          // 不中断流程，继续处理其他邮件
+        }
+      }
+    }
+
     return invitations;
   }
 
@@ -643,6 +686,45 @@ export class TeamService {
         },
       }),
     ]);
+
+    // 发送通知邮件给团队所有者
+    try {
+      // 获取团队和新成员信息
+      const team = await prisma.team.findUnique({
+        where: { id: invitation.teamId },
+        include: {
+          owner: {
+            select: {
+              email: true,
+            },
+          },
+        },
+      });
+
+      const newMember = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          username: true,
+          email: true,
+        },
+      });
+
+      if (team && newMember) {
+        await sendInvitationAcceptedEmail({
+          to: team.owner.email,
+          teamName: team.name,
+          memberName: newMember.username,
+          memberEmail: newMember.email,
+        });
+
+        console.log(
+          `[TeamService] 已通知团队所有者 ${team.owner.email}，新成员 ${newMember.username} 加入团队`
+        );
+      }
+    } catch (error) {
+      console.error('[TeamService] 发送团队成员加入通知邮件失败:', error);
+      // 不中断流程，邮件发送失败不影响加入团队
+    }
   }
 
   /**

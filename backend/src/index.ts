@@ -7,6 +7,7 @@ import { setupRoutes } from './routes';
 // import { setupMCPService } from './services/mcpService'; // 已废弃非认证MCP服务
 import { setupAuthenticatedMCPService } from './services/authenticatedMcpService';
 import { apiKeyExpirationManager } from './services/apiKeyExpirationManager';
+import { invitationExpirationManager } from './services/invitationExpirationManager';
 
 // 扩展FastifyInstance类型以包含io属性
 declare module 'fastify' {
@@ -70,6 +71,9 @@ const start = async () => {
 
     // 启动API密钥过期管理器
     apiKeyExpirationManager.start();
+
+    // 启动团队邀请过期管理器
+    invitationExpirationManager.start();
 
     // 启动HTTP服务器
     const address = await server.listen({ port: config.server.port, host: config.server.host });
