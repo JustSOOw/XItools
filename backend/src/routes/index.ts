@@ -9,6 +9,7 @@ import boardRoutes from './boardRoutes';
 import taskRoutes from './taskRoutes';
 import teamRoutes from './teamRoutes';
 import invitationRoutes from './invitationRoutes';
+import permissionRoutes from './permissionRoutes';
 import { PrismaClient } from '@prisma/client';
 
 // 初始化Prisma客户端
@@ -36,6 +37,7 @@ export async function setupRoutes(fastify: FastifyInstance): Promise<void> {
   // 注册团队协作路由
   fastify.register(teamRoutes, { prefix: '/api' });
   fastify.register(invitationRoutes, { prefix: '/api' });
+  fastify.register(permissionRoutes, { prefix: '/api' });
 
   // 添加根路径响应
   fastify.get('/', async () => {

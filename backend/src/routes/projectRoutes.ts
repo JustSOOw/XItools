@@ -6,6 +6,11 @@ import { FastifyInstance } from 'fastify';
 import { projectService } from '../services/projectService';
 import { projectSchema, projectUpdateSchema, reorderSchema } from '../types/multiBoardSchema';
 import { authMiddleware, requireAuth, createOwnershipVerifier } from '../middleware/authMiddleware';
+import {
+  createOwnershipOrPermissionVerifier,
+  requireProjectAdmin
+} from '../middleware/permissionMiddleware';
+import { ProjectPermissionType } from '../types/teamTypes';
 
 export default async function projectRoutes(fastify: FastifyInstance) {
   // 获取工作区下的所有项目（需要验证工作区所有权）
@@ -27,11 +32,11 @@ export default async function projectRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // 根据ID获取项目（需要验证项目所有权）
+  // 根据ID获取项目（需要验证项目所有权或查看权限）
   fastify.get(
     '/projects/:id',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('project')],
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.VIEW)],
     },
     async (request, reply) => {
       try {
@@ -73,11 +78,11 @@ export default async function projectRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // 更新项目
+  // 更新项目（需要项目管理员权限）
   fastify.put(
     '/projects/:id',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('project')],
+      preHandler: [authMiddleware, requireProjectAdmin],
     },
     async (request, reply) => {
       try {
@@ -100,11 +105,11 @@ export default async function projectRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // 删除项目
+  // 删除项目（需要项目管理员权限）
   fastify.delete(
     '/projects/:id',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('project')],
+      preHandler: [authMiddleware, requireProjectAdmin],
     },
     async (request, reply) => {
       try {
@@ -153,11 +158,11 @@ export default async function projectRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // 移动项目到其他工作区
+  // 移动项目到其他工作区（需要项目管理员权限）
   fastify.post(
     '/projects/:id/move',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('project')],
+      preHandler: [authMiddleware, requireProjectAdmin],
     },
     async (request, reply) => {
       try {
@@ -187,11 +192,11 @@ export default async function projectRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // 获取项目统计信息
+  // 获取项目统计信息（需要查看权限）
   fastify.get(
     '/projects/:id/stats',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('project')],
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.VIEW)],
     },
     async (request, reply) => {
       try {
@@ -206,11 +211,11 @@ export default async function projectRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // 复制项目
+  // 复制项目（需要查看权限）
   fastify.post(
     '/projects/:id/duplicate',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('project')],
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.VIEW)],
     },
     async (request, reply) => {
       try {

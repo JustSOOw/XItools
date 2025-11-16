@@ -6,13 +6,17 @@ import { FastifyInstance } from 'fastify';
 import { taskService } from '../services/taskService';
 import { extendedTaskSchema, extendedTaskUpdateSchema } from '../types/multiBoardSchema';
 import { authMiddleware, requireAuth, createOwnershipVerifier } from '../middleware/authMiddleware';
+import {
+  createOwnershipOrPermissionVerifier
+} from '../middleware/permissionMiddleware';
+import { ProjectPermissionType } from '../types/teamTypes';
 
 export default async function taskRoutes(fastify: FastifyInstance) {
-  // 获取指定看板的所有任务（需要验证看板所有权）
+  // 获取指定看板的所有任务（需要查看权限）
   fastify.get(
     '/boards/:boardId/tasks',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('board')],
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.VIEW)],
     },
     async (request, reply) => {
       try {
@@ -29,11 +33,11 @@ export default async function taskRoutes(fastify: FastifyInstance) {
 
   // 注意：获取看板列的路由已在 columnRoutes.ts 中定义，避免重复
 
-  // 获取指定项目的所有任务（需要验证项目所有权）
+  // 获取指定项目的所有任务（需要查看权限）
   fastify.get(
     '/projects/:projectId/tasks',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('project')],
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.VIEW)],
     },
     async (request, reply) => {
       try {
@@ -67,11 +71,11 @@ export default async function taskRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // 根据ID获取任务（需要验证任务所有权）
+  // 根据ID获取任务（需要查看权限）
   fastify.get(
     '/tasks/:id',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('task')],
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.VIEW)],
     },
     async (request, reply) => {
       try {
@@ -92,11 +96,37 @@ export default async function taskRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // 创建任务
+  // 创建任务（需要编辑权限）
   fastify.post('/tasks', { preHandler: authMiddleware }, async (request, reply) => {
     try {
       const userId = requireAuth(request);
       const taskData = extendedTaskSchema.parse(request.body);
+
+      // 检查用户是否对看板所属的项目有编辑权限
+      if (taskData.boardId) {
+        const { PrismaClient } = await import('@prisma/client');
+        const prisma = new PrismaClient();
+        const board = await prisma.board.findUnique({
+          where: { id: taskData.boardId },
+          include: { project: true },
+        });
+        await prisma.$disconnect();
+
+        if (board?.project) {
+          const { permissionService } = await import('../services/permissionService');
+          const hasPermission = await permissionService.checkProjectPermission(
+            userId,
+            board.project.id,
+            ProjectPermissionType.EDIT
+          );
+
+          if (!hasPermission) {
+            reply.status(403);
+            return { success: false, error: '您没有在该项目中创建任务的权限' };
+          }
+        }
+      }
+
       const task = await taskService.createTask(taskData, userId);
 
       // 广播任务创建事件
@@ -140,11 +170,11 @@ export default async function taskRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // 更新任务
+  // 更新任务（需要编辑权限）
   fastify.put(
     '/tasks/:id',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('task')],
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.EDIT)],
     },
     async (request, reply) => {
       try {
@@ -167,11 +197,11 @@ export default async function taskRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // 删除任务
+  // 删除任务（需要编辑权限）
   fastify.delete(
     '/tasks/:id',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('task')],
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.EDIT)],
     },
     async (request, reply) => {
       try {

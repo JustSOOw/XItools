@@ -736,7 +736,7 @@ export class TeamService {
     }
 
     // 创建成员记录并更新邀请状态(事务)
-    await prisma.$transaction([
+    const [newMember] = await prisma.$transaction([
       prisma.teamMember.create({
         data: {
           teamId: invitation.teamId,
@@ -754,6 +754,15 @@ export class TeamService {
         },
       }),
     ]);
+
+    // 为新成员自动分配所有项目的查看权限
+    try {
+      const { permissionService } = await import('./permissionService');
+      await permissionService.setDefaultPermissions(newMember.id);
+    } catch (error) {
+      console.error('为新成员设置默认权限失败:', error);
+      // 不阻塞邀请接受流程，只记录错误
+    }
 
     // 发送通知邮件给团队所有者
     try {
