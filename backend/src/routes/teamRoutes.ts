@@ -493,4 +493,45 @@ export default async function teamRoutes(fastify: FastifyInstance) {
       }
     }
   );
+
+  /**
+   * 获取成员的项目权限列表
+   * GET /api/teams/:teamId/members/:memberId/permissions
+   */
+  fastify.get<{
+    Params: { teamId: string; memberId: string };
+  }>(
+    '/teams/:teamId/members/:memberId/permissions',
+    {
+      preHandler: [authMiddleware, requireTeamMember],
+      schema: {
+        description: '获取成员的项目权限列表',
+        tags: ['团队'],
+        params: {
+          type: 'object',
+          properties: {
+            teamId: { type: 'string' },
+            memberId: { type: 'string' },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { memberId } = request.params;
+
+        const permissions = await teamService.getMemberPermissions(memberId);
+
+        reply.send({
+          success: true,
+          data: permissions,
+        });
+      } catch (error: any) {
+        reply.status(error.statusCode || 500).send({
+          success: false,
+          error: error.message,
+        });
+      }
+    }
+  );
 }

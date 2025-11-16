@@ -24,6 +24,7 @@
     "user:cleanup": "tsx scripts/init-user-system.ts cleanup",
     "user:validate": "tsx scripts/validate-migration.ts",
     "db:clear": "node scripts/clear-database.js",
+    "db:seed:team": "tsx prisma/seed-team.ts",
     "test:mcp-tools": "node scripts/test-mcp-tools.js",
     "test:mcp-sdk": "node scripts/test-mcp-sdk.js",
     "test:mcp-native": "node scripts/test-mcp-native.js"

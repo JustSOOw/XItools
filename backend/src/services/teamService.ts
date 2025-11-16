@@ -408,6 +408,74 @@ export class TeamService {
     await prisma.teamMember.delete({
       where: { id: memberId },
     });
+
+    // 发送通知邮件给被移除的成员
+    try {
+      const team = await prisma.team.findUnique({
+        where: { id: teamId },
+        select: { name: true },
+      });
+
+      const removedUser = await prisma.user.findUnique({
+        where: { id: member.userId },
+        select: { email: true, username: true },
+      });
+
+      if (team && removedUser) {
+        // TODO: 创建邮件发送函数 sendMemberRemovedEmail
+        console.log(
+          `[TeamService] 成员 ${removedUser.username} 已从团队 ${team.name} 中移除`
+        );
+        // await sendMemberRemovedEmail({
+        //   to: removedUser.email,
+        //   username: removedUser.username,
+        //   teamName: team.name
+        // });
+      }
+    } catch (error) {
+      console.error('[TeamService] 发送成员移除通知失败:', error);
+      // 不中断流程
+    }
+  }
+
+  /**
+   * 获取成员的项目权限列表
+   */
+  async getMemberPermissions(memberId: string): Promise<
+    Array<{
+      projectId: string;
+      projectName: string;
+      permission: string;
+      grantedAt: Date;
+    }>
+  > {
+    const member = await prisma.teamMember.findUnique({
+      where: { id: memberId },
+    });
+
+    if (!member) {
+      throw new TeamError(TeamErrorCode.USER_NOT_IN_TEAM, '成员不存在', 404);
+    }
+
+    const permissions = await prisma.projectPermission.findMany({
+      where: { memberId },
+      include: {
+        project: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return permissions.map((p) => ({
+      projectId: p.projectId,
+      projectName: p.project.name,
+      permission: p.permission,
+      grantedAt: p.createdAt,
+    }));
   }
 
   /**
