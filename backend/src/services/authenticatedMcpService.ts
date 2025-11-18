@@ -1012,8 +1012,10 @@ async function handleListTasks(params: any): Promise<any> {
     if (filter_options.priority) {
       where.priority = filter_options.priority;
     }
-    if (filter_options.assignee) {
-      where.assignee = filter_options.assignee;
+    if (filter_options.assignees && Array.isArray(filter_options.assignees) && filter_options.assignees.length > 0) {
+      where.assignees = {
+        hasSome: filter_options.assignees,
+      };
     }
     if (filter_options.tags && filter_options.tags.length > 0) {
       where.tags = {
@@ -1194,7 +1196,7 @@ async function handleSubmitTaskDataset(params: any, io: SocketIOServer): Promise
           status: taskStatus, // 使用验证过的状态列ID
           priority: taskData.priority || null,
           dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
-          assignee: taskData.assignee || null,
+          assignees: taskData.assignees || [],
           acceptanceCriteria: taskData.acceptanceCriteria || '',
           estimatedEffort: taskData.estimatedEffort || null,
           loggedTime: taskData.loggedTime || null,

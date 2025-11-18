@@ -141,9 +141,13 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
             format: 'date-time',
             description: 'Optional due date for the task',
           },
-          assignee: {
-            type: ['string', 'null'],
-            description: 'Identifier of the person assigned to the task (e.g., user ID or name)',
+          assignees: {
+            type: 'array',
+            items: {
+              type: 'string',
+            },
+            description: 'User IDs assigned to the task (supports multiple assignees)',
+            default: [],
           },
           tags: {
             type: 'array',
@@ -234,7 +238,7 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
           description: z.string().optional(),
           priority: z.enum(['High', 'Medium', 'Low']).nullable().optional(),
           dueDate: z.string().datetime().nullable().optional(),
-          assignee: z.string().nullable().optional(),
+          assignees: z.array(z.string().uuid('负责人ID必须是有效的UUID')).optional().default([]),
           tags: z.array(z.string()).optional(),
           parentId: z.string().nullable().optional(),
           boardId: z.string().uuid('boardId必须是有效的看板UUID').optional(),
@@ -306,7 +310,7 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
               status: taskData.status, // 使用验证过的状态UUID
               priority: taskData.priority || null,
               dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
-              assignee: taskData.assignee || null,
+              assignees: taskData.assignees || [],
               acceptanceCriteria: taskData.acceptanceCriteria || '',
               estimatedEffort: taskData.estimatedEffort || null,
               loggedTime: taskData.loggedTime || null,
@@ -377,7 +381,7 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
         .object({
           status: z.string().optional(),
           priority: z.string().optional(),
-          assignee: z.string().optional(),
+          assignees: z.array(z.string()).optional(),
           tags: z.array(z.string()).optional(),
         })
         .optional(),
@@ -400,8 +404,10 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
           if (filter_options.priority) {
             where.priority = filter_options.priority;
           }
-          if (filter_options.assignee) {
-            where.assignee = filter_options.assignee;
+          if (filter_options.assignees && Array.isArray(filter_options.assignees) && filter_options.assignees.length > 0) {
+            where.assignees = {
+              hasSome: filter_options.assignees,
+            };
           }
           if (filter_options.tags && filter_options.tags.length > 0) {
             where.tags = {
@@ -1269,7 +1275,11 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
                       properties: {
                         status: { type: 'string', description: '按状态过滤' },
                         priority: { type: 'string', description: '按优先级过滤' },
-                        assignee: { type: 'string', description: '按负责人过滤' },
+                        assignees: {
+                          type: 'array',
+                          items: { type: 'string' },
+                          description: '按负责人过滤（支持多个）'
+                        },
                       },
                     },
                   },
@@ -1479,10 +1489,13 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
                       format: 'date-time',
                       description: 'Optional due date for the task',
                     },
-                    assignee: {
-                      type: ['string', 'null'],
-                      description:
-                        'Identifier of the person assigned to the task (e.g., user ID or name)',
+                    assignees: {
+                      type: 'array',
+                      items: {
+                        type: 'string',
+                      },
+                      description: 'User IDs assigned to the task (supports multiple assignees)',
+                      default: [],
                     },
                     tags: {
                       type: 'array',
@@ -1589,8 +1602,10 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
                   if (filterOptions.priority) {
                     where.priority = filterOptions.priority;
                   }
-                  if (filterOptions.assignee) {
-                    where.assignee = filterOptions.assignee;
+                  if (filterOptions.assignees && Array.isArray(filterOptions.assignees) && filterOptions.assignees.length > 0) {
+                    where.assignees = {
+                      hasSome: filterOptions.assignees,
+                    };
                   }
                   if (filterOptions.tags && filterOptions.tags.length > 0) {
                     where.tags = {
@@ -1741,7 +1756,7 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
                       description: taskData.description || '',
                       status: taskData.status,
                       priority: taskData.priority || null,
-                      assignee: taskData.assignee || null,
+                      assignees: taskData.assignees || [],
                       dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
                       acceptanceCriteria: taskData.acceptanceCriteria || '',
                       estimatedEffort: taskData.estimatedEffort || null,
@@ -2318,7 +2333,7 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
                     status: taskData.status, // 使用验证过的状态UUID
                     priority: taskData.priority || null,
                     dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
-                    assignee: taskData.assignee || null,
+                    assignees: taskData.assignees || [],
                     parentId: taskData.parentId || null,
                     acceptanceCriteria: taskData.acceptanceCriteria || '',
                     estimatedEffort: taskData.estimatedEffort || null,
@@ -2382,8 +2397,10 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
               if (filterOptions.priority) {
                 where.priority = filterOptions.priority;
               }
-              if (filterOptions.assignee) {
-                where.assignee = filterOptions.assignee;
+              if (filterOptions.assignees && Array.isArray(filterOptions.assignees) && filterOptions.assignees.length > 0) {
+                where.assignees = {
+                  hasSome: filterOptions.assignees,
+                };
               }
               if (filterOptions.tags && filterOptions.tags.length > 0) {
                 where.tags = {
@@ -2671,10 +2688,13 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
                   format: 'date-time',
                   description: 'Optional due date for the task',
                 },
-                assignee: {
-                  type: ['string', 'null'],
-                  description:
-                    'Identifier of the person assigned to the task (e.g., user ID or name)',
+                assignees: {
+                  type: 'array',
+                  items: {
+                    type: 'string',
+                  },
+                  description: 'User IDs assigned to the task (supports multiple assignees)',
+                  default: [],
                 },
                 tags: {
                   type: 'array',

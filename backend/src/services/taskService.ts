@@ -350,6 +350,119 @@ export class TaskService {
     });
   }
 
+  /**
+   * 分配任务给用户（添加负责人）
+   * @param taskId 任务ID
+   * @param userIds 要添加的用户ID数组
+   * @returns 更新后的任务
+   */
+  async assignTask(taskId: string, userIds: string[]) {
+    // 获取当前任务
+    const task = await prisma.task.findUnique({
+      where: { id: taskId },
+      select: { assignees: true },
+    });
+
+    if (!task) {
+      throw new Error('任务不存在');
+    }
+
+    // 合并现有负责人和新负责人，去重
+    const currentAssignees = task.assignees || [];
+    const newAssignees = [...new Set([...currentAssignees, ...userIds])];
+
+    // 更新任务
+    return await prisma.task.update({
+      where: { id: taskId },
+      data: {
+        assignees: newAssignees,
+        updatedAt: new Date(),
+      },
+      include: {
+        tags: true,
+        parent: true,
+        subTasks: true,
+        board: true,
+      },
+    });
+  }
+
+  /**
+   * 取消任务分配（移除负责人）
+   * @param taskId 任务ID
+   * @param userIds 要移除的用户ID数组
+   * @returns 更新后的任务
+   */
+  async unassignTask(taskId: string, userIds: string[]) {
+    // 获取当前任务
+    const task = await prisma.task.findUnique({
+      where: { id: taskId },
+      select: { assignees: true },
+    });
+
+    if (!task) {
+      throw new Error('任务不存在');
+    }
+
+    // 从现有负责人中移除指定用户
+    const currentAssignees = task.assignees || [];
+    const newAssignees = currentAssignees.filter((id) => !userIds.includes(id));
+
+    // 更新任务
+    return await prisma.task.update({
+      where: { id: taskId },
+      data: {
+        assignees: newAssignees,
+        updatedAt: new Date(),
+      },
+      include: {
+        tags: true,
+        parent: true,
+        subTasks: true,
+        board: true,
+      },
+    });
+  }
+
+  /**
+   * 验证用户是否为团队成员
+   * @param userIds 用户ID数组
+   * @param boardId 看板ID
+   * @returns 验证结果
+   */
+  async validateTeamMembers(userIds: string[], boardId: string): Promise<boolean> {
+    // 获取看板所属的团队
+    const board = await prisma.board.findUnique({
+      where: { id: boardId },
+      include: {
+        workspace: {
+          include: {
+            team: {
+              include: {
+                members: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!board) {
+      throw new Error('看板不存在');
+    }
+
+    // 如果看板不属于团队（个人工作区），返回 true（不需要验证）
+    if (!board.workspace?.team) {
+      return true;
+    }
+
+    // 获取团队成员ID列表
+    const teamMemberIds = board.workspace.team.members.map((member) => member.userId);
+
+    // 检查所有用户是否都是团队成员
+    return userIds.every((userId) => teamMemberIds.includes(userId));
+  }
+
   // 移除跨看板移动功能 - 任务只能在同一看板内的列之间移动
   // 这保持了看板的独立性和数据安全性
 }
