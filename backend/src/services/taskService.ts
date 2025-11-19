@@ -15,6 +15,114 @@ const prisma = new PrismaClient();
 
 export class TaskService {
   /**
+   * 获取用户的所有任务（包括个人任务和有权限的团队任务）
+   */
+  async getUserTasks(userId: string) {
+    return await prisma.task.findMany({
+      where: {
+        OR: [
+          // 个人任务：用户拥有的非团队工作区中的任务
+          {
+            ownerId: userId,
+            board: {
+              workspace: {
+                teamId: null,
+              },
+            },
+          },
+          // 团队任务：用户是任务负责人
+          {
+            assignees: {
+              has: userId,
+            },
+            board: {
+              workspace: {
+                teamId: { not: null },
+              },
+            },
+          },
+          // 团队任务：用户有权限访问的任务
+          {
+            board: {
+              OR: [
+                // 看板直属工作区：用户是团队成员
+                {
+                  workspace: {
+                    team: {
+                      members: {
+                        some: {
+                          userId: userId,
+                        },
+                      },
+                    },
+                  },
+                  projectId: null,
+                },
+                // 看板属于项目：用户有项目权限
+                {
+                  project: {
+                    OR: [
+                      {
+                        ownerId: userId,
+                      },
+                      {
+                        permissions: {
+                          some: {
+                            member: {
+                              userId: userId,
+                            },
+                          },
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+      include: {
+        tags: true,
+        parent: true,
+        subTasks: true,
+        board: {
+          select: {
+            id: true,
+            name: true,
+            workspaceId: true,
+            projectId: true,
+            workspace: {
+              select: {
+                id: true,
+                name: true,
+                teamId: true,
+                team: {
+                  select: {
+                    id: true,
+                    name: true,
+                    ownerId: true,
+                  },
+                },
+              },
+            },
+            project: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: [
+        { sortOrder: 'asc' },
+        { createdAt: 'desc' },
+      ],
+    });
+  }
+
+  /**
    * 获取指定看板的所有任务
    */
   async getTasksByBoard(boardId: string) {

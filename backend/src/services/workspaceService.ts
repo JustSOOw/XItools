@@ -40,12 +40,38 @@ export class WorkspaceService {
   }
 
   /**
-   * 获取指定用户的所有工作区
+   * 获取指定用户的所有工作区（包括个人工作区和团队工作区）
    */
   async getWorkspacesByUser(userId: string) {
     return await prisma.workspace.findMany({
-      where: { ownerId: userId },
+      where: {
+        OR: [
+          // 个人工作区：用户拥有的非团队工作区
+          {
+            ownerId: userId,
+            teamId: null,
+          },
+          // 团队工作区：用户是团队成员的工作区
+          {
+            team: {
+              members: {
+                some: {
+                  userId: userId,
+                },
+              },
+            },
+          },
+        ],
+      },
       include: {
+        team: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            ownerId: true,
+          },
+        },
         projects: {
           orderBy: { order: 'asc' },
           include: {

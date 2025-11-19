@@ -15,6 +15,75 @@ const prisma = new PrismaClient();
 
 export class ProjectService {
   /**
+   * 获取用户的所有项目（包括个人项目和有权限的团队项目）
+   */
+  async getUserProjects(userId: string) {
+    return await prisma.project.findMany({
+      where: {
+        OR: [
+          // 个人项目：用户拥有的非团队工作区中的项目
+          {
+            ownerId: userId,
+            workspace: {
+              teamId: null,
+            },
+          },
+          // 团队项目：用户是项目所有者（团队管理员创建的项目）
+          {
+            ownerId: userId,
+            workspace: {
+              teamId: { not: null },
+            },
+          },
+          // 团队项目：用户有权限访问的项目
+          {
+            permissions: {
+              some: {
+                member: {
+                  userId: userId,
+                },
+              },
+            },
+          },
+        ],
+      },
+      include: {
+        workspace: {
+          select: {
+            id: true,
+            name: true,
+            teamId: true,
+            team: {
+              select: {
+                id: true,
+                name: true,
+                ownerId: true,
+              },
+            },
+          },
+        },
+        boards: {
+          orderBy: { order: 'asc' },
+        },
+        permissions: {
+          where: {
+            member: {
+              userId: userId,
+            },
+          },
+          select: {
+            id: true,
+            permission: true,
+          },
+        },
+      },
+      orderBy: [
+        { createdAt: 'desc' },
+      ],
+    });
+  }
+
+  /**
    * 获取工作区下的所有项目
    */
   async getProjectsByWorkspace(workspaceId: string) {
