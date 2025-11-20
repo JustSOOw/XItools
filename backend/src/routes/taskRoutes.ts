@@ -4,6 +4,7 @@
 
 import { FastifyInstance } from 'fastify';
 import { taskService } from '../services/taskService';
+import { taskHistoryService } from '../services/taskHistoryService';
 import { extendedTaskSchema, extendedTaskUpdateSchema } from '../types/multiBoardSchema';
 import { authMiddleware, requireAuth, createOwnershipVerifier } from '../middleware/authMiddleware';
 import {
@@ -206,7 +207,8 @@ export default async function taskRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       try {
         const { id } = request.params as { id: string };
-        await taskService.deleteTask(id);
+        const userId = request.user.id;
+        await taskService.deleteTask(id, userId);
 
         // 广播任务删除事件
         const io = fastify.io;
@@ -418,4 +420,40 @@ export default async function taskRoutes(fastify: FastifyInstance) {
       return { success: false, error: '获取任务列表失败' };
     }
   });
+
+  /**
+   * 获取任务历史记录
+   */
+  fastify.get(
+    '/tasks/:taskId/history',
+    {
+      preHandler: [authMiddleware],
+    },
+    async (request: any, reply) => {
+      try {
+        const { taskId } = request.params;
+        const { page, pageSize, action } = request.query;
+
+        // 验证任务是否存在且用户有权访问
+        const task = await taskService.getTaskById(taskId);
+        if (!task) {
+          reply.status(404);
+          return { success: false, error: '任务不存在' };
+        }
+
+        // 获取历史记录
+        const history = await taskHistoryService.getTaskHistory(taskId, {
+          page: page ? parseInt(page) : 1,
+          pageSize: pageSize ? parseInt(pageSize) : 20,
+          action,
+        });
+
+        return { success: true, ...history };
+      } catch (error) {
+        console.error('获取任务历史失败:', error);
+        reply.status(500);
+        return { success: false, error: '获取任务历史失败' };
+      }
+    }
+  );
 }

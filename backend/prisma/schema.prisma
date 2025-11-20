@@ -51,6 +51,7 @@ model User {
   receivedInvitations TeamInvitation[] @relation("InvitationInvitee") // 收到的邀请
   taskComments        TaskComment[] // 任务评论
   notifications       Notification[] // 通知
+  taskHistory         TaskHistory[] // 任务历史操作记录
 
   @@index([email])
   @@index([username])
@@ -313,6 +314,7 @@ model Task {
   // 关联关系
   tags     Tag[]         @relation("TaskToTag")
   comments TaskComment[] // 任务评论
+  history  TaskHistory[] // 任务历史记录
 
   // 自引用关系定义 - 父子任务
   parent   Task?  @relation("ParentChild", fields: [parentId], references: [id], onDelete: SetNull)
@@ -327,6 +329,28 @@ model Task {
   @@index([ownerId])
   @@index([ownerId, boardId]) // 复合索引，用于查询用户在特定看板的任务
   @@index([ownerId, status]) // 复合索引，用于查询用户特定状态的任务
+}
+
+// 任务历史记录模型
+model TaskHistory {
+  id        String   @id @default(uuid())
+  taskId    String // 任务ID
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  userId    String // 操作者ID
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  action    String // 操作类型：created, updated, deleted, status_changed, assigned, unassigned
+  field     String? // 变更的字段名称（如 title, description, status 等）
+  oldValue  String? // 旧值（JSON 字符串）
+  newValue  String? // 新值（JSON 字符串）
+  changes   Json? // 完整的变更内容（JSON 格式，用于复杂变更）
+
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([taskId, createdAt]) // 复合索引，用于按时间查询任务历史
 }
 
 // 标签模型

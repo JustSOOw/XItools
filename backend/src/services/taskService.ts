@@ -10,6 +10,8 @@ import {
   type ExtendedTaskInput,
   type ExtendedTaskUpdate,
 } from '../types/multiBoardSchema';
+import { taskHistoryService } from './taskHistoryService.js';
+import { TaskHistoryAction } from '../types/taskHistoryTypes.js';
 
 const prisma = new PrismaClient();
 
@@ -262,7 +264,7 @@ export class TaskService {
 
     const { tags, ...taskData } = validatedData;
 
-    return await prisma.task.create({
+    const task = await prisma.task.create({
       data: {
         ...taskData,
         ownerId: userId,
@@ -275,6 +277,22 @@ export class TaskService {
         board: true,
       },
     });
+
+    // 记录任务创建历史
+    await taskHistoryService.recordTaskChange({
+      taskId: task.id,
+      userId,
+      action: TaskHistoryAction.CREATED,
+      changes: {
+        title: task.title,
+        description: task.description,
+        status: task.status,
+        priority: task.priority,
+        assignees: task.assignees,
+      },
+    });
+
+    return task;
   }
 
   /**
@@ -424,7 +442,16 @@ export class TaskService {
 
     const { tags, ...otherUpdates } = validatedData;
 
-    return await prisma.task.update({
+    // 获取旧任务数据用于历史记录
+    const oldTask = await prisma.task.findUnique({
+      where: { id },
+    });
+
+    if (!oldTask) {
+      throw new Error('任务不存在');
+    }
+
+    const updatedTask = await prisma.task.update({
       where: { id },
       data: {
         ...otherUpdates,
@@ -438,12 +465,46 @@ export class TaskService {
         board: true,
       },
     });
+
+    // 检测并记录变更
+    const changes = taskHistoryService.detectChanges(oldTask, updatedTask);
+
+    if (changes.length > 0) {
+      // 记录详细的字段变更
+      for (const change of changes) {
+        let action = TaskHistoryAction.UPDATED;
+
+        // 特殊操作类型处理
+        if (change.field === 'status') {
+          action = TaskHistoryAction.STATUS_CHANGED;
+        } else if (change.field === 'priority') {
+          action = TaskHistoryAction.PRIORITY_CHANGED;
+        } else if (change.field === 'dueDate') {
+          action = TaskHistoryAction.DUE_DATE_CHANGED;
+        } else if (change.field === 'assignees') {
+          action = TaskHistoryAction.ASSIGNED;
+        } else if (change.field === 'boardId') {
+          action = TaskHistoryAction.MOVED;
+        }
+
+        await taskHistoryService.recordTaskChange({
+          taskId: id,
+          userId,
+          action,
+          field: change.field,
+          oldValue: change.oldValue,
+          newValue: change.newValue,
+        });
+      }
+    }
+
+    return updatedTask;
   }
 
   /**
    * 删除任务
    */
-  async deleteTask(id: string) {
+  async deleteTask(id: string, userId: string) {
     // 检查是否有子任务
     const subTaskCount = await prisma.task.count({
       where: { parentId: id },
@@ -452,6 +513,26 @@ export class TaskService {
     if (subTaskCount > 0) {
       throw new Error('该任务有子任务，请先删除子任务');
     }
+
+    // 获取任务信息用于历史记录
+    const task = await prisma.task.findUnique({
+      where: { id },
+    });
+
+    if (!task) {
+      throw new Error('任务不存在');
+    }
+
+    // 记录删除历史
+    await taskHistoryService.recordTaskChange({
+      taskId: id,
+      userId,
+      action: TaskHistoryAction.DELETED,
+      changes: {
+        title: task.title,
+        status: task.status,
+      },
+    });
 
     return await prisma.task.delete({
       where: { id },
