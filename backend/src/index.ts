@@ -7,6 +7,10 @@ import { setupRoutes } from './routes';
 // import { setupMCPService } from './services/mcpService'; // 已废弃非认证MCP服务
 import { setupAuthenticatedMCPService } from './services/authenticatedMcpService';
 import { apiKeyExpirationManager } from './services/apiKeyExpirationManager';
+import { invitationExpirationManager } from './services/invitationExpirationManager';
+import { notificationExpirationManager } from './services/notificationExpirationManager';
+import { setIo } from './utils/socket';
+import { setupSocketHandlers } from './services/socketHandler';
 
 // 扩展FastifyInstance类型以包含io属性
 declare module 'fastify' {
@@ -64,12 +68,24 @@ const start = async () => {
     // 将io实例附加到server上，以便在路由中使用
     server.io = io;
 
+    // 将 io 实例设置到全局工具中，供通知服务使用
+    setIo(io);
+
+    // 设置 Socket.IO 连接处理器（通知系统）
+    setupSocketHandlers(io);
+
     // 设置MCP服务（仅使用API Key认证版本）
     // await setupMCPService(server, io); // 已废弃非认证MCP服务
     await setupAuthenticatedMCPService(server, io);
 
     // 启动API密钥过期管理器
     apiKeyExpirationManager.start();
+
+    // 启动团队邀请过期管理器
+    invitationExpirationManager.start();
+
+    // 启动通知过期管理器
+    notificationExpirationManager.start();
 
     // 启动HTTP服务器
     const address = await server.listen({ port: config.server.port, host: config.server.host });

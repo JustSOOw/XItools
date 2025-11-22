@@ -15,6 +15,94 @@ const prisma = new PrismaClient();
 
 export class BoardService {
   /**
+   * 获取用户的所有看板（包括个人看板和有权限的团队看板）
+   */
+  async getUserBoards(userId: string) {
+    return await prisma.board.findMany({
+      where: {
+        OR: [
+          // 个人看板：用户拥有的非团队工作区中的看板
+          {
+            ownerId: userId,
+            workspace: {
+              teamId: null,
+            },
+          },
+          // 团队看板（直属工作区）：用户是团队成员的工作区中的看板
+          {
+            workspace: {
+              team: {
+                members: {
+                  some: {
+                    userId: userId,
+                  },
+                },
+              },
+            },
+            projectId: null, // 直属工作区的看板
+          },
+          // 团队看板（项目下）：用户有权限访问的项目中的看板
+          {
+            project: {
+              OR: [
+                // 用户是项目所有者
+                {
+                  ownerId: userId,
+                },
+                // 用户有项目权限
+                {
+                  permissions: {
+                    some: {
+                      member: {
+                        userId: userId,
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+      include: {
+        workspace: {
+          select: {
+            id: true,
+            name: true,
+            teamId: true,
+            team: {
+              select: {
+                id: true,
+                name: true,
+                ownerId: true,
+              },
+            },
+          },
+        },
+        project: {
+          select: {
+            id: true,
+            name: true,
+            workspaceId: true,
+          },
+        },
+        columns: {
+          orderBy: { order: 'asc' },
+        },
+        tasks: {
+          orderBy: { sortOrder: 'asc' },
+          include: {
+            tags: true,
+          },
+        },
+      },
+      orderBy: [
+        { createdAt: 'desc' },
+      ],
+    });
+  }
+
+  /**
    * 获取工作区下的所有看板
    */
   async getBoardsByWorkspace(workspaceId: string) {

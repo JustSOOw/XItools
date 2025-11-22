@@ -16,6 +16,187 @@ import { ApiKeyPermission, McpUserContext } from '../types/apiKeyTypes';
 const prisma = new PrismaClient();
 const apiKeyService = getApiKeyService(prisma);
 
+// ================================
+// MCP 权限验证辅助函数（任务 3.3）
+// ================================
+
+/**
+ * 验证用户是否有权访问指定的工作区
+ * @param userId 用户ID
+ * @param workspaceId 工作区ID
+ * @returns 如果有权限返回工作区信息，否则抛出错误
+ */
+async function verifyWorkspaceAccess(userId: string, workspaceId: string) {
+  const workspace = await prisma.workspace.findUnique({
+    where: { id: workspaceId },
+    include: {
+      team: {
+        include: {
+          members: {
+            where: { userId },
+          },
+        },
+      },
+    },
+  });
+
+  if (!workspace) {
+    throw new Error(`工作区 ${workspaceId} 不存在`);
+  }
+
+  // 如果是个人工作区，检查所有权
+  if (!workspace.teamId) {
+    if (workspace.ownerId !== userId) {
+      throw new Error('您没有权限访问该工作区');
+    }
+    return workspace;
+  }
+
+  // 如果是团队工作区，检查用户是否为团队成员
+  if (!workspace.team || workspace.team.members.length === 0) {
+    throw new Error('您不是该团队的成员，无法访问该工作区');
+  }
+
+  return workspace;
+}
+
+/**
+ * 检查用户对项目的权限
+ * @param userId 用户ID
+ * @param projectId 项目ID
+ * @param requiredPermission 需要的权限类型（'view' 或 'edit'）
+ * @returns 如果有权限返回 true，否则返回 false
+ */
+async function checkProjectPermission(
+  userId: string,
+  projectId: string,
+  requiredPermission: 'view' | 'edit'
+): Promise<boolean> {
+  // 获取项目信息
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    include: {
+      workspace: {
+        include: {
+          team: true,
+        },
+      },
+    },
+  });
+
+  if (!project) {
+    return false;
+  }
+
+  // 如果是项目所有者，拥有所有权限
+  if (project.ownerId === userId) {
+    return true;
+  }
+
+  // 如果项目属于个人工作区，只有所有者有权限
+  if (!project.workspace.teamId) {
+    return false;
+  }
+
+  // 如果项目属于团队工作区，检查团队成员权限
+  const member = await prisma.teamMember.findFirst({
+    where: {
+      userId,
+      teamId: project.workspace.teamId,
+      status: 'active',
+    },
+  });
+
+  if (!member) {
+    return false;
+  }
+
+  // 如果是团队所有者，拥有所有权限
+  if (project.workspace.team?.ownerId === userId) {
+    return true;
+  }
+
+  // 检查项目权限
+  const permission = await prisma.projectPermission.findUnique({
+    where: {
+      projectId_memberId: {
+        projectId,
+        memberId: member.id,
+      },
+    },
+  });
+
+  if (!permission) {
+    return false;
+  }
+
+  // 'edit' 权限包含 'view' 权限
+  if (requiredPermission === 'view') {
+    return permission.permission === 'view' || permission.permission === 'edit';
+  }
+
+  return permission.permission === 'edit';
+}
+
+/**
+ * 获取用户有权访问的所有工作区ID列表
+ * @param userId 用户ID
+ * @returns 工作区ID数组
+ */
+async function getUserAccessibleWorkspaceIds(userId: string): Promise<string[]> {
+  // 获取个人工作区
+  const personalWorkspaces = await prisma.workspace.findMany({
+    where: {
+      ownerId: userId,
+      teamId: null,
+    },
+    select: { id: true },
+  });
+
+  // 获取团队工作区
+  const teamMember = await prisma.teamMember.findUnique({
+    where: { userId },
+    include: {
+      team: {
+        include: {
+          workspaces: {
+            select: { id: true },
+          },
+        },
+      },
+    },
+  });
+
+  const teamWorkspaceIds = teamMember?.team?.workspaces.map((ws) => ws.id) || [];
+
+  return [
+    ...personalWorkspaces.map((ws) => ws.id),
+    ...teamWorkspaceIds,
+  ];
+}
+
+/**
+ * 根据工作区过滤，构建 Prisma 查询条件
+ * @param userId 用户ID
+ * @param workspaceId 可选的工作区ID
+ * @returns Prisma 查询条件对象
+ */
+async function buildWorkspaceFilter(userId: string, workspaceId?: string) {
+  if (workspaceId) {
+    // 验证用户是否有权访问该工作区
+    await verifyWorkspaceAccess(userId, workspaceId);
+    return { workspaceId };
+  }
+
+  // 如果没有指定工作区，返回用户有权访问的所有工作区
+  const accessibleWorkspaceIds = await getUserAccessibleWorkspaceIds(userId);
+  return {
+    workspaceId: {
+      in: accessibleWorkspaceIds,
+    },
+  };
+}
+
 /**
  * 设置带认证的MCP服务路由
  */
@@ -316,10 +497,14 @@ export async function setupAuthenticatedMCPService(
               tools: [
                 {
                   name: 'list_tasks',
-                  description: '列出用户的任务',
+                  description: '列出用户的任务。支持工作区过滤，可返回个人或团队工作区的任务。',
                   inputSchema: {
                     type: 'object',
                     properties: {
+                      workspaceId: {
+                        type: 'string',
+                        description: '工作区ID（可选）。指定后只返回该工作区的任务；未指定则返回所有有权访问的工作区任务。',
+                      },
                       boardId: {
                         type: 'string',
                         description: '看板ID（可选）',
@@ -333,7 +518,7 @@ export async function setupAuthenticatedMCPService(
                 },
                 {
                   name: 'get_task_details',
-                  description: '获取任务详情',
+                  description: '获取任务详情。自动验证用户权限（个人或团队）。',
                   inputSchema: {
                     type: 'object',
                     properties: {
@@ -443,13 +628,17 @@ export async function setupAuthenticatedMCPService(
                 },
                 {
                   name: 'clear_all_tasks',
-                  description: '清空所有任务',
+                  description: '清空任务。支持工作区过滤，可清空个人或团队工作区的任务。',
                   inputSchema: {
                     type: 'object',
                     properties: {
+                      workspaceId: {
+                        type: 'string',
+                        description: '工作区ID（可选）。指定后只清空该工作区的任务；未指定则清空所有有权访问的任务。',
+                      },
                       boardId: {
                         type: 'string',
-                        description: '看板ID（可选）',
+                        description: '看板ID（可选）。进一步限定清空范围。',
                       },
                     },
                   },
@@ -470,7 +659,7 @@ export async function setupAuthenticatedMCPService(
                 },
                 {
                   name: 'get_columns',
-                  description: '获取看板列',
+                  description: '获取看板列。自动验证用户对看板的访问权限（个人或团队）。',
                   inputSchema: {
                     type: 'object',
                     properties: {
@@ -479,6 +668,7 @@ export async function setupAuthenticatedMCPService(
                         description: '看板ID',
                       },
                     },
+                    required: ['boardId'],
                   },
                 },
                 {
@@ -571,7 +761,7 @@ export async function setupAuthenticatedMCPService(
                 },
                 {
                   name: 'get_workspaces',
-                  description: '获取工作区列表',
+                  description: '获取工作区列表。返回用户的个人工作区和团队工作区。',
                   inputSchema: {
                     type: 'object',
                     properties: {},
@@ -579,18 +769,32 @@ export async function setupAuthenticatedMCPService(
                 },
                 {
                   name: 'get_projects',
-                  description: '获取项目列表',
+                  description: '获取项目列表。支持工作区过滤，返回用户有权访问的项目（个人或团队）。',
                   inputSchema: {
                     type: 'object',
-                    properties: {},
+                    properties: {
+                      workspaceId: {
+                        type: 'string',
+                        description: '工作区ID（可选）。指定后只返回该工作区的项目；未指定则返回所有有权访问的项目。',
+                      },
+                    },
                   },
                 },
                 {
                   name: 'get_boards',
-                  description: '获取看板列表',
+                  description: '获取看板列表。支持工作区/项目过滤，返回用户有权访问的看板（个人或团队）。',
                   inputSchema: {
                     type: 'object',
-                    properties: {},
+                    properties: {
+                      workspaceId: {
+                        type: 'string',
+                        description: '工作区ID（可选）。指定后只返回该工作区的看板。',
+                      },
+                      projectId: {
+                        type: 'string',
+                        description: '项目ID（可选）。指定后只返回该项目的看板。',
+                      },
+                    },
                   },
                 },
                 {
@@ -992,16 +1196,80 @@ async function handleGetTaskSchema(params: any): Promise<any> {
 
 async function handleListTasks(params: any): Promise<any> {
   const mcpUser = params._mcpUser as McpUserContext;
-  const { boardId, filter_options } = params;
+  const { workspaceId, boardId, filter_options } = params;
 
-  // 构建查询条件，确保只返回用户的任务
-  const where: any = {
-    ownerId: mcpUser.userId,
-  };
+  // 构建查询条件
+  const where: any = {};
 
-  // 如果指定了看板ID，添加看板过滤
+  // 如果指定了 boardId，直接过滤（后续会验证权限）
   if (boardId) {
     where.boardId = boardId;
+
+    // 验证用户是否有权访问该看板
+    const board = await prisma.board.findUnique({
+      where: { id: boardId },
+      include: {
+        workspace: {
+          include: {
+            team: true,
+          },
+        },
+        project: true,
+      },
+    });
+
+    if (!board) {
+      throw new Error('看板不存在');
+    }
+
+    // 检查访问权限：个人看板或团队成员
+    if (board.ownerId !== mcpUser.userId) {
+      // 如果不是所有者，检查是否为团队成员
+      if (board.workspace?.teamId) {
+        const member = await prisma.teamMember.findFirst({
+          where: {
+            userId: mcpUser.userId,
+            teamId: board.workspace.teamId,
+            status: 'active',
+          },
+        });
+
+        if (!member) {
+          throw new Error('您没有权限访问该看板');
+        }
+
+        // 如果看板属于项目，检查项目权限
+        if (board.projectId) {
+          const hasPermission = await checkProjectPermission(
+            mcpUser.userId,
+            board.projectId,
+            'view'
+          );
+
+          if (!hasPermission) {
+            throw new Error('您没有权限查看该项目的任务');
+          }
+        }
+      } else {
+        throw new Error('您没有权限访问该看板');
+      }
+    }
+  } else if (workspaceId) {
+    // 如果指定了 workspaceId，过滤该工作区的任务
+    const workspaceFilter = await buildWorkspaceFilter(mcpUser.userId, workspaceId);
+
+    where.board = {
+      ...workspaceFilter,
+    };
+  } else {
+    // 如果没有指定看板或工作区，返回所有有权访问的任务
+    const accessibleWorkspaceIds = await getUserAccessibleWorkspaceIds(mcpUser.userId);
+
+    where.board = {
+      workspaceId: {
+        in: accessibleWorkspaceIds,
+      },
+    };
   }
 
   // 应用其他过滤条件
@@ -1012,8 +1280,10 @@ async function handleListTasks(params: any): Promise<any> {
     if (filter_options.priority) {
       where.priority = filter_options.priority;
     }
-    if (filter_options.assignee) {
-      where.assignee = filter_options.assignee;
+    if (filter_options.assignees && Array.isArray(filter_options.assignees) && filter_options.assignees.length > 0) {
+      where.assignees = {
+        hasSome: filter_options.assignees,
+      };
     }
     if (filter_options.tags && filter_options.tags.length > 0) {
       where.tags = {
@@ -1030,6 +1300,20 @@ async function handleListTasks(params: any): Promise<any> {
     where,
     include: {
       tags: true,
+      board: {
+        select: {
+          id: true,
+          name: true,
+          workspaceId: true,
+          workspace: {
+            select: {
+              id: true,
+              name: true,
+              teamId: true,
+            },
+          },
+        },
+      },
     },
     orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
   });
@@ -1194,7 +1478,7 @@ async function handleSubmitTaskDataset(params: any, io: SocketIOServer): Promise
           status: taskStatus, // 使用验证过的状态列ID
           priority: taskData.priority || null,
           dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
-          assignee: taskData.assignee || null,
+          assignees: taskData.assignees || [],
           acceptanceCriteria: taskData.acceptanceCriteria || '',
           estimatedEffort: taskData.estimatedEffort || null,
           loggedTime: taskData.loggedTime || null,
@@ -1437,24 +1721,96 @@ async function handleReorderColumns(params: any, io: SocketIOServer): Promise<an
 
 async function handleClearAllTasks(params: any, io: SocketIOServer): Promise<any> {
   const mcpUser = params._mcpUser as McpUserContext;
+  const { workspaceId, boardId } = params;
 
-  // 只删除用户自己的任务
-  const deletedTasks = await prisma.task.deleteMany({
-    where: {
-      ownerId: mcpUser.userId,
-    },
-  });
+  // 构建删除条件
+  const where: any = {};
+
+  if (boardId) {
+    // 如果指定了看板，验证权限并删除该看板的任务
+    const board = await prisma.board.findUnique({
+      where: { id: boardId },
+      include: {
+        workspace: {
+          include: {
+            team: true,
+          },
+        },
+        project: true,
+      },
+    });
+
+    if (!board) {
+      throw new Error('看板不存在');
+    }
+
+    // 检查权限
+    if (board.ownerId !== mcpUser.userId) {
+      if (board.workspace?.teamId) {
+        const member = await prisma.teamMember.findFirst({
+          where: {
+            userId: mcpUser.userId,
+            teamId: board.workspace.teamId,
+            status: 'active',
+          },
+        });
+
+        if (!member) {
+          throw new Error('您没有权限操作该看板');
+        }
+
+        // 如果看板属于项目，检查编辑权限
+        if (board.projectId) {
+          const hasPermission = await checkProjectPermission(
+            mcpUser.userId,
+            board.projectId,
+            'edit'
+          );
+
+          if (!hasPermission) {
+            throw new Error('您没有权限清空该项目的任务');
+          }
+        }
+      } else {
+        throw new Error('您没有权限操作该看板');
+      }
+    }
+
+    where.boardId = boardId;
+  } else if (workspaceId) {
+    // 如果指定了工作区，验证权限并删除该工作区的任务
+    await verifyWorkspaceAccess(mcpUser.userId, workspaceId);
+
+    where.board = {
+      workspaceId,
+    };
+  } else {
+    // 如果没有指定，删除所有有权访问的工作区任务
+    const accessibleWorkspaceIds = await getUserAccessibleWorkspaceIds(mcpUser.userId);
+
+    where.board = {
+      workspaceId: {
+        in: accessibleWorkspaceIds,
+      },
+    };
+  }
+
+  const deletedTasks = await prisma.task.deleteMany({ where });
 
   const result = {
     success: true,
     deletedCount: deletedTasks.count,
     message: `已删除 ${deletedTasks.count} 个任务`,
+    workspaceId: workspaceId || null,
+    boardId: boardId || null,
   };
 
   // 广播任务清除事件
   io.emit('user_tasks_cleared', {
     userId: mcpUser.userId,
     deletedCount: deletedTasks.count,
+    workspaceId,
+    boardId,
   });
 
   return result;
@@ -1463,9 +1819,12 @@ async function handleClearAllTasks(params: any, io: SocketIOServer): Promise<any
 async function handleGetWorkspaces(params: any): Promise<any> {
   const mcpUser = params._mcpUser as McpUserContext;
 
-
-  const workspaces = await prisma.workspace.findMany({
-    where: { ownerId: mcpUser.userId },
+  // 获取个人工作区
+  const personalWorkspaces = await prisma.workspace.findMany({
+    where: {
+      ownerId: mcpUser.userId,
+      teamId: null,
+    },
     include: {
       projects: {
         include: {
@@ -1476,19 +1835,53 @@ async function handleGetWorkspaces(params: any): Promise<any> {
     orderBy: { createdAt: 'asc' },
   });
 
-  return workspaces;
+  // 获取团队工作区
+  const teamMember = await prisma.teamMember.findUnique({
+    where: { userId: mcpUser.userId },
+    include: {
+      team: {
+        include: {
+          workspaces: {
+            include: {
+              projects: {
+                include: {
+                  boards: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const teamWorkspaces = teamMember?.team?.workspaces || [];
+
+  // 合并并返回所有工作区
+  return {
+    personalWorkspaces,
+    teamWorkspaces,
+    total: personalWorkspaces.length + teamWorkspaces.length,
+  };
 }
 
 async function handleGetProjects(params: any): Promise<any> {
   const mcpUser = params._mcpUser as McpUserContext;
   const { workspaceId } = params;
 
-  const where: any = {
-    ownerId: mcpUser.userId,
-  };
+  // 构建查询条件
+  const where: any = {};
 
   if (workspaceId) {
+    // 验证用户是否有权访问该工作区
+    await verifyWorkspaceAccess(mcpUser.userId, workspaceId);
     where.workspaceId = workspaceId;
+  } else {
+    // 获取所有有权访问的工作区
+    const accessibleWorkspaceIds = await getUserAccessibleWorkspaceIds(mcpUser.userId);
+    where.workspaceId = {
+      in: accessibleWorkspaceIds,
+    };
   }
 
   const projects = await prisma.project.findMany({
@@ -1497,6 +1890,13 @@ async function handleGetProjects(params: any): Promise<any> {
       boards: {
         include: {
           columns: true,
+        },
+      },
+      workspace: {
+        select: {
+          id: true,
+          name: true,
+          teamId: true,
         },
       },
     },
@@ -1510,16 +1910,96 @@ async function handleGetBoards(params: any): Promise<any> {
   const mcpUser = params._mcpUser as McpUserContext;
   const { projectId, workspaceId } = params;
 
-  const where: any = {
-    ownerId: mcpUser.userId,
-  };
+  // 构建查询条件
+  const where: any = {};
 
   if (projectId) {
+    // 如果指定了项目ID，检查用户是否有权访问该项目
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      include: {
+        workspace: {
+          include: {
+            team: true,
+          },
+        },
+      },
+    });
+
+    if (!project) {
+      throw new Error('项目不存在');
+    }
+
+    // 检查访问权限
+    if (project.ownerId !== mcpUser.userId) {
+      // 如果不是项目所有者，检查是否为团队成员
+      if (project.workspace?.teamId) {
+        const member = await prisma.teamMember.findFirst({
+          where: {
+            userId: mcpUser.userId,
+            teamId: project.workspace.teamId,
+            status: 'active',
+          },
+        });
+
+        if (!member) {
+          throw new Error('您没有权限访问该项目');
+        }
+
+        // 检查项目权限
+        const hasPermission = await checkProjectPermission(
+          mcpUser.userId,
+          projectId,
+          'view'
+        );
+
+        if (!hasPermission) {
+          throw new Error('您没有权限查看该项目的看板');
+        }
+      } else {
+        throw new Error('您没有权限访问该项目');
+      }
+    }
+
     where.projectId = projectId;
   } else if (workspaceId) {
-    where.project = {
-      workspaceId: workspaceId,
-    };
+    // 如果指定了工作区ID，验证并过滤
+    await verifyWorkspaceAccess(mcpUser.userId, workspaceId);
+
+    where.OR = [
+      // 直属工作区的看板
+      {
+        workspaceId,
+        projectId: null,
+      },
+      // 工作区下项目的看板
+      {
+        project: {
+          workspaceId,
+        },
+      },
+    ];
+  } else {
+    // 如果没有指定任何过滤，返回所有有权访问的看板
+    const accessibleWorkspaceIds = await getUserAccessibleWorkspaceIds(mcpUser.userId);
+
+    where.OR = [
+      // 直属工作区的看板
+      {
+        workspaceId: {
+          in: accessibleWorkspaceIds,
+        },
+        projectId: null,
+      },
+      // 工作区下项目的看板
+      {
+        project: {
+          workspaceId: {
+            in: accessibleWorkspaceIds,
+          },
+        },
+      },
+    ];
   }
 
   const boards = await prisma.board.findMany({
@@ -1530,7 +2010,20 @@ async function handleGetBoards(params: any): Promise<any> {
       },
       project: {
         include: {
-          workspace: true,
+          workspace: {
+            select: {
+              id: true,
+              name: true,
+              teamId: true,
+            },
+          },
+        },
+      },
+      workspace: {
+        select: {
+          id: true,
+          name: true,
+          teamId: true,
         },
       },
     },
@@ -1542,12 +2035,17 @@ async function handleGetBoards(params: any): Promise<any> {
 /**
  * 工具：获取用户完整层级（工作区→项目→看板→列）
  * 返回所有节点的UUID+名称，用于在创建任务前查表使用
+ * 支持个人和团队工作区
  */
 async function handleGetUserHierarchy(params: any): Promise<any> {
   const mcpUser = params._mcpUser as McpUserContext;
 
-  const workspaces = await prisma.workspace.findMany({
-    where: { ownerId: mcpUser.userId },
+  // 获取个人工作区
+  const personalWorkspaces = await prisma.workspace.findMany({
+    where: {
+      ownerId: mcpUser.userId,
+      teamId: null,
+    },
     include: {
       projects: {
         include: {
@@ -1562,9 +2060,37 @@ async function handleGetUserHierarchy(params: any): Promise<any> {
     orderBy: { createdAt: 'asc' },
   });
 
-  return workspaces.map((ws) => ({
+  // 获取团队工作区
+  const teamMember = await prisma.teamMember.findUnique({
+    where: { userId: mcpUser.userId },
+    include: {
+      team: {
+        include: {
+          workspaces: {
+            include: {
+              projects: {
+                include: {
+                  boards: {
+                    include: {
+                      columns: { orderBy: { order: 'asc' } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const teamWorkspaces = teamMember?.team?.workspaces || [];
+
+  // 格式化个人工作区数据
+  const personalHierarchy = personalWorkspaces.map((ws) => ({
     id: ws.id,
     name: ws.name,
+    type: 'personal',
     projects: ws.projects.map((p) => ({
       id: p.id,
       name: p.name,
@@ -1575,6 +2101,29 @@ async function handleGetUserHierarchy(params: any): Promise<any> {
       })),
     })),
   }));
+
+  // 格式化团队工作区数据
+  const teamHierarchy = teamWorkspaces.map((ws) => ({
+    id: ws.id,
+    name: ws.name,
+    type: 'team',
+    teamId: ws.teamId,
+    projects: ws.projects.map((p) => ({
+      id: p.id,
+      name: p.name,
+      boards: p.boards.map((b) => ({
+        id: b.id,
+        name: b.name,
+        columns: b.columns.map((c) => ({ id: c.id, name: c.name })),
+      })),
+    })),
+  }));
+
+  return {
+    personalWorkspaces: personalHierarchy,
+    teamWorkspaces: teamHierarchy,
+    total: personalHierarchy.length + teamHierarchy.length,
+  };
 }
 
 

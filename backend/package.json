@@ -13,9 +13,11 @@
     "type-check": "tsc --noEmit",
     "format": "prettier --write \"src/**/*.{js,ts,json}\"",
     "format:check": "prettier --check \"src/**/*.{js,ts,json}\"",
-    "test": "echo \"✅ 后端测试通过 - 暂无测试用例\" && exit 0",
-    "test:unit": "echo \"✅ 后端单元测试通过 - 暂无测试用例\" && exit 0",
-    "test:integration": "echo \"✅ 后端集成测试通过 - 暂无测试用例\" && exit 0",
+    "test": "vitest run",
+    "test:unit": "vitest run src/__tests__/services src/__tests__/middleware",
+    "test:integration": "vitest run src/__tests__/integration",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
@@ -24,6 +26,7 @@
     "user:cleanup": "tsx scripts/init-user-system.ts cleanup",
     "user:validate": "tsx scripts/validate-migration.ts",
     "db:clear": "node scripts/clear-database.js",
+    "db:seed:team": "tsx prisma/seed-team.ts",
     "test:mcp-tools": "node scripts/test-mcp-tools.js",
     "test:mcp-sdk": "node scripts/test-mcp-sdk.js",
     "test:mcp-native": "node scripts/test-mcp-native.js"
@@ -59,12 +62,14 @@
     "@types/node": "^18.15.11",
     "@typescript-eslint/eslint-plugin": "^5.59.0",
     "@typescript-eslint/parser": "^5.59.0",
+    "@vitest/coverage-v8": "^1.0.4",
     "eslint": "^8.38.0",
     "prettier": "^3.5.3",
     "prisma": "^5.0.0",
     "rimraf": "^4.4.1",
     "ts-node-dev": "^2.0.0",
     "tsx": "^4.19.4",
-    "typescript": "^5.0.4"
+    "typescript": "^5.0.4",
+    "vitest": "^1.0.4"
   }
 }

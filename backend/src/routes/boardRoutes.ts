@@ -7,6 +7,11 @@ import { PrismaClient } from '@prisma/client';
 import { boardService } from '../services/boardService';
 import { boardSchema, boardUpdateSchema, reorderSchema } from '../types/multiBoardSchema';
 import { authMiddleware, requireAuth, createOwnershipVerifier } from '../middleware/authMiddleware';
+import {
+  createOwnershipOrPermissionVerifier,
+  requireProjectEdit
+} from '../middleware/permissionMiddleware';
+import { ProjectPermissionType } from '../types/teamTypes';
 
 const prisma = new PrismaClient();
 
@@ -30,11 +35,11 @@ export default async function boardRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // 获取项目下的所有看板（需要验证项目所有权）
+  // 获取项目下的所有看板（需要查看权限）
   fastify.get(
     '/projects/:projectId/boards',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('project')],
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.VIEW)],
     },
     async (request, reply) => {
       try {
@@ -49,11 +54,11 @@ export default async function boardRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // 根据ID获取看板（需要验证看板所有权）
+  // 根据ID获取看板（需要查看权限）
   fastify.get(
     '/boards/:id',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('board')],
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.VIEW)],
     },
     async (request, reply) => {
       try {
@@ -74,11 +79,27 @@ export default async function boardRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // 创建看板
+  // 创建看板（需要编辑权限）
   fastify.post('/boards', { preHandler: authMiddleware }, async (request, reply) => {
     try {
       const userId = requireAuth(request);
       const boardData = boardSchema.parse(request.body);
+
+      // 检查用户是否对项目有编辑权限
+      if (boardData.projectId) {
+        const { permissionService } = await import('../services/permissionService');
+        const hasPermission = await permissionService.checkProjectPermission(
+          userId,
+          boardData.projectId,
+          ProjectPermissionType.EDIT
+        );
+
+        if (!hasPermission) {
+          reply.status(403);
+          return { success: false, error: '您没有在该项目中创建看板的权限' };
+        }
+      }
+
       const board = await boardService.createBoard(boardData, userId);
 
       // 广播看板创建事件
@@ -95,11 +116,11 @@ export default async function boardRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // 更新看板
+  // 更新看板（需要编辑权限）
   fastify.put(
     '/boards/:id',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('board')],
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.EDIT)],
     },
     async (request, reply) => {
       try {
@@ -122,11 +143,11 @@ export default async function boardRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // 删除看板
+  // 删除看板（需要编辑权限）
   fastify.delete(
     '/boards/:id',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('board')],
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.EDIT)],
     },
     async (request, reply) => {
       try {
