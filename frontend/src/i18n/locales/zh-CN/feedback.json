@@ -185,7 +185,11 @@
     "columnAddSuccess": "列添加成功",
     "columnAddFailed": "添加列失败，请重试",
     "noBoardSelected": "请先选择一个看板",
-    "loadBoardDataFailed": "加载看板数据失败，请重试"
+    "loadBoardDataFailed": "加载看板数据失败，请重试",
+    "noAvailableColumns": "看板没有可用的列",
+    "taskMoveFailed": "任务移动失败",
+    "taskSaveFailedUIUpdated": "任务保存失败，但界面已更新",
+    "fetchTaskDetailsFailed": "获取任务详情失败，请重试"
   },
   "warning": {
     "general": "警告",

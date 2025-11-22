@@ -13,6 +13,7 @@
     "settings": "设置",
     "workspace": "工作区",
     "project": "项目",
+    "createWorkspace": "新建工作区",
     "createProject": "创建项目",
     "createBoard": "创建看板",
     "createProjectDescription": "项目可以包含多个看板，适合组织相关的任务集合",
@@ -69,13 +70,9 @@
     "more": "更多操作",
     "retry": "重试",
     "loading": "加载中...",
-    "actions": "操作",
-    "edit": "编辑",
-    "delete": "删除",
-    "close": "关闭",
     "clearSearch": "清除搜索",
     "clearFilters": "清除筛选",
-    "reconnect": "重新连接"
+    "goHome": "返回首页"
   },
   "status": {
     "loading": "加载中...",
