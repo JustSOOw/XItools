@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { notificationService } from '../services/notificationService';
 import { notificationTrigger } from '../services/notificationTrigger';
@@ -17,7 +17,7 @@ describe('通知系统测试', () => {
     const user1 = await prisma.user.create({
       data: {
         email: 'notif-user1@test.com',
-        password: 'test123',
+        passwordHash: 'test123',
         username: 'NotifUser1',
       },
     });
@@ -26,7 +26,7 @@ describe('通知系统测试', () => {
     const user2 = await prisma.user.create({
       data: {
         email: 'notif-user2@test.com',
-        password: 'test123',
+        passwordHash: 'test123',
         username: 'NotifUser2',
       },
     });

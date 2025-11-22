@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { taskHistoryService } from '../services/taskHistoryService';
 import { TaskHistoryAction } from '../types/taskHistoryTypes';
@@ -15,7 +15,7 @@ describe('任务历史系统测试', () => {
     const user = await prisma.user.create({
       data: {
         email: 'taskhistory-user@test.com',
-        password: 'test123',
+        passwordHash: 'test123',
         username: 'TaskHistoryUser',
       },
     });

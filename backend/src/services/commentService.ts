@@ -15,16 +15,40 @@ const prisma = new PrismaClient();
 export class CommentService {
   /**
    * 创建评论
-   * @param taskId 任务ID
-   * @param userId 用户ID
-   * @param content 评论内容
+   * @param params 参数对象或 taskId
+   * @param userId 用户ID（可选，当第一个参数是对象时）
+   * @param content 评论内容（可选，当第一个参数是对象时）
    * @returns 创建的评论
    */
   async createComment(
-    taskId: string,
-    userId: string,
-    content: string
+    paramsOrTaskId: string | { taskId: string; userId: string; content: string },
+    userId?: string,
+    content?: string
   ): Promise<CommentResponseDTO> {
+    // 支持两种调用方式
+    let taskId: string;
+    let actualUserId: string;
+    let actualContent: string;
+
+    if (typeof paramsOrTaskId === 'object') {
+      taskId = paramsOrTaskId.taskId;
+      actualUserId = paramsOrTaskId.userId;
+      actualContent = paramsOrTaskId.content;
+    } else {
+      taskId = paramsOrTaskId;
+      actualUserId = userId!;
+      actualContent = content!;
+    }
+
+    // 验证评论内容
+    if (!actualContent || actualContent.trim() === '') {
+      throw new Error('评论内容不能为空');
+    }
+
+    if (actualContent.length > 10000) {
+      throw new Error('评论内容不能超过10000个字符');
+    }
+
     // 1. 验证任务是否存在
     const task = await prisma.task.findUnique({
       where: { id: taskId },
@@ -38,8 +62,8 @@ export class CommentService {
     const comment = await prisma.taskComment.create({
       data: {
         taskId,
-        userId,
-        content,
+        userId: actualUserId,
+        content: actualContent,
       },
       include: {
         user: {
@@ -51,6 +75,12 @@ export class CommentService {
           },
         },
       },
+    });
+
+    // 3. 更新任务的 updatedAt 时间
+    await prisma.task.update({
+      where: { id: taskId },
+      data: { updatedAt: new Date() },
     });
 
     return this.toCommentResponse(comment);
