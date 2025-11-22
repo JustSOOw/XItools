@@ -1,0 +1,104 @@
+{
+    "common": {
+        "team": "团队",
+        "members": "成员",
+        "settings": "设置",
+        "invitations": "邀请",
+        "role": "角色",
+        "actions": "操作",
+        "user": "用户",
+        "joinedAt": "加入时间",
+        "selected": "已选择",
+        "comments": "评论",
+        "others": "其他"
+    },
+    "status": {
+        "active": "活跃",
+        "inactive": "未激活",
+        "pending": "待接受",
+        "expired": "已过期"
+    },
+    "role": {
+        "owner": "所有者",
+        "admin": "管理员",
+        "member": "成员",
+        "viewer": "访客"
+    },
+    "action": {
+        "create": "创建团队",
+        "edit": "编辑团队",
+        "delete": "解散团队",
+        "dissolve": "解散团队",
+        "invite": "邀请成员",
+        "sendInvite": "发送邀请",
+        "remove": "移除",
+        "bulkRemove": "批量移除",
+        "leave": "退出团队",
+        "accept": "接受邀请",
+        "decline": "拒绝邀请",
+        "cancel": "取消",
+        "save": "保存",
+        "search": "搜索",
+        "send": "发送"
+    },
+    "message": {
+        "createSuccess": "团队创建成功",
+        "updateSuccess": "团队更新成功",
+        "deleteSuccess": "团队已解散",
+        "inviteSuccess": "邀请已发送",
+        "removeSuccess": "成员已移除",
+        "leaveSuccess": "已退出团队",
+        "acceptSuccess": "已加入团队",
+        "confirmDelete": "确定要解散团队吗？此操作不可恢复。",
+        "confirmDissolve": "确定要解散团队 \"{{name}}\" 吗？此操作不可撤销，所有数据将被删除或转移。",
+        "confirmRemove": "确定要将 {{name}} 从团队中移除吗？",
+        "confirmLeave": "确定要退出该团队吗？",
+        "loadingMembers": "正在加载成员...",
+        "comingSoon": "即将推出...",
+        "noTeamSelected": "未选择团队",
+        "sending": "发送中...",
+        "sendFailed": "发送失败"
+    },
+    "settings": {
+        "title": "团队设置",
+        "basicInfo": "基本信息",
+        "memberManage": "成员管理",
+        "invitations": "邀请记录",
+        "inviteLink": "邀请链接",
+        "dangerZone": "危险区域",
+        "teamName": "团队名称",
+        "description": "描述",
+        "avatarUrl": "头像 URL",
+        "avatarHelp": "输入图片链接，或留空使用默认头像"
+    },
+    "invitation": {
+        "title": "团队邀请",
+        "description": "邀请您加入团队",
+        "sentBy": "邀请人",
+        "expiresAt": "过期时间",
+        "invalid": "邀请无效或已过期",
+        "missingCode": "邀请链接缺少代码",
+        "welcome": "欢迎加入",
+        "redirecting": "正在跳转...",
+        "emailAddresses": "邮箱地址",
+        "emailHelp": "使用逗号或换行分隔多个邮箱",
+        "defaultRole": "默认角色"
+    },
+    "notification": {
+        "title": "通知中心",
+        "all": "全部",
+        "unread": "未读",
+        "markAllRead": "全部已读",
+        "empty": "暂无通知",
+        "type": {
+            "task_assigned": "任务指派",
+            "task_commented": "任务评论",
+            "team_invitation": "团队邀请",
+            "project_permission": "项目权限"
+        }
+    },
+    "task": {
+        "comments": "评论",
+        "writeComment": "写下你的评论..."
+    }
+}

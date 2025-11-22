@@ -5,6 +5,7 @@ import MoreButton, { MoreMenuItem } from './MoreButton';
 import ColorPickerModal from './ColorPickerModal';
 import { CardAnimation } from './animations';
 import { useI18n } from '../hooks/useI18n';
+import TaskAssigneeStack from './task/TaskAssigneeStack';
 
 interface TaskCardProps {
   task: Task;
@@ -147,12 +148,19 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onClick, onColorChange, onDel
             </div>
 
             {/* 负责人 */}
-            {task.assignee && (
-              <div className="mt-1.5 flex items-center">
-                <span className="inline-block w-5 h-5 rounded-full bg-accent text-white text-xs flex items-center justify-center">
-                  {task.assignee.substring(0, 1).toUpperCase()}
-                </span>
-                <span className="ml-1 text-xs text-text-secondary">{task.assignee}</span>
+            {(task.assignees?.length || task.assignee) && (
+              <div className="mt-1.5">
+                <TaskAssigneeStack
+                  assignees={
+                    task.assignees
+                      ? task.assignees.map(id => ({ id, name: id })) // Map string IDs to objects
+                      : task.assignee
+                        ? [{ id: task.assignee, name: task.assignee }]
+                        : []
+                  }
+                  size="sm"
+                  maxDisplay={3}
+                />
               </div>
             )}
           </div>

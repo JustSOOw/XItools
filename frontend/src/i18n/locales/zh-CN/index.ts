@@ -9,13 +9,17 @@ import calendar from './calendar.json';
 import settings from './settings.json';
 import feedback from './feedback.json';
 import error from './error.json';
+import team from './team.json';
+import auth from './auth.json';
 
 export default {
   common,
-  task,
+  auth,
   board,
-  calendar,
+  task,
   settings,
+  calendar,
   feedback,
   error,
+  team,
 };

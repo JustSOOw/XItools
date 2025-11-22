@@ -12,6 +12,8 @@ import {
   generateTimelineEvents,
 } from './enhanced';
 import { useI18n } from '../hooks/useI18n';
+import TaskComments from './task/TaskComments';
+import TaskAssigneeStack from './task/TaskAssigneeStack';
 
 interface TaskDetailModalProps {
   isOpen: boolean;
@@ -38,7 +40,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
         setTask(taskDetails);
       } catch (error) {
         console.error('获取任务详情失败:', error);
-        toast.error('获取任务详情失败，请重试');
+        toast.error(t('feedback:messages.fetchTaskDetailsFailed'));
       } finally {
         setIsLoading(false);
       }
@@ -102,11 +104,10 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key as any)}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === tab.key
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-text-secondary hover:text-text-primary hover:border-border'
-                }`}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.key
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-text-secondary hover:text-text-primary hover:border-border'
+                  }`}
               >
                 <span className="mr-2">{tab.icon}</span>
                 {tab.label}
@@ -246,11 +247,24 @@ const TaskDetailsTab: React.FC<{
             <label className="block text-sm font-medium text-text-primary mb-2">
               {t('task:fields.assignee')}
             </label>
+            <div className="flex items-center gap-2 mb-2">
+              <TaskAssigneeStack
+                assignees={
+                  task.assignees
+                    ? task.assignees.map(id => ({ id, name: id }))
+                    : task.assignee
+                      ? [{ id: task.assignee, name: task.assignee }]
+                      : []
+                }
+                size="md"
+              />
+            </div>
             <InlineEdit
               value={task.assignee || ''}
               onSave={(value) => onUpdate('assignee', value || null)}
               placeholder={t('task:placeholders.assignee')}
             />
+            {/* TODO: Add multi-select for assignees */}
           </div>
 
           {/* 截止日期 */}
@@ -352,9 +366,9 @@ const TaskDetailsTab: React.FC<{
               onSave={(value) => {
                 const tags = value
                   ? value
-                      .split(',')
-                      .map((tag) => tag.trim())
-                      .filter(Boolean)
+                    .split(',')
+                    .map((tag) => tag.trim())
+                    .filter(Boolean)
                   : [];
                 return onUpdate('tags', tags);
               }}
@@ -405,6 +419,11 @@ const TaskDetailsTab: React.FC<{
             </span>
           </div>
         </div>
+      </div>
+
+      {/* 评论区域 */}
+      <div className="bg-accent/5 rounded-lg p-4 mt-6">
+        <TaskComments taskId={task.id} />
       </div>
     </div>
   );

@@ -44,6 +44,7 @@ import { EmptyTasks, EmptySearchResults, EmptyFilterResults } from './components
 // 动画组件
 import { ViewTransition } from './components/animations';
 import NavigationOverview from './components/navigation/NavigationOverview';
+import NotificationCenter from './components/notification/NotificationCenter';
 
 // 反馈组件
 import { useConfirmDialog, useSuccessAnimation, useKeyboardShortcuts } from './components/feedback';
@@ -400,7 +401,7 @@ function App() {
       if (firstColumn) {
         statusColumnId = firstColumn.id;
       } else {
-        toast.error('看板没有可用的列');
+        toast.error(t('feedback:messages.noAvailableColumns'));
         return;
       }
     }
@@ -657,12 +658,12 @@ function App() {
         } catch (error) {
           console.error('任务拖拽持久化失败:', error);
           // 持久化失败时，可以选择显示警告但不回滚UI
-          toast.warning('任务保存失败，但界面已更新');
+          toast.warning(t('feedback:messages.taskSaveFailedUIUpdated'));
         }
       });
     } catch (error) {
       console.error('任务拖拽失败:', error);
-      toast.error('任务移动失败');
+      toast.error(t('feedback:messages.taskMoveFailed'));
       // 失败时恢复到拖拽开始时的状态
       if (dragStartState) {
         setTasks(dragStartState.tasks);
@@ -736,9 +737,9 @@ function App() {
         message:
           columnTasks.length > 0
             ? t('feedback:confirmation.deleteColumnWithTasksMessage', {
-                columnName,
-                taskCount: columnTasks.length,
-              })
+              columnName,
+              taskCount: columnTasks.length,
+            })
             : t('feedback:confirmation.deleteColumnMessage', { columnName }),
         type: 'danger',
         confirmText: t('feedback:dialog.delete'),
@@ -945,7 +946,7 @@ function App() {
               // 通过MCP服务更新任务
               taskService.updateTask(taskId, updates).catch((error) => {
                 console.error('更新任务失败:', error);
-                toast.error('更新任务失败，请重试');
+                toast.error(t('feedback:messages.taskUpdateFailed'));
               });
             }}
             onCreateTask={() => setIsCreateModalOpen(true)}
@@ -1311,21 +1312,8 @@ function App() {
 
             {/* 右侧：操作按钮 */}
             <div className="flex items-center space-x-4">
-              {/* 连接状态指示器 - 小点样式 */}
-              <div className="flex items-center">
-                <span
-                  className={`w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}
-                ></span>
-                <span className="text-xs text-text-secondary">
-                  {isConnected ? t('common:status.connected') : t('common:status.disconnected')}
-                </span>
-              </div>
-
-              {!isConnected && (
-                <Button variant="danger" size="sm" onClick={reconnect}>
-                  {t('common:actions.reconnect', { defaultValue: '重新连接' })}
-                </Button>
-              )}
+              {/* 通知中心 */}
+              <NotificationCenter />
 
               {/* 删除所有任务按钮 */}
               {tasks.length > 0 && (
@@ -1395,12 +1383,7 @@ function App() {
             </div>
           </header>
 
-          {/* 连接状态提示 */}
-          {!isConnected && (
-            <div className="modern-card mx-4 mt-4 bg-warning/10 border border-warning text-warning px-4 py-2">
-              <p>未连接到MCP服务，部分功能可能不可用</p>
-            </div>
-          )}
+
 
           {/* 主要内容区 */}
           <ViewTransition

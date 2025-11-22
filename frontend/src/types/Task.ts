@@ -15,6 +15,7 @@ export interface Task {
   priority?: 'High' | 'Medium' | 'Low' | null;
   dueDate?: string | null;
   assignee?: string | null;
+  assignees?: string[]; // 多人协作：负责人列表
   color?: string | null; // 任务卡片颜色
   tags?: string[] | Array<{ id: string; name: string; createdAt: string; updatedAt: string }>;
   parentId?: string | null;
@@ -39,4 +40,20 @@ export type PartialTask = Omit<Task, 'id' | 'createdAt' | 'updatedAt'> & {
 /**
  * 更新任务时的部分任务对象
  */
-export type TaskUpdate = Partial<Omit<Task, 'id' | 'createdAt'>>;
+export interface TaskUpdate {
+  title?: string;
+  description?: string;
+  status?: string;
+  priority?: 'High' | 'Medium' | 'Low' | null;
+  dueDate?: string | null;
+  assignee?: string | null;
+  assignees?: string[];
+  color?: string | null;
+  tags?: string[] | any[]; // Simplify tags for update
+  parentId?: string | null;
+  acceptanceCriteria?: string;
+  estimatedEffort?: number | null;
+  loggedTime?: number | null;
+  sortOrder?: number;
+  boardId?: string;
+}
