@@ -15,6 +15,13 @@ import CreateSelector from './CreateSelector';
 import ThemeToggle from '../ThemeToggle';
 import { UserMenu } from '../auth/UserMenu';
 import CreateTeamDialog from '../team/CreateTeamDialog';
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  PlusIcon,
+  UserGroupIcon,
+  Cog6ToothIcon,
+} from '@heroicons/react/24/outline';
 
 
 interface SidebarProps {
@@ -389,26 +396,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
           className="p-1.5 rounded-element hover:bg-primary/10 text-text-secondary hover:text-primary transition-all duration-200"
           aria-label={isCollapsed ? '展开侧边栏' : '收起侧边栏'}
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-          >
-            {isCollapsed ? (
-              <path
-                fillRule="evenodd"
-                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                clipRule="evenodd"
-              />
-            ) : (
-              <path
-                fillRule="evenodd"
-                d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
-                clipRule="evenodd"
-              />
-            )}
-          </svg>
+          {isCollapsed ? (
+            <ChevronRightIcon className="h-5 w-5" />
+          ) : (
+            <ChevronLeftIcon className="h-5 w-5" />
+          )}
         </button>
       </div>
 
@@ -424,7 +416,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
               onClick={() => handleShowCreateMenu('workspace')}
               className="w-full flex items-center px-3 py-2.5 text-text-secondary hover:text-text-primary hover:bg-surface/50 rounded-lg transition-all duration-200"
             >
-              <span className="flex-shrink-0">➕</span>
+              <PlusIcon className="h-5 w-5 flex-shrink-0" />
               <span className="ml-3">
                 {t('common:navigation.createWorkspace', { defaultValue: '新建工作区' })}
               </span>
@@ -464,7 +456,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
                 onClick={() => setShowCreateTeamDialog(true)}
                 className="w-full flex items-center justify-center px-3 py-3 mt-4 text-text-secondary hover:text-primary border-2 border-dashed border-border hover:border-primary rounded-lg transition-all duration-200 group"
               >
-                <span className="flex-shrink-0 group-hover:scale-110 transition-transform">👥</span>
+                <UserGroupIcon className="h-5 w-5 flex-shrink-0 group-hover:scale-110 transition-transform" />
                 <span className="ml-2 font-medium">
                   {t('team:action.createOrJoin', { defaultValue: '创建或加入团队' })}
                 </span>
@@ -474,7 +466,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
                 onClick={() => setShowCreateTeamDialog(true)}
                 className="w-full flex items-center px-3 py-2.5 text-text-secondary hover:text-text-primary hover:bg-surface/50 rounded-lg transition-all duration-200"
               >
-                <span className="flex-shrink-0">➕</span>
+                <PlusIcon className="h-5 w-5 flex-shrink-0" />
                 <span className="ml-3">
                   {t('team:action.create', { defaultValue: '新建团队' })}
                 </span>
@@ -501,18 +493,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
               isCollapsed ? 'w-full justify-center' : 'flex-shrink-0 justify-start',
             )}
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 flex-shrink-0"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fillRule="evenodd"
-                d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
-                clipRule="evenodd"
-              />
-            </svg>
+            <Cog6ToothIcon className="h-5 w-5 flex-shrink-0" />
             {!isCollapsed && <span className="ml-3">{t('common:navigation.settings')}</span>}
           </button>
 
