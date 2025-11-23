@@ -1,201 +1,264 @@
+/**
+ * 团队状态管理
+ *
+ * 使用真实API调用，替换所有mock数据
+ */
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Team, TeamMember, TeamInvitation } from '../types/teamTypes'; // We might need to define these types first, but I'll assume they will be in a types file or I'll mock them for now.
-import { BaseApiService } from '../services/BaseApiService';
-
-// Define types here for now if they don't exist, or import them.
-// Since I can't see types/teamTypes.ts, I'll define interfaces here and move them later if needed.
-export interface Team {
-    id: string;
-    name: string;
-    description?: string;
-    avatarUrl?: string;
-    ownerId: string;
-    createdAt: string;
-    updatedAt: string;
-}
-
-export interface TeamMember {
-    id: string;
-    userId: string;
-    teamId: string;
-    role: 'owner' | 'admin' | 'member' | 'guest';
-    joinedAt: string;
-    user: {
-        id: string;
-        name: string;
-        email: string;
-        avatarUrl?: string;
-    };
-}
-
-export interface TeamInvitation {
-    id: string;
-    teamId: string;
-    inviterId: string;
-    invitedEmail: string;
-    role: 'admin' | 'member' | 'guest';
-    status: 'pending' | 'accepted' | 'rejected' | 'expired';
-    createdAt: string;
-    expiresAt: string;
-}
+import { toast } from '../components/ui/Toast';
+import teamService from '../services/teamService';
+import invitationService from '../services/invitationService';
+import {
+  Team,
+  TeamMember,
+  TeamInvitation,
+  CreateTeamInput,
+  UpdateTeamInput,
+} from '../types/teamTypes';
 
 interface TeamState {
-    teams: Team[];
-    currentTeam: Team | null;
-    members: TeamMember[];
-    invitations: TeamInvitation[];
-    isLoading: boolean;
-    error: string | null;
+  teams: Team[];
+  currentTeam: Team | null;
+  members: TeamMember[];
+  invitations: TeamInvitation[];
+  isLoading: boolean;
+  error: string | null;
 
-    // Actions
-    fetchTeams: () => Promise<void>;
-    createTeam: (data: { name: string; description?: string; avatarUrl?: string }) => Promise<Team>;
-    updateTeam: (id: string, data: Partial<Team>) => Promise<void>;
-    dissolveTeam: (id: string) => Promise<void>;
-    selectTeam: (id: string) => void;
+  // Actions
+  fetchMyTeam: () => Promise<void>;
+  createTeam: (data: CreateTeamInput) => Promise<Team>;
+  updateTeam: (id: string, data: UpdateTeamInput) => Promise<void>;
+  dissolveTeam: (id: string) => Promise<void>;
+  selectTeam: (team: Team | null) => void;
+  leaveTeam: (id: string) => Promise<void>;
 
-    fetchMembers: (teamId: string) => Promise<void>;
-    removeMember: (teamId: string, memberId: string) => Promise<void>;
-    updateMemberRole: (teamId: string, memberId: string, role: TeamMember['role']) => Promise<void>;
+  fetchMembers: (teamId: string) => Promise<void>;
+  removeMember: (teamId: string, memberId: string) => Promise<void>;
 
-    fetchInvitations: (teamId: string) => Promise<void>;
-    sendInvitations: (teamId: string, emails: string[], role?: TeamMember['role']) => Promise<void>;
-    revokeInvitation: (teamId: string, invitationId: string) => Promise<void>;
-    acceptInvitation: (token: string) => Promise<void>;
+  fetchInvitations: (teamId: string) => Promise<void>;
+  sendInvitations: (teamId: string, emails: string[]) => Promise<void>;
+  revokeInvitation: (invitationId: string) => Promise<void>;
 }
 
-// Mock API service for now, will replace with real API calls
-const api = new BaseApiService('/api/teams');
-
 export const useTeamStore = create<TeamState>()(
-    persist(
-        (set, get) => ({
+  persist(
+    (set, get) => ({
+      teams: [],
+      currentTeam: null,
+      members: [],
+      invitations: [],
+      isLoading: false,
+      error: null,
+
+      /**
+       * 获取我的团队
+       */
+      fetchMyTeam: async () => {
+        set({ isLoading: true, error: null });
+        try {
+          const team = await teamService.getMyTeam();
+          set({ currentTeam: team, teams: team ? [team] : [] });
+        } catch (error: any) {
+          set({ error: error.message });
+          console.error('获取团队信息失败:', error);
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      /**
+       * 创建团队
+       */
+      createTeam: async (data) => {
+        set({ isLoading: true, error: null });
+        try {
+          const newTeam = await teamService.createTeam(data);
+          set({ currentTeam: newTeam, teams: [newTeam] });
+          toast.success('团队创建成功');
+          return newTeam;
+        } catch (error: any) {
+          set({ error: error.message });
+          toast.error(error.message || '创建团队失败');
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      /**
+       * 更新团队信息
+       */
+      updateTeam: async (id, data) => {
+        set({ isLoading: true, error: null });
+        try {
+          const updatedTeam = await teamService.updateTeam(id, data);
+          set((state) => ({
+            currentTeam: state.currentTeam?.id === id ? updatedTeam : state.currentTeam,
+            teams: state.teams.map((t) => (t.id === id ? updatedTeam : t)),
+          }));
+          toast.success('团队信息更新成功');
+        } catch (error: any) {
+          set({ error: error.message });
+          toast.error(error.message || '更新团队信息失败');
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      /**
+       * 解散团队
+       */
+      dissolveTeam: async (id) => {
+        set({ isLoading: true, error: null });
+        try {
+          await teamService.dissolveTeam(id);
+          set({
             teams: [],
             currentTeam: null,
             members: [],
             invitations: [],
-            isLoading: false,
-            error: null,
-
-            fetchTeams: async () => {
-                set({ isLoading: true, error: null });
-                try {
-                    // const response = await api.get('/');
-                    // set({ teams: response.data });
-                    // Mock data
-                    set({ teams: [] });
-                } catch (error: any) {
-                    set({ error: error.message });
-                } finally {
-                    set({ isLoading: false });
-                }
-            },
-
-            createTeam: async (data) => {
-                set({ isLoading: true, error: null });
-                try {
-                    // const response = await api.post('/', data);
-                    // const newTeam = response.data;
-                    // set((state) => ({ teams: [...state.teams, newTeam] }));
-                    // return newTeam;
-
-                    // Mock
-                    const newTeam: Team = {
-                        id: Math.random().toString(36).substr(2, 9),
-                        ...data,
-                        ownerId: 'current-user-id',
-                        createdAt: new Date().toISOString(),
-                        updatedAt: new Date().toISOString()
-                    };
-                    set((state) => ({ teams: [...state.teams, newTeam] }));
-                    return newTeam;
-                } catch (error: any) {
-                    set({ error: error.message });
-                    throw error;
-                } finally {
-                    set({ isLoading: false });
-                }
-            },
-
-            updateTeam: async (id, data) => {
-                set({ isLoading: true, error: null });
-                try {
-                    // await api.put(`/${id}`, data);
-                    set((state) => ({
-                        teams: state.teams.map((t) => (t.id === id ? { ...t, ...data } : t)),
-                        currentTeam: state.currentTeam?.id === id ? { ...state.currentTeam, ...data } : state.currentTeam,
-                    }));
-                } catch (error: any) {
-                    set({ error: error.message });
-                } finally {
-                    set({ isLoading: false });
-                }
-            },
-
-            dissolveTeam: async (id) => {
-                set({ isLoading: true, error: null });
-                try {
-                    // await api.delete(`/${id}`);
-                    set((state) => ({
-                        teams: state.teams.filter((t) => t.id !== id),
-                        currentTeam: state.currentTeam?.id === id ? null : state.currentTeam,
-                    }));
-                } catch (error: any) {
-                    set({ error: error.message });
-                } finally {
-                    set({ isLoading: false });
-                }
-            },
-
-            selectTeam: (id) => {
-                const team = get().teams.find((t) => t.id === id) || null;
-                set({ currentTeam: team });
-                if (team) {
-                    get().fetchMembers(id);
-                    get().fetchInvitations(id);
-                }
-            },
-
-            fetchMembers: async (teamId) => {
-                // Mock
-                set({ members: [] });
-            },
-
-            removeMember: async (teamId, memberId) => {
-                set((state) => ({
-                    members: state.members.filter(m => m.id !== memberId)
-                }));
-            },
-
-            updateMemberRole: async (teamId, memberId, role) => {
-                set((state) => ({
-                    members: state.members.map(m => m.id === memberId ? { ...m, role } : m)
-                }));
-            },
-
-            fetchInvitations: async (teamId) => {
-                // Mock
-                set({ invitations: [] });
-            },
-
-            sendInvitations: async (teamId, emails, role = 'member') => {
-                // Mock
-            },
-
-            revokeInvitation: async (teamId, invitationId) => {
-                set((state) => ({
-                    invitations: state.invitations.filter(i => i.id !== invitationId)
-                }));
-            },
-
-            acceptInvitation: async (token) => {
-                // Mock API call
-            }
-        }),
-        {
-            name: 'team-storage',
-            partialize: (state) => ({ teams: state.teams, currentTeam: state.currentTeam }), // Only persist teams and current selection
+          });
+          toast.success('团队已解散');
+        } catch (error: any) {
+          set({ error: error.message });
+          toast.error(error.message || '解散团队失败');
+          throw error;
+        } finally {
+          set({ isLoading: false });
         }
-    )
+      },
+
+      /**
+       * 退出团队
+       */
+      leaveTeam: async (id) => {
+        set({ isLoading: true, error: null });
+        try {
+          await teamService.leaveTeam(id);
+          set({
+            teams: [],
+            currentTeam: null,
+            members: [],
+            invitations: [],
+          });
+          toast.success('已退出团队');
+        } catch (error: any) {
+          set({ error: error.message });
+          toast.error(error.message || '退出团队失败');
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      /**
+       * 选择团队（设置当前团队）
+       */
+      selectTeam: (team) => {
+        set({ currentTeam: team });
+        if (team) {
+          get().fetchMembers(team.id);
+          get().fetchInvitations(team.id);
+        }
+      },
+
+      /**
+       * 获取团队成员列表
+       */
+      fetchMembers: async (teamId) => {
+        set({ isLoading: true, error: null });
+        try {
+          const members = await teamService.getTeamMembers(teamId);
+          set({ members });
+        } catch (error: any) {
+          set({ error: error.message });
+          console.error('获取团队成员失败:', error);
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      /**
+       * 移除团队成员
+       */
+      removeMember: async (teamId, memberId) => {
+        set({ isLoading: true, error: null });
+        try {
+          await teamService.removeMember(teamId, memberId);
+          set((state) => ({
+            members: state.members.filter((m) => m.id !== memberId),
+          }));
+          toast.success('成员已移除');
+        } catch (error: any) {
+          set({ error: error.message });
+          toast.error(error.message || '移除成员失败');
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      /**
+       * 获取团队邀请列表
+       */
+      fetchInvitations: async (teamId) => {
+        set({ isLoading: true, error: null });
+        try {
+          const invitations = await teamService.getTeamInvitations(teamId);
+          set({ invitations });
+        } catch (error: any) {
+          set({ error: error.message });
+          console.error('获取邀请列表失败:', error);
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      /**
+       * 发送邀请
+       */
+      sendInvitations: async (teamId, emails) => {
+        set({ isLoading: true, error: null });
+        try {
+          const newInvitations = await teamService.inviteMembers(teamId, { emails });
+          set((state) => ({
+            invitations: [...state.invitations, ...newInvitations],
+          }));
+          toast.success(`已发送 ${newInvitations.length} 个邀请`);
+        } catch (error: any) {
+          set({ error: error.message });
+          toast.error(error.message || '发送邀请失败');
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      /**
+       * 撤销邀请
+       */
+      revokeInvitation: async (invitationId) => {
+        set({ isLoading: true, error: null });
+        try {
+          await invitationService.cancelInvitation(invitationId);
+          set((state) => ({
+            invitations: state.invitations.filter((i) => i.id !== invitationId),
+          }));
+          toast.success('邀请已撤销');
+        } catch (error: any) {
+          set({ error: error.message });
+          toast.error(error.message || '撤销邀请失败');
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+    }),
+    {
+      name: 'team-storage',
+      partialize: (state) => ({ currentTeam: state.currentTeam }), // 只持久化当前选择的团队
+    }
+  )
 );
