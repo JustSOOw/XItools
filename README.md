@@ -488,6 +488,12 @@ XItools集成了MCP（Model Context Protocol）工具，支持通过AI编辑器�
 }
 ```
 
+### 测试账号
+test@test.com
+test123
+
+
+
 ### 📚 详细文档
 
 完整的配置指南请参考：[MCP设置指南](docs/mcp/mcp-setup-guide.md)

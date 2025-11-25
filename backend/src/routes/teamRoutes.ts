@@ -98,15 +98,7 @@ export default async function teamRoutes(fastify: FastifyInstance) {
       schema: {
         description: '获取我的团队',
         tags: ['团队'],
-        response: {
-          200: {
-            type: 'object',
-            properties: {
-              success: { type: 'boolean' },
-              data: { type: 'object' },
-            },
-          },
-        },
+        // 移除response schema，允许返回null
       },
     },
     async (request, reply) => {
@@ -116,7 +108,7 @@ export default async function teamRoutes(fastify: FastifyInstance) {
 
         reply.send({
           success: true,
-          data: team,
+          data: team, // 可以是 Team 对象或 null
         });
       } catch (error: any) {
         reply.status(500).send({

@@ -12,10 +12,6 @@ import {
   ProjectPermissionDetail,
   SetProjectPermissionInput,
   UpdateProjectPermissionInput,
-  SetPermissionResponse,
-  UpdatePermissionResponse,
-  GetProjectPermissionsResponse,
-  DeletePermissionResponse,
 } from '../types/permissionTypes';
 
 /**
@@ -32,18 +28,12 @@ class PermissionService extends BaseApiService {
   ): Promise<ProjectPermission> {
     try {
       log.debug('设置项目权限:', { projectId, data });
-
-      const response = await apiService.post<SetPermissionResponse>(
+      const permission = await apiService.post<ProjectPermission>(
         `/projects/${projectId}/permissions`,
         data
       );
-
-      if (!response.success || !response.data) {
-        throw new Error(response.error || '设置权限失败');
-      }
-
       log.debug('设置权限成功');
-      return response.data;
+      return permission;
     } catch (error) {
       log.error('设置项目权限失败:', error);
       throw error;
@@ -61,18 +51,12 @@ class PermissionService extends BaseApiService {
   ): Promise<ProjectPermission> {
     try {
       log.debug('更新项目权限:', { projectId, permissionId, data });
-
-      const response = await apiService.put<UpdatePermissionResponse>(
+      const permission = await apiService.put<ProjectPermission>(
         `/projects/${projectId}/permissions/${permissionId}`,
         data
       );
-
-      if (!response.success || !response.data) {
-        throw new Error(response.error || '更新权限失败');
-      }
-
       log.debug('更新权限成功');
-      return response.data;
+      return permission;
     } catch (error) {
       log.error('更新项目权限失败:', error);
       throw error;
@@ -86,15 +70,7 @@ class PermissionService extends BaseApiService {
   async deleteProjectPermission(projectId: string, permissionId: string): Promise<void> {
     try {
       log.debug('删除项目权限:', { projectId, permissionId });
-
-      const response = await apiService.delete<DeletePermissionResponse>(
-        `/projects/${projectId}/permissions/${permissionId}`
-      );
-
-      if (!response.success) {
-        throw new Error(response.error || '删除权限失败');
-      }
-
+      await apiService.delete(`/projects/${projectId}/permissions/${permissionId}`);
       log.debug('删除权限成功');
     } catch (error) {
       log.error('删除项目权限失败:', error);
@@ -109,17 +85,11 @@ class PermissionService extends BaseApiService {
   async getProjectPermissions(projectId: string): Promise<ProjectPermissionDetail[]> {
     try {
       log.debug('获取项目权限列表:', projectId);
-
-      const response = await apiService.get<GetProjectPermissionsResponse>(
+      const permissions = await apiService.get<ProjectPermissionDetail[]>(
         `/projects/${projectId}/permissions`
       );
-
-      if (!response.success || !response.data) {
-        throw new Error(response.error || '获取权限列表失败');
-      }
-
-      log.debug('获取权限列表成功:', response.data.length);
-      return response.data;
+      log.debug('获取权限列表成功:', permissions.length);
+      return permissions;
     } catch (error) {
       log.error('获取项目权限列表失败:', error);
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import classNames from 'classnames';
 import {
   DndContext,
@@ -66,6 +66,10 @@ import { useI18n } from './hooks/useI18n';
 import { setupAxiosInterceptors } from './utils/axiosConfig';
 
 function App() {
+  // 翻译函数
+  const { t, i18n } = useI18n();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [isTaskDetailModalOpen, setIsTaskDetailModalOpen] = useState(false);
@@ -75,9 +79,7 @@ function App() {
     status: '', // 将在列加载后更新为第一个列的UUID
   });
 
-  // 翻译函数
-  const { t } = useI18n();
-  const location = useLocation();
+
   const isTeamSettingsPage = location.pathname === '/team/settings';
 
   // 用户状态管理（认证状态由AppRouter处理）
@@ -1251,7 +1253,17 @@ function App() {
 
             {/* 团队设置页面标题 */}
             {isTeamSettingsPage && (
-              <div className="flex items-center">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => navigate('/')}
+                  className="p-1.5 -ml-2 text-text-secondary hover:text-text-primary hover:bg-surface/80 rounded-full transition-colors"
+                  title={t('common:actions.backToHome', { defaultValue: '返回主页' })}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                </button>
+                <div className="h-5 w-px bg-border/50"></div>
                 <h1 className="text-xl font-bold text-text-primary">
                   {t('team:settings.title', { defaultValue: '团队设置' })}
                 </h1>

@@ -63,14 +63,30 @@ export class TeamService {
       );
     }
 
-    // 创建团队
-    const team = await prisma.team.create({
-      data: {
-        name: data.name,
-        description: data.description,
-        avatar: data.avatar,
-        ownerId: userId,
-      },
+    // 使用事务创建团队和团队工作区
+    const team = await prisma.$transaction(async (tx) => {
+      // 创建团队
+      const newTeam = await tx.team.create({
+        data: {
+          name: data.name,
+          description: data.description,
+          avatar: data.avatar,
+          ownerId: userId,
+        },
+      });
+
+      // 自动创建团队工作区
+      await tx.workspace.create({
+        data: {
+          name: `${data.name}的工作区`,
+          description: `${data.name}的团队工作区`,
+          ownerId: userId,
+          teamId: newTeam.id,
+          isDefault: false,
+        },
+      });
+
+      return newTeam;
     });
 
     return team;

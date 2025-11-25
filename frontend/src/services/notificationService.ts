@@ -12,10 +12,6 @@ import {
   NotificationsResponse,
   UnreadCountResponse,
   GetNotificationsOptions,
-  BatchMarkAsReadInput,
-  MarkAsReadResponse,
-  BatchMarkAsReadResponse,
-  DeleteNotificationResponse,
 } from '../types/notificationTypes';
 
 /**
@@ -86,17 +82,11 @@ class NotificationService extends BaseApiService {
   async markAsRead(notificationId: string): Promise<Notification> {
     try {
       log.debug('标记通知为已读:', notificationId);
-
-      const response = await apiService.put<MarkAsReadResponse>(
+      const notification = await apiService.put<Notification>(
         `/notifications/${notificationId}/read`
       );
-
-      if (!response.success || !response.data) {
-        throw new Error(response.error || '标记通知已读失败');
-      }
-
       log.debug('标记通知已读成功');
-      return response.data;
+      return notification;
     } catch (error) {
       log.error('标记通知已读失败:', error);
       throw error;
@@ -107,21 +97,15 @@ class NotificationService extends BaseApiService {
    * 批量标记通知为已读
    * POST /api/notifications/mark-read
    */
-  async batchMarkAsRead(data?: BatchMarkAsReadInput): Promise<number> {
+  async batchMarkAsRead(data?: { notificationIds?: string[] }): Promise<number> {
     try {
       log.debug('批量标记通知已读:', data);
-
-      const response = await apiService.post<BatchMarkAsReadResponse>(
+      const result = await apiService.post<{ count: number }>(
         '/notifications/mark-read',
         data || {}
       );
-
-      if (!response.success || !response.data) {
-        throw new Error(response.error || '批量标记通知已读失败');
-      }
-
-      log.debug('批量标记通知已读成功:', response.data.count);
-      return response.data.count;
+      log.debug('批量标记通知已读成功:', result.count);
+      return result.count;
     } catch (error) {
       log.error('批量标记通知已读失败:', error);
       throw error;
@@ -142,15 +126,7 @@ class NotificationService extends BaseApiService {
   async deleteNotification(notificationId: string): Promise<void> {
     try {
       log.debug('删除通知:', notificationId);
-
-      const response = await apiService.delete<DeleteNotificationResponse>(
-        `/notifications/${notificationId}`
-      );
-
-      if (!response.success) {
-        throw new Error(response.error || '删除通知失败');
-      }
-
+      await apiService.delete(`/notifications/${notificationId}`);
       log.debug('删除通知成功');
     } catch (error) {
       log.error('删除通知失败:', error);

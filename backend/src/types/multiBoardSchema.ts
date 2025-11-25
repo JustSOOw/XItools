@@ -10,6 +10,7 @@ export const workspaceSchema = z.object({
   name: z.string().min(1, '工作区名称不能为空').max(100, '工作区名称不能超过100个字符'),
   description: z.string().max(500, '工作区描述不能超过500个字符').optional(),
   isDefault: z.boolean().optional().default(false),
+  teamId: z.string().uuid('无效的团队ID').optional(), // 团队工作区关联
   createdAt: z.string().datetime().optional(),
   updatedAt: z.string().datetime().optional(),
 });

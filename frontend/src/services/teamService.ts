@@ -15,12 +15,6 @@ import {
   CreateTeamInput,
   UpdateTeamInput,
   InviteMembersInput,
-  GetTeamResponse,
-  GetTeamDetailResponse,
-  GetTeamMembersResponse,
-  GetInvitationsResponse,
-  SendInvitationsResponse,
-  ApiResponse,
 } from '../types/teamTypes';
 
 /**
@@ -34,15 +28,10 @@ class TeamService extends BaseApiService {
   async createTeam(data: CreateTeamInput): Promise<Team> {
     try {
       log.debug('创建团队:', data);
-
-      const response = await apiService.post<GetTeamResponse>('/teams', data);
-
-      if (!response.success || !response.data) {
-        throw new Error(response.error || '创建团队失败');
-      }
-
-      log.debug('团队创建成功:', response.data);
-      return response.data;
+      // apiService.post 已经自动提取 response.data.data 并检查 success
+      const team = await apiService.post<Team>('/teams', data);
+      log.debug('团队创建成功:', team);
+      return team;
     } catch (error) {
       log.error('创建团队失败:', error);
       throw error;
@@ -56,15 +45,9 @@ class TeamService extends BaseApiService {
   async getMyTeam(): Promise<Team | null> {
     try {
       log.debug('获取我的团队');
-
-      const response = await apiService.get<GetTeamResponse>('/teams/my');
-
-      if (!response.success) {
-        throw new Error(response.error || '获取团队信息失败');
-      }
-
-      log.debug('获取团队信息成功:', response.data);
-      return response.data || null;
+      const team = await apiService.get<Team>('/teams/my');
+      log.debug('获取团队信息成功:', team);
+      return team;
     } catch (error) {
       log.error('获取我的团队失败:', error);
 
@@ -84,15 +67,9 @@ class TeamService extends BaseApiService {
   async getTeamById(teamId: string): Promise<TeamDetail | null> {
     try {
       log.debug('获取团队详情:', teamId);
-
-      const response = await apiService.get<GetTeamDetailResponse>(`/teams/${teamId}`);
-
-      if (!response.success || !response.data) {
-        throw new Error(response.error || '获取团队详情失败');
-      }
-
-      log.debug('获取团队详情成功:', response.data);
-      return response.data;
+      const team = await apiService.get<TeamDetail>(`/teams/${teamId}`);
+      log.debug('获取团队详情成功:', team);
+      return team;
     } catch (error) {
       log.error('获取团队详情失败:', error);
 
@@ -112,15 +89,9 @@ class TeamService extends BaseApiService {
   async updateTeam(teamId: string, data: UpdateTeamInput): Promise<Team> {
     try {
       log.debug('更新团队信息:', { teamId, data });
-
-      const response = await apiService.put<GetTeamResponse>(`/teams/${teamId}`, data);
-
-      if (!response.success || !response.data) {
-        throw new Error(response.error || '更新团队信息失败');
-      }
-
-      log.debug('团队信息更新成功:', response.data);
-      return response.data;
+      const team = await apiService.put<Team>(`/teams/${teamId}`, data);
+      log.debug('团队信息更新成功:', team);
+      return team;
     } catch (error) {
       log.error('更新团队信息失败:', error);
       throw error;
@@ -134,13 +105,7 @@ class TeamService extends BaseApiService {
   async dissolveTeam(teamId: string): Promise<void> {
     try {
       log.debug('解散团队:', teamId);
-
-      const response = await apiService.delete<ApiResponse>(`/teams/${teamId}`);
-
-      if (!response.success) {
-        throw new Error(response.error || '解散团队失败');
-      }
-
+      await apiService.delete(`/teams/${teamId}`);
       log.debug('团队解散成功');
     } catch (error) {
       log.error('解散团队失败:', error);
@@ -155,13 +120,7 @@ class TeamService extends BaseApiService {
   async leaveTeam(teamId: string): Promise<void> {
     try {
       log.debug('退出团队:', teamId);
-
-      const response = await apiService.post<ApiResponse>(`/teams/${teamId}/leave`);
-
-      if (!response.success) {
-        throw new Error(response.error || '退出团队失败');
-      }
-
+      await apiService.post(`/teams/${teamId}/leave`);
       log.debug('退出团队成功');
     } catch (error) {
       log.error('退出团队失败:', error);
@@ -176,15 +135,9 @@ class TeamService extends BaseApiService {
   async getTeamMembers(teamId: string): Promise<TeamMember[]> {
     try {
       log.debug('获取团队成员列表:', teamId);
-
-      const response = await apiService.get<GetTeamMembersResponse>(`/teams/${teamId}/members`);
-
-      if (!response.success || !response.data) {
-        throw new Error(response.error || '获取团队成员列表失败');
-      }
-
-      log.debug('获取团队成员列表成功:', response.data.length);
-      return response.data;
+      const members = await apiService.get<TeamMember[]>(`/teams/${teamId}/members`);
+      log.debug('获取团队成员列表成功:', members.length);
+      return members;
     } catch (error) {
       log.error('获取团队成员列表失败:', error);
 
@@ -204,13 +157,7 @@ class TeamService extends BaseApiService {
   async removeMember(teamId: string, memberId: string): Promise<void> {
     try {
       log.debug('移除团队成员:', { teamId, memberId });
-
-      const response = await apiService.delete<ApiResponse>(`/teams/${teamId}/members/${memberId}`);
-
-      if (!response.success) {
-        throw new Error(response.error || '移除成员失败');
-      }
-
+      await apiService.delete(`/teams/${teamId}/members/${memberId}`);
       log.debug('移除成员成功');
     } catch (error) {
       log.error('移除团队成员失败:', error);
@@ -226,17 +173,14 @@ class TeamService extends BaseApiService {
     try {
       log.debug('邀请成员:', { teamId, emails: data.emails });
 
-      const response = await apiService.post<SendInvitationsResponse>(
-        `/teams/${teamId}/invitations`,
-        data
-      );
+      // 后端返回 { invitations: TeamInvitation[], count: number }
+      const result = await apiService.post<{
+        invitations: TeamInvitation[];
+        count: number;
+      }>(`/teams/${teamId}/invitations`, data);
 
-      if (!response.success || !response.data) {
-        throw new Error(response.error || '邀请成员失败');
-      }
-
-      log.debug('邀请成功:', response.data.count);
-      return response.data.invitations;
+      log.debug('邀请成功:', result.count);
+      return result.invitations;
     } catch (error) {
       log.error('邀请成员失败:', error);
       throw error;
@@ -250,17 +194,9 @@ class TeamService extends BaseApiService {
   async getTeamInvitations(teamId: string): Promise<TeamInvitation[]> {
     try {
       log.debug('获取团队邀请列表:', teamId);
-
-      const response = await apiService.get<GetInvitationsResponse>(
-        `/teams/${teamId}/invitations`
-      );
-
-      if (!response.success || !response.data) {
-        throw new Error(response.error || '获取邀请列表失败');
-      }
-
-      log.debug('获取邀请列表成功:', response.data.length);
-      return response.data;
+      const invitations = await apiService.get<TeamInvitation[]>(`/teams/${teamId}/invitations`);
+      log.debug('获取邀请列表成功:', invitations.length);
+      return invitations;
     } catch (error) {
       log.error('获取团队邀请列表失败:', error);
 
@@ -280,17 +216,11 @@ class TeamService extends BaseApiService {
   async getMemberPermissions(teamId: string, memberId: string): Promise<any[]> {
     try {
       log.debug('获取成员权限列表:', { teamId, memberId });
-
-      const response = await apiService.get<ApiResponse<any[]>>(
+      const permissions = await apiService.get<any[]>(
         `/teams/${teamId}/members/${memberId}/permissions`
       );
-
-      if (!response.success || !response.data) {
-        throw new Error(response.error || '获取成员权限失败');
-      }
-
-      log.debug('获取成员权限成功:', response.data.length);
-      return response.data;
+      log.debug('获取成员权限成功:', permissions.length);
+      return permissions;
     } catch (error) {
       log.error('获取成员权限失败:', error);
 

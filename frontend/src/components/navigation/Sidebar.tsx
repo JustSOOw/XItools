@@ -63,11 +63,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
     initialize,
   } = useNavigationStore();
 
-  const { teams, fetchTeams, currentTeam, selectTeam } = useTeamStore();
+  const { teams, fetchMyTeam, currentTeam, selectTeam } = useTeamStore();
 
   useEffect(() => {
-    fetchTeams();
-  }, [fetchTeams]);
+    fetchMyTeam();
+  }, [fetchMyTeam]);
 
   // 初始化数据
   useEffect(() => {
@@ -100,7 +100,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
       const store = useNavigationStore.getState();
 
       if (createMenuType === 'workspace') {
-        await store.createWorkspace(data);
+        // 如果有 parentId，说明是在团队下创建工作区
+        if (createMenuParentId) {
+          await store.createWorkspace({ ...data, teamId: createMenuParentId });
+        } else {
+          await store.createWorkspace(data);
+        }
       } else if (createMenuType === 'project' && createMenuParentId) {
         await store.createProject(createMenuParentId, data);
       } else if (createMenuType === 'board') {
@@ -172,6 +177,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
           canDelete={canDeleteWorkspace}
           onSelect={() => {
             selectWorkspace(workspace.id);
+            // 如果当前在团队设置或其他页面，导航回主页面
+            if (window.location.pathname !== '/') {
+              navigate('/');
+            }
             // 自动展开工作区
             if (!isExpanded) {
               toggleWorkspaceExpanded(workspace.id);
@@ -241,6 +250,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
           canDelete={canDeleteProject}
           onSelect={() => {
             selectProject(project.id);
+            // 如果当前在团队设置或其他页面，导航回主页面
+            if (window.location.pathname !== '/') {
+              navigate('/');
+            }
             // 自动展开项目
             if (!isExpanded) {
               toggleProjectExpanded(project.id);
@@ -295,7 +308,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
         isSelected={isSelected}
         isCollapsed={isCollapsed}
         canDelete={true}
-        onSelect={() => selectBoard(board.id)}
+        onSelect={() => {
+          selectBoard(board.id);
+          // 如果当前在团队设置或其他页面，导航回主页面
+          if (window.location.pathname !== '/') {
+            navigate('/');
+          }
+        }}
         onDelete={async () => {
           // 先检查看板是否有任务
           try {
@@ -407,10 +426,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
       {/* 导航菜单 */}
       <nav className="flex-1 overflow-y-auto py-2">
         <div className="space-y-1 px-3">
-          {/* 工作区列表 */}
-          {workspaces.map((workspace) => renderWorkspaceItem(workspace))}
+          {/* ===== 个人工作区部分 ===== */}
+          {!isCollapsed && (
+            <div className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-2 px-2">
+              {t('common:navigation.personalWorkspace', { defaultValue: '个人工作区' })}
+            </div>
+          )}
 
-          {/* 新建工作区按钮 */}
+          {/* 个人工作区列表（teamId === null） */}
+          {workspaces
+            .filter((ws) => !ws.teamId)
+            .map((workspace) => renderWorkspaceItem(workspace))}
+
+          {/* 新建个人工作区按钮 */}
           {!isCollapsed && (
             <button
               onClick={() => handleShowCreateMenu('workspace')}
@@ -423,55 +451,96 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
             </button>
           )}
 
-          <div className="border-t border-border/30 my-2"></div>
+          <div className="border-t border-border/30 my-4"></div>
 
-          {/* 团队列表 */}
-          {!isCollapsed && teams.length > 0 && <div className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-2 px-2 mt-4">{t('team:common.team', { defaultValue: '团队' })}</div>}
-          {teams.map((team) => (
-            <div key={team.id}>
-              <SidebarItem
-                type="workspace" // Reusing workspace style for now
-                item={team}
-                level={0}
-                isExpanded={false}
-                isSelected={currentTeam?.id === team.id}
-                isCollapsed={isCollapsed}
-                canDelete={false}
-                onSelect={() => {
-                  selectTeam(team.id);
-                  navigate(`/team/settings?teamId=${team.id}`);
-                }}
-                onToggle={() => { }}
-                onAdd={() => { }}
-                onDelete={() => { }}
-                onRename={() => { }}
-              />
+          {/* ===== 团队部分 ===== */}
+          {!isCollapsed && teams.length > 0 && (
+            <div className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-2 px-2">
+              {t('team:common.team', { defaultValue: '团队' })}
             </div>
-          ))}
+          )}
 
-          {/* 新建/加入团队按钮 - 无团队时显示虚线框引导，有团队时显示普通按钮 */}
-          {!isCollapsed && (
-            teams.length === 0 ? (
-              <button
-                onClick={() => setShowCreateTeamDialog(true)}
-                className="w-full flex items-center justify-center px-3 py-3 mt-4 text-text-secondary hover:text-primary border-2 border-dashed border-border hover:border-primary rounded-lg transition-all duration-200 group"
-              >
-                <UserGroupIcon className="h-5 w-5 flex-shrink-0 group-hover:scale-110 transition-transform" />
-                <span className="ml-2 font-medium">
-                  {t('team:action.createOrJoin', { defaultValue: '创建或加入团队' })}
-                </span>
-              </button>
-            ) : (
-              <button
-                onClick={() => setShowCreateTeamDialog(true)}
-                className="w-full flex items-center px-3 py-2.5 text-text-secondary hover:text-text-primary hover:bg-surface/50 rounded-lg transition-all duration-200"
-              >
-                <PlusIcon className="h-5 w-5 flex-shrink-0" />
-                <span className="ml-3">
-                  {t('team:action.create', { defaultValue: '新建团队' })}
-                </span>
-              </button>
-            )
+          {teams.map((team) => {
+            // 获取团队下的工作区（teamId 等于 team.id 的工作区）
+            const teamWorkspaces = workspaces.filter((ws: any) => ws.teamId === team.id);
+            const isTeamExpanded = expandedWorkspaces.has(team.id);
+
+            return (
+              <div key={team.id} className="mb-1">
+                {/* 团队节点 - 使用自定义样式，不是工作区 */}
+                <div
+                  className={classNames(
+                    'group flex items-center px-3 py-2.5 rounded-lg transition-all duration-200',
+                    'hover:bg-surface/50',
+                    isCollapsed ? 'justify-center' : 'justify-between'
+                  )}
+                >
+                  <div className="flex items-center flex-1 min-w-0">
+                    <button
+                      onClick={() => toggleWorkspaceExpanded(team.id)}
+                      className="flex items-center flex-1 min-w-0"
+                    >
+                      <UserGroupIcon className="h-5 w-5 flex-shrink-0 text-primary" />
+                      {!isCollapsed && (
+                        <>
+                          <span className="ml-3 text-sm font-medium text-text-primary truncate">
+                            {team.name}
+                          </span>
+                          {isTeamExpanded ? (
+                            <ChevronRightIcon className="h-4 w-4 ml-auto flex-shrink-0 text-text-tertiary transform rotate-90 transition-transform" />
+                          ) : (
+                            <ChevronRightIcon className="h-4 w-4 ml-auto flex-shrink-0 text-text-tertiary transition-transform" />
+                          )}
+                        </>
+                      )}
+                    </button>
+                    {!isCollapsed && (
+                      <button
+                        onClick={() => {
+                          selectTeam(team);
+                          navigate(`/team/settings?teamId=${team.id}`);
+                        }}
+                        className="ml-2 p-1 rounded hover:bg-primary/10 text-text-secondary hover:text-primary transition-colors"
+                        title={t('team:action.teamSettings', { defaultValue: '团队设置' })}
+                      >
+                        <Cog6ToothIcon className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* 展开时显示团队下的工作区 */}
+                {isTeamExpanded && !isCollapsed && (
+                  <div className="ml-4 mt-1 space-y-1">
+                    {teamWorkspaces.map((workspace: any) => renderWorkspaceItem(workspace))}
+
+                    {/* 团队工作区创建按钮 */}
+                    <button
+                      onClick={() => handleShowCreateMenu('workspace', team.id)}
+                      className="w-full flex items-center px-3 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-surface/30 rounded-lg transition-all duration-200"
+                    >
+                      <PlusIcon className="h-4 w-4 flex-shrink-0" />
+                      <span className="ml-3">
+                        {t('team:action.createTeamWorkspace', { defaultValue: '新建团队工作区' })}
+                      </span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* 新建/加入团队按钮 - 仅在无团队时显示 */}
+          {!isCollapsed && teams.length === 0 && (
+            <button
+              onClick={() => setShowCreateTeamDialog(true)}
+              className="w-full flex items-center justify-center px-3 py-3 mt-2 text-text-secondary hover:text-primary border-2 border-dashed border-border hover:border-primary rounded-lg transition-all duration-200 group"
+            >
+              <UserGroupIcon className="h-5 w-5 flex-shrink-0 group-hover:scale-110 transition-transform" />
+              <span className="ml-2 font-medium">
+                {t('team:action.createOrJoin', { defaultValue: '创建或加入团队' })}
+              </span>
+            </button>
           )}
         </div>
       </nav>

@@ -1,6 +1,10 @@
 import { io, Socket } from 'socket.io-client';
 import useTaskStore from '../store/taskStore';
+import { useTeamStore } from '../store/teamStore';
+import { useNotificationStore } from '../store/notificationStore';
 import { Task } from '../types/Task';
+import { TaskComment, CommentCreatedEvent, CommentDeletedEvent } from '../types/commentTypes';
+import { Notification } from '../types/notificationTypes';
 import { getBackendUrl, log } from '../utils/env';
 
 class SocketService {
@@ -54,6 +58,9 @@ class SocketService {
 
     // MCP服务事件监听
     this.setupTaskEventListeners();
+
+    // 团队协作事件监听
+    this.setupTeamEventListeners();
   }
 
   /**
@@ -157,6 +164,105 @@ class SocketService {
     this.socket.on('column_deleted', ({ columnId }: { columnId: string }) => {
       console.log('收到列删除事件:', columnId);
       useTaskStore.getState().deleteColumn(columnId);
+    });
+  }
+
+  /**
+   * 设置团队协作相关的事件监听器
+   * 监听评论、通知、团队成员变更等事件
+   */
+  private setupTeamEventListeners(): void {
+    if (!this.socket) return;
+
+    // ========================================
+    // 评论事件
+    // ========================================
+
+    /**
+     * 评论创建事件
+     * 后端广播格式: { comment: TaskComment, taskId: string }
+     */
+    this.socket.on('comment_created', (data: CommentCreatedEvent) => {
+      console.log('收到评论创建事件:', data);
+
+      // 这里可以触发评论列表的刷新
+      // 由于评论通常在任务详情页面显示，可以通过自定义事件通知组件刷新
+      window.dispatchEvent(new CustomEvent('comment_created', { detail: data }));
+    });
+
+    /**
+     * 评论删除事件
+     * 后端广播格式: { commentId: string, taskId: string }
+     */
+    this.socket.on('comment_deleted', (data: CommentDeletedEvent) => {
+      console.log('收到评论删除事件:', data);
+
+      // 触发评论删除的自定义事件
+      window.dispatchEvent(new CustomEvent('comment_deleted', { detail: data }));
+    });
+
+    // ========================================
+    // 通知事件
+    // ========================================
+
+    /**
+     * 新通知事件
+     * 后端广播格式: Notification对象
+     */
+    this.socket.on('notification_created', (notification: Notification) => {
+      console.log('收到新通知:', notification);
+
+      // 添加通知到store
+      useNotificationStore.getState().addNotification(notification);
+    });
+
+    // ========================================
+    // 团队成员事件
+    // ========================================
+
+    /**
+     * 成员加入团队事件
+     * 后端广播格式: { teamId: string, member: TeamMember }
+     */
+    this.socket.on('team_member_joined', (data: { teamId: string; member: any }) => {
+      console.log('收到成员加入事件:', data);
+
+      const currentTeam = useTeamStore.getState().currentTeam;
+
+      // 如果是当前团队，刷新成员列表
+      if (currentTeam && currentTeam.id === data.teamId) {
+        useTeamStore.getState().fetchMembers(data.teamId);
+      }
+    });
+
+    /**
+     * 成员离开团队事件
+     * 后端广播格式: { teamId: string, memberId: string, userId: string }
+     */
+    this.socket.on('team_member_left', (data: { teamId: string; memberId: string; userId: string }) => {
+      console.log('收到成员离开事件:', data);
+
+      const currentTeam = useTeamStore.getState().currentTeam;
+
+      // 如果是当前团队，刷新成员列表
+      if (currentTeam && currentTeam.id === data.teamId) {
+        useTeamStore.getState().fetchMembers(data.teamId);
+      }
+    });
+
+    // ========================================
+    // 任务分配事件（已有通知系统，这里可选）
+    // ========================================
+
+    /**
+     * 任务分配事件
+     * 后端广播格式: { taskId: string, assignees: string[] }
+     */
+    this.socket.on('task_assigned', (data: { taskId: string; assignees: string[] }) => {
+      console.log('收到任务分配事件:', data);
+
+      // 刷新任务详情（如果任务详情页面打开）
+      window.dispatchEvent(new CustomEvent('task_assigned', { detail: data }));
     });
   }
 

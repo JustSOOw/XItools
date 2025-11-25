@@ -7,14 +7,7 @@
 import { apiService } from '../utils/apiClient';
 import { log } from '../utils/env';
 import { BaseApiService } from './BaseApiService';
-import {
-  TeamInvitation,
-  TeamInvitationDetail,
-  AcceptInvitationInput,
-  RejectInvitationInput,
-  VerifyInviteCodeResponse,
-  ApiResponse,
-} from '../types/teamTypes';
+import { TeamInvitationDetail } from '../types/teamTypes';
 
 /**
  * 邀请服务类
@@ -27,17 +20,9 @@ class InvitationService extends BaseApiService {
   async getPendingInvitations(): Promise<TeamInvitationDetail[]> {
     try {
       log.debug('获取待处理邀请');
-
-      const response = await apiService.get<ApiResponse<TeamInvitationDetail[]>>(
-        '/invitations/pending'
-      );
-
-      if (!response.success || !response.data) {
-        throw new Error(response.error || '获取待处理邀请失败');
-      }
-
-      log.debug('获取待处理邀请成功:', response.data.length);
-      return response.data;
+      const invitations = await apiService.get<TeamInvitationDetail[]>('/invitations/pending');
+      log.debug('获取待处理邀请成功:', invitations.length);
+      return invitations;
     } catch (error) {
       log.error('获取待处理邀请失败:', error);
 
@@ -57,15 +42,7 @@ class InvitationService extends BaseApiService {
   async acceptInvitation(invitationId: string): Promise<void> {
     try {
       log.debug('接受邀请:', invitationId);
-
-      const response = await apiService.post<ApiResponse>(
-        `/invitations/${invitationId}/accept`
-      );
-
-      if (!response.success) {
-        throw new Error(response.error || '接受邀请失败');
-      }
-
+      await apiService.post(`/invitations/${invitationId}/accept`);
       log.debug('接受邀请成功');
     } catch (error) {
       log.error('接受邀请失败:', error);
@@ -80,15 +57,7 @@ class InvitationService extends BaseApiService {
   async rejectInvitation(invitationId: string): Promise<void> {
     try {
       log.debug('拒绝邀请:', invitationId);
-
-      const response = await apiService.post<ApiResponse>(
-        `/invitations/${invitationId}/reject`
-      );
-
-      if (!response.success) {
-        throw new Error(response.error || '拒绝邀请失败');
-      }
-
+      await apiService.post(`/invitations/${invitationId}/reject`);
       log.debug('拒绝邀请成功');
     } catch (error) {
       log.error('拒绝邀请失败:', error);
@@ -103,17 +72,11 @@ class InvitationService extends BaseApiService {
   async verifyInviteCode(inviteCode: string): Promise<TeamInvitationDetail> {
     try {
       log.debug('验证邀请码:', inviteCode);
-
-      const response = await apiService.get<VerifyInviteCodeResponse>(
+      const invitation = await apiService.get<TeamInvitationDetail>(
         `/invitations/verify/${inviteCode}`
       );
-
-      if (!response.success || !response.data) {
-        throw new Error(response.error || '邀请码无效或已过期');
-      }
-
       log.debug('邀请码验证成功');
-      return response.data;
+      return invitation;
     } catch (error) {
       log.error('验证邀请码失败:', error);
       throw error;
@@ -129,15 +92,7 @@ class InvitationService extends BaseApiService {
   async cancelInvitation(invitationId: string): Promise<void> {
     try {
       log.debug('撤销邀请:', invitationId);
-
-      const response = await apiService.delete<ApiResponse>(
-        `/invitations/${invitationId}`
-      );
-
-      if (!response.success) {
-        throw new Error(response.error || '撤销邀请失败');
-      }
-
+      await apiService.delete(`/invitations/${invitationId}`);
       log.debug('撤销邀请成功');
     } catch (error) {
       log.error('撤销邀请失败:', error);

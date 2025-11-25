@@ -11,9 +11,6 @@ import {
   TaskComment,
   CreateCommentInput,
   GetCommentsQuery,
-  CreateCommentResponse,
-  GetCommentsResponse,
-  DeleteCommentResponse,
 } from '../types/commentTypes';
 
 /**
@@ -27,19 +24,10 @@ class CommentService extends BaseApiService {
   async createComment(taskId: string, content: string): Promise<TaskComment> {
     try {
       log.debug('创建评论:', { taskId, content });
-
       const data: CreateCommentInput = { content };
-      const response = await apiService.post<CreateCommentResponse>(
-        `/tasks/${taskId}/comments`,
-        data
-      );
-
-      if (!response.success || !response.data) {
-        throw new Error(response.error || '创建评论失败');
-      }
-
+      const comment = await apiService.post<TaskComment>(`/tasks/${taskId}/comments`, data);
       log.debug('创建评论成功');
-      return response.data;
+      return comment;
     } catch (error) {
       log.error('创建评论失败:', error);
       throw error;
@@ -53,17 +41,11 @@ class CommentService extends BaseApiService {
   async getCommentsByTask(taskId: string, query?: GetCommentsQuery): Promise<TaskComment[]> {
     try {
       log.debug('获取任务评论列表:', { taskId, query });
-
-      const response = await apiService.get<GetCommentsResponse>(`/tasks/${taskId}/comments`, {
+      const comments = await apiService.get<TaskComment[]>(`/tasks/${taskId}/comments`, {
         params: query || {},
       });
-
-      if (!response.success || !response.data) {
-        throw new Error(response.error || '获取评论列表失败');
-      }
-
-      log.debug('获取评论列表成功:', response.data.length);
-      return response.data;
+      log.debug('获取评论列表成功:', comments.length);
+      return comments;
     } catch (error) {
       log.error('获取任务评论列表失败:', error);
 
@@ -83,13 +65,7 @@ class CommentService extends BaseApiService {
   async deleteComment(commentId: string): Promise<void> {
     try {
       log.debug('删除评论:', commentId);
-
-      const response = await apiService.delete<DeleteCommentResponse>(`/comments/${commentId}`);
-
-      if (!response.success) {
-        throw new Error(response.error || '删除评论失败');
-      }
-
+      await apiService.delete(`/comments/${commentId}`);
       log.debug('删除评论成功');
     } catch (error) {
       log.error('删除评论失败:', error);

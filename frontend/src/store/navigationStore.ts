@@ -21,6 +21,7 @@ export interface Workspace extends NavigationItem {
   type: 'workspace';
   isDefault: boolean;
   description?: string;
+  teamId?: string; // 所属团队ID
 }
 
 // 项目类型
@@ -97,7 +98,7 @@ interface NavigationState {
   initialize: () => Promise<void>;
 
   // API操作方法
-  createWorkspace: (data: { name: string; description?: string }) => Promise<void>;
+  createWorkspace: (data: { name: string; description?: string; teamId?: string }) => Promise<void>;
   renameWorkspace: (id: string, name: string) => Promise<void>;
   removeWorkspace: (id: string) => Promise<void>;
 
@@ -374,6 +375,7 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
         type: 'workspace',
         isDefault: ws.isDefault,
         description: ws.description,
+        teamId: ws.teamId, // 保留团队关联
       }));
 
       // 设置默认展开状态
@@ -453,6 +455,7 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
         type: 'workspace',
         isDefault: workspace.isDefault || false,
         description: workspace.description,
+        teamId: workspace.teamId, // 保留团队关联
       };
 
       get().addWorkspace(formattedWorkspace);
