@@ -14,6 +14,7 @@ import {
 import { useI18n } from '../hooks/useI18n';
 import TaskComments from './task/TaskComments';
 import TaskAssigneeStack from './task/TaskAssigneeStack';
+import TaskHistoryList from './task/TaskHistoryList';
 
 interface TaskDetailModalProps {
   isOpen: boolean;
@@ -26,7 +27,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
   const [task, setTask] = useState<Task | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'timeline' | 'actions'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'timeline' | 'history' | 'actions'>('details');
   const { columns, updateTask: updateTaskInStore } = useTaskStore();
 
   // 加载任务详情
@@ -99,6 +100,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
             {[
               { key: 'details', label: t('task:detail.tabs.details'), icon: '📋' },
               { key: 'timeline', label: t('task:detail.tabs.timeline'), icon: '📅' },
+              { key: 'history', label: t('task:detail.tabs.history', { defaultValue: '历史' }), icon: '🕐' },
               { key: 'actions', label: t('task:detail.tabs.actions'), icon: '⚡' },
             ].map((tab) => (
               <button
@@ -126,6 +128,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
               />
             )}
             {activeTab === 'timeline' && <TimelineTab task={task} />}
+            {activeTab === 'history' && <HistoryTab taskId={task.id} />}
             {activeTab === 'actions' && (
               <ActionsTab
                 task={task}
@@ -443,6 +446,15 @@ const TimelineTab: React.FC<{ task: Task }> = ({ task }) => {
         <p className="text-sm text-text-secondary">{t('task:detail.timelineDescription')}</p>
       </div>
       <Timeline events={timelineEvents} maxHeight="50vh" showUserAvatars />
+    </div>
+  );
+};
+
+// 历史记录标签页组件
+const HistoryTab: React.FC<{ taskId: string }> = ({ taskId }) => {
+  return (
+    <div className="h-full overflow-y-auto px-1 pb-4">
+      <TaskHistoryList taskId={taskId} />
     </div>
   );
 };

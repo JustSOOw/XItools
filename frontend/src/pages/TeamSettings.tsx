@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useNavigationStore } from '../store/navigationStore';
 import { useTeamStore } from '../store/teamStore';
+import { useUserStore } from '../store/userStore';
 import { useI18n } from '../hooks/useI18n';
 import MemberList from '../components/team/MemberList';
+import InvitationList from '../components/team/InvitationList';
 import InvitationDialog from '../components/team/InvitationDialog';
+import PermissionManager from '../components/team/PermissionManager';
 import TeamAvatar from '../components/team/TeamAvatar';
 import Button from '../components/Button';
 import globalConfirmDialog from '../services/globalConfirmDialog';
@@ -13,8 +17,10 @@ const TeamSettings: React.FC = () => {
     const { t } = useI18n();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
-    const { currentTeam, updateTeam, dissolveTeam } = useTeamStore();
-    const [activeTab, setActiveTab] = useState<'info' | 'members' | 'invitations'>('info');
+    const { currentTeam, updateTeam, dissolveTeam, members, fetchMembers, isLoading } = useTeamStore();
+    const { user: currentUser } = useUserStore();
+    const { workspaces, projects, boards } = useNavigationStore();
+    const [activeTab, setActiveTab] = useState<'info' | 'members' | 'invitations' | 'permissions'>('info');
     const [showInviteDialog, setShowInviteDialog] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -23,10 +29,11 @@ const TeamSettings: React.FC = () => {
     const [teamDesc, setTeamDesc] = useState('');
     const [teamAvatarUrl, setTeamAvatarUrl] = useState('');
     const [isUploading, setIsUploading] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         const tab = searchParams.get('tab');
-        if (tab === 'members' || tab === 'invitations') {
+        if (tab === 'members' || tab === 'invitations' || tab === 'permissions') {
             setActiveTab(tab);
         }
     }, [searchParams]);
@@ -36,34 +43,76 @@ const TeamSettings: React.FC = () => {
             setTeamName(currentTeam.name);
             setTeamDesc(currentTeam.description || '');
             setTeamAvatarUrl(currentTeam.avatarUrl || '');
-        }
-    }, [currentTeam]);
 
-    const handleTabChange = (tab: 'info' | 'members' | 'invitations') => {
+            // Fetch members if not already loaded to get owner name
+            if (members.length === 0) {
+                fetchMembers(currentTeam.id);
+            }
+        }
+    }, [currentTeam]); // Only update when currentTeam changes (initial load or external update)
+
+    // Auto-save logic
+    useEffect(() => {
+        if (!currentTeam) return;
+
+        // Skip if values haven't changed from currentTeam
+        if (teamName === currentTeam.name && teamDesc === (currentTeam.description || '')) {
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            setIsSaving(true);
+            try {
+                await updateTeam(currentTeam.id, {
+                    name: teamName,
+                    description: teamDesc,
+                    // Avatar is handled separately
+                });
+                // Toast is handled in store, but maybe too frequent? 
+                // Store toast says "Team info updated". 
+                // For auto-save, we might want a subtle indicator instead of a toast every time.
+                // But for now, let's keep it simple.
+            } catch (error) {
+                console.error('Auto-save failed:', error);
+            } finally {
+                setIsSaving(false);
+            }
+        }, 1000); // 1 second debounce
+
+        return () => clearTimeout(timer);
+    }, [teamName, teamDesc, currentTeam, updateTeam]);
+
+    const handleTabChange = (tab: 'info' | 'members' | 'invitations' | 'permissions') => {
         setActiveTab(tab);
         setSearchParams({ tab });
     };
 
-    const handleSaveInfo = async () => {
-        if (!currentTeam) return;
-        await updateTeam(currentTeam.id, {
-            name: teamName,
-            description: teamDesc,
-            avatarUrl: teamAvatarUrl,
-        });
-    };
-
     const handleDissolveTeam = () => {
         if (!currentTeam) return;
+
+        const memberCount = (currentTeam as any).memberCount || members.length || 0;
+        const warningMessage = t('team:message.confirmDissolveDetail', {
+            defaultValue: `确定要解散团队 "${currentTeam.name}" 吗？
+
+⚠️ 此操作不可撤销！以下数据将被永久删除：
+
+• 团队的所有工作区、项目、看板
+• 所有任务、评论、附件
+• 所有成员的项目权限
+• 所有待处理的邀请记录
+${memberCount > 1 ? `• ${memberCount - 1} 位团队成员将被移出团队` : ''}
+
+请谨慎操作！`,
+            name: currentTeam.name,
+            memberCount: memberCount - 1,
+        });
+
         globalConfirmDialog.show(
             {
                 title: t('team:action.dissolve', { defaultValue: '解散团队' }),
-                message: t('team:message.confirmDissolve', {
-                    defaultValue: `确定要解散团队 "${currentTeam.name}" 吗？此操作不可撤销，所有数据将被删除或转移。`,
-                    name: currentTeam.name,
-                }),
+                message: warningMessage,
                 type: 'danger',
-                confirmText: t('team:action.delete', { defaultValue: '删除' }),
+                confirmText: t('team:action.confirmDissolve', { defaultValue: '确认解散' }),
             },
             async () => {
                 await dissolveTeam(currentTeam.id);
@@ -109,13 +158,10 @@ const TeamSettings: React.FC = () => {
         try {
             const base64 = await convertFileToBase64(file);
             setTeamAvatarUrl(base64);
-            // Optionally auto-save avatar or wait for explicit save. 
-            // User feedback implies "edit avatar" is a distinct action, but typically settings forms save all at once.
-            // However, for immediate feedback in the header, updating state is good.
-            // If we want immediate persist, we could call updateTeam here, but let's stick to the "Save" button for consistency unless requested otherwise.
-            // Actually, the user said "click to change avatar", implying an action. 
-            // But let's keep it as part of the form state for now to be safe, or maybe auto-save?
-            // Let's stick to form state to avoid partial updates.
+            // Immediate save for avatar
+            if (currentTeam) {
+                await updateTeam(currentTeam.id, { avatarUrl: base64 });
+            }
         } catch (error) {
             console.error('Error reading file:', error);
             toast.error(t('common:error.uploadFailed', { defaultValue: '图片读取失败' }));
@@ -131,6 +177,31 @@ const TeamSettings: React.FC = () => {
         navigator.clipboard.writeText(text);
         toast.success(t('common:message.copied', { defaultValue: '已复制到剪贴板' }));
     };
+
+    // Get owner name logic
+    let ownerName = t('common:unknown', { defaultValue: '未知' });
+
+    // 1. Check if current user is owner (Most common case for settings page)
+    if (currentUser && currentTeam?.ownerId === currentUser.id) {
+        ownerName = currentUser.username;
+    }
+    // 2. Try to find in members list
+    else {
+        const ownerMember = members.find(m => m.userId === currentTeam?.ownerId);
+        if (ownerMember) {
+            ownerName = ownerMember.user.username;
+        }
+        // 3. Loading state
+        else if (isLoading && members.length === 0) {
+            ownerName = t('common:status.loading', { defaultValue: '加载中...' });
+        }
+    }
+
+    // Calculate statistics
+    const teamWorkspaces = workspaces.filter(w => w.teamId === currentTeam?.id);
+    const teamWorkspaceIds = new Set(teamWorkspaces.map(w => w.id));
+    const teamProjects = projects.filter(p => teamWorkspaceIds.has(p.workspaceId));
+    const teamBoards = boards.filter(b => (b.workspaceId && teamWorkspaceIds.has(b.workspaceId)));
 
     if (!currentTeam) {
         return <div className="p-8 text-center">{t('team:message.noTeamSelected', { defaultValue: '未选择团队' })}</div>;
@@ -203,6 +274,15 @@ const TeamSettings: React.FC = () => {
                         >
                             {t('team:settings.invitations', { defaultValue: '邀请记录' })}
                         </button>
+                        <button
+                            className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 ${activeTab === 'permissions'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-text-secondary hover:text-text-primary'
+                                }`}
+                            onClick={() => handleTabChange('permissions')}
+                        >
+                            {t('team:settings.permissions', { defaultValue: '权限管理' })}
+                        </button>
                     </div>
 
                     {/* Content */}
@@ -234,32 +314,73 @@ const TeamSettings: React.FC = () => {
                                                     className="w-full px-4 py-2.5 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none transition-all"
                                                 />
                                             </div>
+                                            <div className="flex justify-end h-6">
+                                                {isSaving && (
+                                                    <span className="text-xs text-text-secondary flex items-center gap-1">
+                                                        <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                        </svg>
+                                                        {t('common:status.saving', { defaultValue: '保存中...' })}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {/* Info Grid */}
-                                        <div className="mt-8 pt-8 border-t border-border grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="mt-8 pt-8 border-t border-border grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <div>
+                                                <label className="block text-xs font-medium text-text-secondary uppercase tracking-wider mb-2">
+                                                    {t('team:settings.admin', { defaultValue: '管理员' })}
+                                                </label>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-medium text-text-primary">
+                                                        {ownerName}
+                                                    </span>
+                                                </div>
+                                            </div>
                                             <div>
                                                 <label className="block text-xs font-medium text-text-secondary uppercase tracking-wider mb-2">
                                                     {t('team:settings.createdAt', { defaultValue: '创建时间' })}
                                                 </label>
-                                                <p className="text-sm text-text-primary">
+                                                <div className="text-sm font-medium text-text-primary">
                                                     {new Date(currentTeam.createdAt).toLocaleDateString()}
-                                                </p>
+                                                </div>
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-medium text-text-secondary uppercase tracking-wider mb-2">
                                                     {t('team:settings.memberCount', { defaultValue: '成员数量' })}
                                                 </label>
-                                                <p className="text-sm text-text-primary font-mono">
-                                                    {(currentTeam as any).memberCount || 0}
-                                                </p>
+                                                <div className="text-sm font-medium text-text-primary">
+                                                    {currentTeam.memberCount || members.length || 0}
+                                                </div>
                                             </div>
-                                        </div>
 
-                                        <div className="mt-10 flex justify-end">
-                                            <Button onClick={handleSaveInfo} variant="primary" size="lg">
-                                                {t('team:action.save', { defaultValue: '保存更改' })}
-                                            </Button>
+                                            {/* Statistics Row 2 */}
+                                            <div>
+                                                <label className="block text-xs font-medium text-text-secondary uppercase tracking-wider mb-2">
+                                                    {t('team:settings.workspaces', { defaultValue: '工作区' })}
+                                                </label>
+                                                <div className="text-sm font-medium text-text-primary">
+                                                    {teamWorkspaces.length}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-text-secondary uppercase tracking-wider mb-2">
+                                                    {t('team:settings.projects', { defaultValue: '项目' })}
+                                                </label>
+                                                <div className="text-sm font-medium text-text-primary">
+                                                    {teamProjects.length}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-text-secondary uppercase tracking-wider mb-2">
+                                                    {t('team:settings.boards', { defaultValue: '看板' })}
+                                                </label>
+                                                <div className="text-sm font-medium text-text-primary">
+                                                    {teamBoards.length}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -290,15 +411,35 @@ const TeamSettings: React.FC = () => {
 
                         {activeTab === 'members' && (
                             <div className="bg-surface rounded-xl border border-border p-6 shadow-sm">
-                                <MemberList teamId={currentTeam.id} />
+                                <MemberList
+                                    teamId={currentTeam.id}
+                                    onInvite={() => setShowInviteDialog(true)}
+                                />
                             </div>
                         )}
 
                         {activeTab === 'invitations' && (
                             <div className="bg-surface rounded-xl border border-border p-6 shadow-sm">
-                                <div className="text-center text-text-secondary py-8">
-                                    {t('team:message.comingSoon', { defaultValue: '即将推出...' })}
+                                <InvitationList
+                                    teamId={currentTeam.id}
+                                    onInviteClick={() => setShowInviteDialog(true)}
+                                />
+                            </div>
+                        )}
+
+                        {activeTab === 'permissions' && (
+                            <div className="bg-surface rounded-xl border border-border p-6 shadow-sm">
+                                <div className="flex items-center justify-between mb-6">
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-text-primary">
+                                            {t('permission:title', { defaultValue: '项目权限管理' })}
+                                        </h3>
+                                        <p className="text-sm text-text-secondary mt-1">
+                                            {t('permission:description', { defaultValue: '管理团队成员对项目的访问权限' })}
+                                        </p>
+                                    </div>
                                 </div>
+                                <PermissionManager teamId={currentTeam.id} />
                             </div>
                         )}
                     </div>

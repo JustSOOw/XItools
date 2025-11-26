@@ -63,7 +63,7 @@ export class TeamService {
       );
     }
 
-    // 使用事务创建团队和团队工作区
+    // 使用事务创建团队、添加所有者为成员、并创建团队工作区
     const team = await prisma.$transaction(async (tx) => {
       // 创建团队
       const newTeam = await tx.team.create({
@@ -72,6 +72,15 @@ export class TeamService {
           description: data.description,
           avatar: data.avatar,
           ownerId: userId,
+        },
+      });
+
+      // 将所有者添加为团队成员（OWNER角色）
+      await tx.teamMember.create({
+        data: {
+          teamId: newTeam.id,
+          userId: userId,
+          role: 'OWNER',
         },
       });
 

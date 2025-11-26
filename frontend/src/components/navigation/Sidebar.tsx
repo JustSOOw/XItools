@@ -6,9 +6,10 @@ import React, { useState, useEffect } from 'react';
 import classNames from 'classnames';
 import { useNavigationStore } from '../../store/navigationStore';
 import { useTeamStore } from '../../store/teamStore';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useI18n } from '../../hooks/useI18n';
 import globalConfirmDialog from '../../services/globalConfirmDialog';
+import { toast } from '../ui/Toast';
 import SidebarItem from './SidebarItem';
 import CreateMenu from './CreateMenu';
 import CreateSelector from './CreateSelector';
@@ -33,6 +34,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpenSettings }) => {
   const { t } = useI18n();
   const navigate = useNavigate();
+  const location = useLocation();
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [showCreateSelector, setShowCreateSelector] = useState(false);
   const [createMenuType, setCreateMenuType] = useState<'workspace' | 'project' | 'board'>(
@@ -151,6 +153,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
       console.log('重命名成功:', type, newName);
     } catch (error) {
       console.error('重命名失败:', error);
+      const errorMessage = error instanceof Error ? error.message : '重命名失败';
+      toast.error(errorMessage);
     }
   };
 
@@ -178,7 +182,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
           onSelect={() => {
             selectWorkspace(workspace.id);
             // 如果当前在团队设置或其他页面，导航回主页面
-            if (window.location.pathname !== '/') {
+            if (location.pathname !== '/') {
               navigate('/');
             }
             // 自动展开工作区
@@ -207,7 +211,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
                   console.log('删除工作区成功:', workspace.id);
                 } catch (error) {
                   console.error('删除工作区失败:', error);
-                  // 这里可以添加错误提示，但不使用alert
+                  const errorMessage = error instanceof Error ? error.message : '删除工作区失败';
+                  toast.error(errorMessage);
                 }
               },
             );
@@ -251,7 +256,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
           onSelect={() => {
             selectProject(project.id);
             // 如果当前在团队设置或其他页面，导航回主页面
-            if (window.location.pathname !== '/') {
+            if (location.pathname !== '/') {
               navigate('/');
             }
             // 自动展开项目
@@ -280,6 +285,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
                   console.log('删除项目成功:', project.id);
                 } catch (error) {
                   console.error('删除项目失败:', error);
+                  const errorMessage = error instanceof Error ? error.message : '删除项目失败';
+                  toast.error(errorMessage);
                 }
               },
             );
@@ -311,7 +318,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
         onSelect={() => {
           selectBoard(board.id);
           // 如果当前在团队设置或其他页面，导航回主页面
-          if (window.location.pathname !== '/') {
+          if (location.pathname !== '/') {
             navigate('/');
           }
         }}
@@ -359,6 +366,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
                   console.log('删除看板成功:', board.id);
                 } catch (error) {
                   console.error('删除看板失败:', error);
+                  const errorMessage = error instanceof Error ? error.message : '删除看板失败';
+                  toast.error(errorMessage);
                 }
               },
             );
@@ -383,6 +392,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
                   console.log('删除看板成功:', board.id);
                 } catch (error) {
                   console.error('删除看板失败:', error);
+                  const errorMessage = error instanceof Error ? error.message : '删除看板失败';
+                  toast.error(errorMessage);
                 }
               },
             );
@@ -463,7 +474,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
           {teams.map((team) => {
             // 获取团队下的工作区（teamId 等于 team.id 的工作区）
             const teamWorkspaces = workspaces.filter((ws: any) => ws.teamId === team.id);
-            const isTeamExpanded = expandedWorkspaces.has(team.id);
+            // const isTeamExpanded = expandedWorkspaces.has(team.id); // No longer needed
 
             return (
               <div key={team.id} className="mb-1">
@@ -476,24 +487,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
                   )}
                 >
                   <div className="flex items-center flex-1 min-w-0">
-                    <button
-                      onClick={() => toggleWorkspaceExpanded(team.id)}
+                    <div
                       className="flex items-center flex-1 min-w-0"
                     >
                       <UserGroupIcon className="h-5 w-5 flex-shrink-0 text-primary" />
                       {!isCollapsed && (
-                        <>
-                          <span className="ml-3 text-sm font-medium text-text-primary truncate">
-                            {team.name}
-                          </span>
-                          {isTeamExpanded ? (
-                            <ChevronRightIcon className="h-4 w-4 ml-auto flex-shrink-0 text-text-tertiary transform rotate-90 transition-transform" />
-                          ) : (
-                            <ChevronRightIcon className="h-4 w-4 ml-auto flex-shrink-0 text-text-tertiary transition-transform" />
-                          )}
-                        </>
+                        <span className="ml-3 text-sm font-medium text-text-primary truncate">
+                          {team.name}
+                        </span>
                       )}
-                    </button>
+                    </div>
                     {!isCollapsed && (
                       <button
                         onClick={() => {
@@ -509,12 +512,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
                   </div>
                 </div>
 
-                {/* 展开时显示团队下的工作区 */}
-                {isTeamExpanded && !isCollapsed && (
+                {/* 始终显示团队下的工作区 */}
+                {!isCollapsed && (
                   <div className="ml-4 mt-1 space-y-1">
                     {teamWorkspaces.map((workspace: any) => renderWorkspaceItem(workspace))}
 
-                    {/* 团队工作区创建按钮 */}
+                    {/* 团队工作区创建按钮 - 独立显示 */}
                     <button
                       onClick={() => handleShowCreateMenu('workspace', team.id)}
                       className="w-full flex items-center px-3 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-surface/30 rounded-lg transition-all duration-200"

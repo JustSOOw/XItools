@@ -126,9 +126,12 @@ export function createApiClient(baseURL?: string): AxiosInstance {
 
       // 处理服务器错误
       if (error.response?.status >= 500) {
+        // 尝试从响应中提取具体错误消息
+        const serverErrorMessage =
+          error.response.data?.error || error.response.data?.message || '服务器内部错误';
         return Promise.reject(
           new ApiError(
-            '服务器内部错误',
+            serverErrorMessage,
             error.response.status,
             'SERVER_ERROR',
             error.response.data,
