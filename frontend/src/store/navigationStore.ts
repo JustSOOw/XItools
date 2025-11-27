@@ -85,6 +85,7 @@ interface NavigationState {
   setSidebarCollapsed: (collapsed: boolean) => void;
   toggleProjectExpanded: (projectId: string) => void;
   toggleWorkspaceExpanded: (workspaceId: string) => void;
+  batchSetExpanded: (workspaceIds: string[], projectIds: string[], isExpanded: boolean) => void;
 
   // Actions - 工具方法
   getCurrentWorkspace: () => Workspace | null;
@@ -98,14 +99,14 @@ interface NavigationState {
   initialize: () => Promise<void>;
 
   // API操作方法
-  createWorkspace: (data: { name: string; description?: string; teamId?: string }) => Promise<void>;
+  createWorkspace: (data: { name: string; description?: string; teamId?: string }) => Promise<string>;
   renameWorkspace: (id: string, name: string) => Promise<void>;
   removeWorkspace: (id: string) => Promise<void>;
 
   createProject: (
     workspaceId: string,
     data: { name: string; description?: string },
-  ) => Promise<void>;
+  ) => Promise<string>;
   renameProject: (id: string, name: string) => Promise<void>;
   removeProject: (id: string) => Promise<void>;
 
@@ -114,7 +115,7 @@ interface NavigationState {
     description?: string;
     workspaceId?: string;
     projectId?: string;
-  }) => Promise<void>;
+  }) => Promise<string>;
   renameBoard: (id: string, name: string) => Promise<void>;
   removeBoard: (id: string) => Promise<void>;
 }
@@ -263,6 +264,25 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
         newExpanded.add(workspaceId);
       }
       return { expandedWorkspaces: newExpanded };
+    }),
+
+  batchSetExpanded: (workspaceIds, projectIds, isExpanded) =>
+    set((state) => {
+      const newExpandedWorkspaces = new Set(state.expandedWorkspaces);
+      const newExpandedProjects = new Set(state.expandedProjects);
+
+      if (isExpanded) {
+        workspaceIds.forEach((id) => newExpandedWorkspaces.add(id));
+        projectIds.forEach((id) => newExpandedProjects.add(id));
+      } else {
+        workspaceIds.forEach((id) => newExpandedWorkspaces.delete(id));
+        projectIds.forEach((id) => newExpandedProjects.delete(id));
+      }
+
+      return {
+        expandedWorkspaces: newExpandedWorkspaces,
+        expandedProjects: newExpandedProjects,
+      };
     }),
 
   // 工具方法
@@ -460,6 +480,7 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
 
       get().addWorkspace(formattedWorkspace);
       console.log('工作区创建成功:', workspace.name);
+      return workspace.id;
     } catch (error) {
       console.error('创建工作区失败:', error);
       throw error;
@@ -511,6 +532,7 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
 
       get().addProject(formattedProject);
       console.log('项目创建成功:', project.name);
+      return project.id;
     } catch (error) {
       console.error('创建项目失败:', error);
       throw error;
@@ -560,6 +582,7 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
 
       get().addBoard(formattedBoard);
       console.log('看板创建成功:', board.name);
+      return board.id;
     } catch (error) {
       console.error('创建看板失败:', error);
       throw error;

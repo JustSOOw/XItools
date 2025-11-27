@@ -23,6 +23,7 @@ import {
   UserGroupIcon,
   Cog6ToothIcon,
 } from '@heroicons/react/24/outline';
+import { SidebarExpandIcon, SidebarCollapseIcon } from '../icons/SidebarIcons';
 
 
 interface SidebarProps {
@@ -62,6 +63,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
     selectBoard,
     toggleWorkspaceExpanded,
     toggleProjectExpanded,
+    batchSetExpanded,
     initialize,
   } = useNavigationStore();
 
@@ -103,30 +105,78 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
 
       if (createMenuType === 'workspace') {
         // 如果有 parentId，说明是在团队下创建工作区
+        let newWorkspaceId: string;
         if (createMenuParentId) {
-          await store.createWorkspace({ ...data, teamId: createMenuParentId });
+          newWorkspaceId = await store.createWorkspace({ ...data, teamId: createMenuParentId });
         } else {
-          await store.createWorkspace(data);
+          newWorkspaceId = await store.createWorkspace(data);
+        }
+        // 创建成功提示
+        toast.success(t('navigation.workspaceCreated', { defaultValue: `工作区"${data.name}"创建成功` }));
+        // 自动选中新创建的工作区
+        selectWorkspace(newWorkspaceId);
+        // 如果在其他页面，导航回主页
+        if (location.pathname !== '/') {
+          navigate('/');
         }
       } else if (createMenuType === 'project' && createMenuParentId) {
-        await store.createProject(createMenuParentId, data);
+        const newProjectId = await store.createProject(createMenuParentId, data);
+        // 创建成功提示
+        toast.success(t('navigation.projectCreated', { defaultValue: `项目"${data.name}"创建成功` }));
+        // 展开父工作区并选中新项目
+        if (!expandedWorkspaces.has(createMenuParentId)) {
+          toggleWorkspaceExpanded(createMenuParentId);
+        }
+        selectProject(newProjectId);
+        // 如果在其他页面，导航回主页
+        if (location.pathname !== '/') {
+          navigate('/');
+        }
       } else if (createMenuType === 'board') {
+        let boardData: { name: string; description?: string; projectId?: string; workspaceId?: string };
         if (createMenuParentId) {
           // 检查parentId是项目还是工作区
           const project = projects.find((p) => p.id === createMenuParentId);
           if (project) {
-            await store.createBoard({ ...data, projectId: createMenuParentId });
+            boardData = { ...data, projectId: createMenuParentId };
           } else {
-            await store.createBoard({ ...data, workspaceId: createMenuParentId });
+            boardData = { ...data, workspaceId: createMenuParentId };
           }
         } else {
           // 默认创建到当前工作区
-          await store.createBoard({ ...data, workspaceId: currentWorkspaceId });
+          boardData = { ...data, workspaceId: currentWorkspaceId || undefined };
+        }
+        const newBoardId = await store.createBoard(boardData);
+        // 创建成功提示
+        toast.success(t('navigation.boardCreated', { defaultValue: `看板"${data.name}"创建成功` }));
+        // 展开父级并选中新看板
+        if (boardData.projectId) {
+          // 看板在项目下
+          const parentProject = projects.find((p) => p.id === boardData.projectId);
+          if (parentProject) {
+            // 确保工作区展开
+            if (!expandedWorkspaces.has(parentProject.workspaceId)) {
+              toggleWorkspaceExpanded(parentProject.workspaceId);
+            }
+            // 确保项目展开
+            if (!expandedProjects.has(boardData.projectId)) {
+              toggleProjectExpanded(boardData.projectId);
+            }
+          }
+        } else if (boardData.workspaceId) {
+          // 看板直接在工作区下
+          if (!expandedWorkspaces.has(boardData.workspaceId)) {
+            toggleWorkspaceExpanded(boardData.workspaceId);
+          }
+        }
+        selectBoard(newBoardId);
+        // 如果在其他页面，导航回主页
+        if (location.pathname !== '/') {
+          navigate('/');
         }
       }
 
       setShowCreateMenu(false);
-      console.log('创建成功:', createMenuType, data.name);
     } catch (error) {
       console.error('创建失败:', error);
       throw error; // 让CreateMenu组件处理错误显示
@@ -156,6 +206,44 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
       const errorMessage = error instanceof Error ? error.message : '重命名失败';
       toast.error(errorMessage);
     }
+  };
+  // 检查指定范围是否全部已展开
+  const checkIsAllExpanded = (scope: 'personal' | 'team') => {
+    let targetWorkspaces: any[] = [];
+    let targetProjects: any[] = [];
+
+    if (scope === 'personal') {
+      targetWorkspaces = workspaces.filter((ws) => !ws.teamId);
+    } else {
+      targetWorkspaces = workspaces.filter((ws) => ws.teamId);
+    }
+
+    // 收集所有相关项目
+    targetWorkspaces.forEach((ws) => {
+      const wsProjects = getProjectsByWorkspace(ws.id);
+      targetProjects = [...targetProjects, ...wsProjects];
+    });
+
+    // 检查是否全部已展开
+    const allWorkspacesExpanded = targetWorkspaces.every((ws) => expandedWorkspaces.has(ws.id));
+    const allProjectsExpanded = targetProjects.every((p) => expandedProjects.has(p.id));
+
+    return {
+      isAllExpanded: allWorkspacesExpanded && allProjectsExpanded,
+      targetWorkspaces,
+      targetProjects
+    };
+  };
+
+  // 处理一键展开/收纳
+  const handleToggleAll = (scope: 'personal' | 'team') => {
+    const { isAllExpanded, targetWorkspaces, targetProjects } = checkIsAllExpanded(scope);
+
+    // 切换状态
+    const workspaceIds = targetWorkspaces.map((ws) => ws.id);
+    const projectIds = targetProjects.map((p) => p.id);
+
+    batchSetExpanded(workspaceIds, projectIds, !isAllExpanded);
   };
 
   // 渲染工作区项目
@@ -439,8 +527,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
         <div className="space-y-1 px-3">
           {/* ===== 个人工作区部分 ===== */}
           {!isCollapsed && (
-            <div className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-2 px-2">
-              {t('common:navigation.personalWorkspace', { defaultValue: '个人工作区' })}
+            <div className="flex items-center justify-between mb-2 px-2 group/header">
+              <div className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
+                {t('common:navigation.personalWorkspace', { defaultValue: '个人工作区' })}
+              </div>
+              <button
+                onClick={() => handleToggleAll('personal')}
+                className="p-1 rounded hover:bg-surface/50 text-text-tertiary hover:text-text-secondary transition-colors opacity-0 group-hover/header:opacity-100"
+                title={t('common:action.toggleAll', { defaultValue: '展开/收纳全部' })}
+              >
+                {checkIsAllExpanded('personal').isAllExpanded ? (
+                  <SidebarCollapseIcon className="h-3.5 w-3.5" />
+                ) : (
+                  <SidebarExpandIcon className="h-3.5 w-3.5" />
+                )}
+              </button>
             </div>
           )}
 
@@ -466,8 +567,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onOpen
 
           {/* ===== 团队部分 ===== */}
           {!isCollapsed && teams.length > 0 && (
-            <div className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-2 px-2">
-              {t('team:common.team', { defaultValue: '团队' })}
+            <div className="flex items-center justify-between mb-2 px-2 group/header">
+              <div className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
+                {t('team:common.team', { defaultValue: '团队' })}
+              </div>
+              <button
+                onClick={() => handleToggleAll('team')}
+                className="p-1 rounded hover:bg-surface/50 text-text-tertiary hover:text-text-secondary transition-colors opacity-0 group-hover/header:opacity-100"
+                title={t('common:action.toggleAll', { defaultValue: '展开/收纳全部' })}
+              >
+                {checkIsAllExpanded('team').isAllExpanded ? (
+                  <SidebarCollapseIcon className="h-3.5 w-3.5" />
+                ) : (
+                  <SidebarExpandIcon className="h-3.5 w-3.5" />
+                )}
+              </button>
             </div>
           )}
 

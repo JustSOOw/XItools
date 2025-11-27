@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTeamStore } from '../../store/teamStore';
+import { useUserStore } from '../../store/userStore';
 import { TeamMember, TeamRole } from '../../types/teamTypes';
 import { useI18n } from '../../hooks/useI18n';
 import globalConfirmDialog from '../../services/globalConfirmDialog';
@@ -13,7 +14,9 @@ interface MemberListProps {
 
 const MemberList: React.FC<MemberListProps> = ({ teamId, onInvite }) => {
     const { t } = useI18n();
-    const { members, fetchMembers, removeMember, updateMemberRole, isLoading } = useTeamStore();
+    const { members, fetchMembers, removeMember, updateMemberRole, isLoading, currentTeam } = useTeamStore();
+    const { user } = useUserStore();
+    const isCurrentUserOwner = user?.id === currentTeam?.ownerId;
     const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -189,9 +192,15 @@ const MemberList: React.FC<MemberListProps> = ({ teamId, onInvite }) => {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        {member.role === TeamRole.OWNER ? (
-                                            <span className="text-sm text-primary font-medium">
-                                                {t('team:role.owner', { defaultValue: '所有者' })}
+                                        {member.user.id === currentTeam?.ownerId || member.user.id === user?.id || (member.role === TeamRole.ADMIN && !isCurrentUserOwner) ? (
+                                            <span className={`text-sm ${member.user.id === currentTeam?.ownerId ? 'text-primary font-medium' : 'text-text-primary'}`}>
+                                                {member.user.id === currentTeam?.ownerId
+                                                    ? t('team:role.owner', { defaultValue: '所有者' })
+                                                    : member.role === TeamRole.ADMIN
+                                                        ? t('team:role.admin', { defaultValue: '管理员' })
+                                                        : member.role === TeamRole.MEMBER
+                                                            ? t('team:role.member', { defaultValue: '成员' })
+                                                            : t('team:role.viewer', { defaultValue: '访客' })}
                                             </span>
                                         ) : (
                                             <select
@@ -209,8 +218,8 @@ const MemberList: React.FC<MemberListProps> = ({ teamId, onInvite }) => {
                                         {new Date(member.joinedAt).toLocaleDateString()}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        {/* 所有者不能被删除 */}
-                                        {member.role !== TeamRole.OWNER && (
+                                        {/* 所有者不能被删除，管理员只能被所有者删除，不能删除自己 */}
+                                        {member.user.id !== currentTeam?.ownerId && member.user.id !== user?.id && (member.role !== TeamRole.ADMIN || isCurrentUserOwner) && (
                                             <button
                                                 onClick={() => handleRemoveMember(member)}
                                                 className="text-text-secondary hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
