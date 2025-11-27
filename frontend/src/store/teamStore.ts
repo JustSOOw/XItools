@@ -15,6 +15,7 @@ import {
   TeamInvitation,
   CreateTeamInput,
   UpdateTeamInput,
+  TeamRole,
 } from '../types/teamTypes';
 
 interface TeamState {
@@ -35,6 +36,7 @@ interface TeamState {
 
   fetchMembers: (teamId: string) => Promise<void>;
   removeMember: (teamId: string, memberId: string) => Promise<void>;
+  updateMemberRole: (teamId: string, memberId: string, role: TeamRole) => Promise<void>;
 
   fetchInvitations: (teamId: string) => Promise<void>;
   sendInvitations: (teamId: string, emails: string[]) => Promise<void>;
@@ -201,6 +203,28 @@ export const useTeamStore = create<TeamState>()(
       },
 
       /**
+       * 更新成员角色
+       */
+      updateMemberRole: async (teamId, memberId, role) => {
+        set({ isLoading: true, error: null });
+        try {
+          const updatedMember = await teamService.updateMemberRole(teamId, memberId, { role });
+          set((state) => ({
+            members: state.members.map((m) =>
+              m.id === memberId ? { ...m, role: updatedMember.role } : m
+            ),
+          }));
+          toast.success('角色更新成功');
+        } catch (error: any) {
+          set({ error: error.message });
+          toast.error(error.message || '更新角色失败');
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      /**
        * 获取团队邀请列表
        */
       fetchInvitations: async (teamId) => {
@@ -258,7 +282,21 @@ export const useTeamStore = create<TeamState>()(
     }),
     {
       name: 'team-storage',
-      partialize: (state) => ({ currentTeam: state.currentTeam }), // 只持久化当前选择的团队
+      // 只持久化当前团队的基本信息，排除大体积的 avatar 字段（Base64 图片会超出 localStorage 限制）
+      partialize: (state) => ({
+        currentTeam: state.currentTeam
+          ? {
+              id: state.currentTeam.id,
+              name: state.currentTeam.name,
+              description: state.currentTeam.description,
+              isActive: state.currentTeam.isActive,
+              ownerId: state.currentTeam.ownerId,
+              createdAt: state.currentTeam.createdAt,
+              updatedAt: state.currentTeam.updatedAt,
+              // 注意：avatar 字段被排除，会在 fetchMyTeam 时从服务器获取
+            }
+          : null,
+      }),
     }
   )
 );

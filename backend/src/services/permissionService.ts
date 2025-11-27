@@ -413,6 +413,74 @@ export class PermissionService {
 
     return project.workspace.team.ownerId === userId;
   }
+
+  /**
+   * 检查用户是否对工作区有指定权限
+   * 适用于直接属于工作区的看板（没有 projectId）
+   * @param userId 用户ID
+   * @param workspaceId 工作区ID
+   * @param requiredPermission 所需权限类型
+   * @returns 是否有权限
+   */
+  async checkWorkspacePermission(
+    userId: string,
+    workspaceId: string,
+    requiredPermission: ProjectPermissionType
+  ): Promise<boolean> {
+    // 获取工作区信息
+    const workspace = await prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      include: {
+        team: true,
+      },
+    });
+
+    if (!workspace) {
+      return false;
+    }
+
+    // 如果是工作区所有者，拥有所有权限
+    if (workspace.ownerId === userId) {
+      return true;
+    }
+
+    // 如果工作区属于团队
+    if (workspace.team) {
+      const team = workspace.team;
+
+      // 如果是团队所有者，拥有所有权限
+      if (team.ownerId === userId) {
+        return true;
+      }
+
+      // 检查用户是否为团队成员
+      const member = await prisma.teamMember.findFirst({
+        where: {
+          userId,
+          teamId: team.id,
+          status: 'active',
+        },
+      });
+
+      if (!member) {
+        return false;
+      }
+
+      // 对于团队成员，根据权限类型判断
+      // 活跃的团队成员默认有查看权限
+      if (requiredPermission === ProjectPermissionType.VIEW) {
+        return true;
+      }
+
+      // 对于编辑权限，检查团队成员角色
+      // admin 角色拥有编辑权限，普通 member 只有查看权限
+      if (requiredPermission === ProjectPermissionType.EDIT) {
+        return member.role === 'admin';
+      }
+    }
+
+    return false;
+  }
 }
 
 // 导出服务实例

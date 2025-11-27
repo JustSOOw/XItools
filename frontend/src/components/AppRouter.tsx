@@ -118,6 +118,7 @@ export const AppRouter: React.FC<AppRouterProps> = ({ className = '' }) => {
           }
         />
         <Route path="/accept-invitation" element={<AcceptInvitation />} />
+        <Route path="/invite/:inviteCode" element={<AcceptInvitation />} />
 
         {/* Protected Routes */}
         <Route

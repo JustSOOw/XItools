@@ -27,7 +27,7 @@ const TeamSettings: React.FC = () => {
     // Form state
     const [teamName, setTeamName] = useState('');
     const [teamDesc, setTeamDesc] = useState('');
-    const [teamAvatarUrl, setTeamAvatarUrl] = useState('');
+    const [teamAvatar, setTeamAvatar] = useState('');
     const [isUploading, setIsUploading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -42,7 +42,7 @@ const TeamSettings: React.FC = () => {
         if (currentTeam) {
             setTeamName(currentTeam.name);
             setTeamDesc(currentTeam.description || '');
-            setTeamAvatarUrl(currentTeam.avatarUrl || '');
+            setTeamAvatar(currentTeam.avatar || '');
 
             // Fetch members if not already loaded to get owner name
             if (members.length === 0) {
@@ -157,10 +157,10 @@ ${memberCount > 1 ? `• ${memberCount - 1} 位团队成员将被移出团队` :
         setIsUploading(true);
         try {
             const base64 = await convertFileToBase64(file);
-            setTeamAvatarUrl(base64);
+            setTeamAvatar(base64);
             // Immediate save for avatar
             if (currentTeam) {
-                await updateTeam(currentTeam.id, { avatarUrl: base64 });
+                await updateTeam(currentTeam.id, { avatar: base64 });
             }
         } catch (error) {
             console.error('Error reading file:', error);
@@ -216,7 +216,7 @@ ${memberCount > 1 ? `• ${memberCount - 1} 位团队成员将被移出团队` :
                     {/* Header Section with Editable Avatar */}
                     <div className="flex items-center gap-6 mb-8">
                         <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
-                            <TeamAvatar name={teamName} avatarUrl={teamAvatarUrl} size="xl" className="w-20 h-20 text-2xl shadow-sm" />
+                            <TeamAvatar name={teamName} avatarUrl={teamAvatar} size="xl" className="w-20 h-20 text-2xl shadow-sm" />
                             <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200">
                                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />

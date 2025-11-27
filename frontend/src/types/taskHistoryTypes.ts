@@ -35,9 +35,9 @@ export interface TaskHistory {
 
 /**
  * 任务历史响应
+ * 注意：apiService 会自动提取 data 字段，所以不包含 success 字段
  */
 export interface TaskHistoryResponse {
-    success: boolean;
     data: TaskHistory[];
     total: number;
     page: number;

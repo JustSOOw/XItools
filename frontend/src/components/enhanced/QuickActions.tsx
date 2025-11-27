@@ -2,19 +2,29 @@
  * 快捷操作面板组件
  * 提供任务的快速操作功能
  */
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import classNames from 'classnames';
 import { Task } from '../../types/Task';
 import Button from '../Button';
 import { useI18n } from '../../hooks/useI18n';
 import globalConfirmDialog from '../../services/globalConfirmDialog';
+import multiBoardService from '../../services/multiBoardService';
+
+// 可选负责人类型
+interface AssigneeOption {
+  id: string;
+  username: string;
+  email: string;
+  avatar: string | null;
+  role: string;
+}
 
 interface QuickActionsProps {
   task: Task;
   columns: Array<{ id: string; name: string }>;
   onStatusChange: (statusId: string) => Promise<void>;
   onPriorityChange: (priority: 'High' | 'Medium' | 'Low' | null) => Promise<void>;
-  onAssigneeChange: (assignee: string) => Promise<void>;
+  onAssigneeChange: (assignee: string | null) => Promise<void>;
   onDuplicate?: () => Promise<void>;
   onDelete?: () => Promise<void>;
   className?: string;
@@ -33,6 +43,28 @@ const QuickActions: React.FC<QuickActionsProps> = ({
   isLoading = false,
 }) => {
   const { t } = useI18n();
+  const [assigneeOptions, setAssigneeOptions] = useState<AssigneeOption[]>([]);
+  const [isLoadingAssignees, setIsLoadingAssignees] = useState(false);
+
+  // 加载可选负责人列表
+  useEffect(() => {
+    const fetchAssignees = async () => {
+      if (!task.boardId) return;
+
+      setIsLoadingAssignees(true);
+      try {
+        const assignees = await multiBoardService.getBoardAssignees(task.boardId);
+        setAssigneeOptions(assignees);
+      } catch (error) {
+        console.error('获取可选负责人失败:', error);
+      } finally {
+        setIsLoadingAssignees(false);
+      }
+    };
+
+    fetchAssignees();
+  }, [task.boardId]);
+
   const priorityOptions = [
     {
       value: 'High',
@@ -131,33 +163,50 @@ const QuickActions: React.FC<QuickActionsProps> = ({
       <div>
         <h4 className="text-sm font-medium text-text-primary mb-2">{t('task:fields.assignee')}</h4>
         <div className="space-y-2">
-          <input
-            type="text"
-            value={task.assignee || ''}
-            onChange={(e) => onAssigneeChange(e.target.value)}
-            placeholder={t('task:placeholders.assignee')}
-            disabled={isLoading}
-            className="w-full px-3 py-2 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
-          />
-
-          {/* 常用负责人快捷按钮 */}
-          <div className="flex flex-wrap gap-1">
-            {['张三', '李四', '王五', '赵六'].map((name) => (
-              <button
-                key={name}
-                onClick={() => onAssigneeChange(name)}
-                disabled={isLoading || task.assignee === name}
-                className={classNames(
-                  'px-2 py-1 text-xs rounded border transition-colors',
-                  task.assignee === name
-                    ? 'bg-primary text-white border-primary cursor-default'
-                    : 'bg-background text-text-secondary border-border hover:border-primary hover:text-primary',
-                )}
+          {isLoadingAssignees ? (
+            <div className="text-sm text-text-secondary py-2">{t('common:loading')}</div>
+          ) : (
+            <>
+              {/* 下拉选择 - 使用 assignees[0] 作为当前负责人 */}
+              <select
+                value={task.assignees?.[0] || task.assignee || ''}
+                onChange={(e) => onAssigneeChange(e.target.value || null)}
+                disabled={isLoading}
+                className="w-full px-3 py-2 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
               >
-                {name}
-              </button>
-            ))}
-          </div>
+                <option value="">{t('task:placeholders.assignee', { defaultValue: '未分配' })}</option>
+                {assigneeOptions.map((assignee) => (
+                  <option key={assignee.id} value={assignee.id}>
+                    {assignee.username} ({assignee.role})
+                  </option>
+                ))}
+              </select>
+
+              {/* 快捷按钮 - 显示团队成员 */}
+              {assigneeOptions.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {assigneeOptions.slice(0, 4).map((assignee) => {
+                    const currentAssignee = task.assignees?.[0] || task.assignee;
+                    return (
+                      <button
+                        key={assignee.id}
+                        onClick={() => onAssigneeChange(assignee.id)}
+                        disabled={isLoading || currentAssignee === assignee.id}
+                        className={classNames(
+                          'px-2 py-1 text-xs rounded border transition-colors',
+                          currentAssignee === assignee.id
+                            ? 'bg-primary text-white border-primary cursor-default'
+                            : 'bg-background text-text-secondary border-border hover:border-primary hover:text-primary',
+                        )}
+                      >
+                        {assignee.username}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
 

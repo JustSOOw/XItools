@@ -448,7 +448,8 @@ export default async function taskRoutes(fastify: FastifyInstance) {
           action,
         });
 
-        return { success: true, ...history };
+        // 将 history 对象包装在 data 字段中，以便 apiService 正确解析
+        return { success: true, data: history };
       } catch (error) {
         console.error('获取任务历史失败:', error);
         reply.status(500);

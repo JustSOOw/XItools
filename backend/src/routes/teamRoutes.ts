@@ -12,9 +12,11 @@ import {
   createTeamSchema,
   updateTeamSchema,
   inviteMembersSchema,
+  updateMemberRoleSchema,
   CreateTeamInput,
   UpdateTeamInput,
   InviteMembersInput,
+  UpdateMemberRoleInput,
 } from '../types/teamTypes';
 
 /**
@@ -371,6 +373,67 @@ export default async function teamRoutes(fastify: FastifyInstance) {
         reply.send({
           success: true,
           message: '成员已移除',
+        });
+      } catch (error: any) {
+        reply.status(error.statusCode || 400).send({
+          success: false,
+          error: error.message,
+        });
+      }
+    }
+  );
+
+  /**
+   * 更新成员角色
+   * PUT /api/teams/:teamId/members/:memberId/role
+   */
+  fastify.put<{
+    Params: { teamId: string; memberId: string };
+    Body: UpdateMemberRoleInput;
+  }>(
+    '/teams/:teamId/members/:memberId/role',
+    {
+      preHandler: [authMiddleware, requireTeamOwner],
+      schema: {
+        description: '更新成员角色',
+        tags: ['团队'],
+        params: {
+          type: 'object',
+          properties: {
+            teamId: { type: 'string' },
+            memberId: { type: 'string' },
+          },
+        },
+        body: {
+          type: 'object',
+          required: ['role'],
+          properties: {
+            role: {
+              type: 'string',
+              enum: ['admin', 'member', 'guest'],
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { teamId, memberId } = request.params;
+        const userId = request.user!.userId;
+
+        // 验证输入
+        const validatedData = updateMemberRoleSchema.parse(request.body);
+
+        const updatedMember = await teamService.updateMemberRole(
+          teamId,
+          memberId,
+          userId,
+          validatedData
+        );
+
+        reply.send({
+          success: true,
+          data: updatedMember,
         });
       } catch (error: any) {
         reply.status(error.statusCode || 400).send({

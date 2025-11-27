@@ -205,6 +205,25 @@ class MultiBoardService {
       throw error;
     }
   }
+
+  /**
+   * 获取看板的可选负责人列表
+   * 个人看板返回当前用户，团队看板返回团队成员
+   */
+  async getBoardAssignees(boardId: string): Promise<{
+    id: string;
+    username: string;
+    email: string;
+    avatar: string | null;
+    role: string;
+  }[]> {
+    try {
+      return await apiService.get(`/boards/${boardId}/assignees`);
+    } catch (error) {
+      log.error('获取可选负责人失败:', error);
+      throw error;
+    }
+  }
 }
 
 export const multiBoardService = new MultiBoardService();

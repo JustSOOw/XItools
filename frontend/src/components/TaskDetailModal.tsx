@@ -1,20 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Task, TaskUpdate } from '../types/Task';
 import Modal from './Modal';
 import taskService from '../services/taskService';
+import multiBoardService from '../services/multiBoardService';
 import useTaskStore from '../store/taskStore';
 import { toast } from './ui/Toast';
 import {
   InlineEdit,
   MarkdownEditor,
-  Timeline,
   QuickActions,
-  generateTimelineEvents,
 } from './enhanced';
 import { useI18n } from '../hooks/useI18n';
 import TaskComments from './task/TaskComments';
 import TaskAssigneeStack from './task/TaskAssigneeStack';
 import TaskHistoryList from './task/TaskHistoryList';
+
+// 可选负责人类型
+interface AssigneeOption {
+  id: string;
+  username: string;
+  email: string;
+  avatar: string | null;
+  role: string;
+}
 
 interface TaskDetailModalProps {
   isOpen: boolean;
@@ -27,7 +35,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
   const [task, setTask] = useState<Task | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'timeline' | 'history' | 'actions'>('details');
+  const [activeTab, setActiveTab] = useState<'actions' | 'details' | 'history'>('actions');
   const { columns, updateTask: updateTaskInStore } = useTaskStore();
 
   // 加载任务详情
@@ -75,7 +83,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
 
   // 处理关闭模态框
   const handleClose = () => {
-    setActiveTab('details');
+    setActiveTab('actions');
     onClose();
   };
 
@@ -98,10 +106,9 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
           {/* 标签页导航 */}
           <div className="flex border-b border-border mb-4 flex-shrink-0">
             {[
-              { key: 'details', label: t('task:detail.tabs.details'), icon: '📋' },
-              { key: 'timeline', label: t('task:detail.tabs.timeline'), icon: '📅' },
-              { key: 'history', label: t('task:detail.tabs.history', { defaultValue: '历史' }), icon: '🕐' },
               { key: 'actions', label: t('task:detail.tabs.actions'), icon: '⚡' },
+              { key: 'details', label: t('task:detail.tabs.details'), icon: '📋' },
+              { key: 'history', label: t('task:detail.tabs.history', { defaultValue: '历史记录' }), icon: '🕐' },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -119,16 +126,6 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
 
           {/* 标签页内容 */}
           <div className="flex-1 overflow-y-auto min-h-0">
-            {activeTab === 'details' && (
-              <TaskDetailsTab
-                task={task}
-                columns={columns}
-                onUpdate={handleInlineUpdate}
-                isSaving={isSaving}
-              />
-            )}
-            {activeTab === 'timeline' && <TimelineTab task={task} />}
-            {activeTab === 'history' && <HistoryTab taskId={task.id} />}
             {activeTab === 'actions' && (
               <ActionsTab
                 task={task}
@@ -138,6 +135,15 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
                 onClose={handleClose}
               />
             )}
+            {activeTab === 'details' && (
+              <TaskDetailsTab
+                task={task}
+                columns={columns}
+                onUpdate={handleInlineUpdate}
+                isSaving={isSaving}
+              />
+            )}
+            {activeTab === 'history' && <HistoryTab taskId={task.id} />}
           </div>
         </div>
       )}
@@ -154,11 +160,32 @@ const TaskDetailsTab: React.FC<{
 }> = ({ task, columns, onUpdate, isSaving }) => {
   const { t } = useI18n();
   const [localDescription, setLocalDescription] = useState(task.description || '');
+  const [assigneeOptions, setAssigneeOptions] = useState<AssigneeOption[]>([]);
+  const [isLoadingAssignees, setIsLoadingAssignees] = useState(false);
 
   // 当task.description变化时，更新本地状态
   useEffect(() => {
     setLocalDescription(task.description || '');
   }, [task.description]);
+
+  // 加载可选负责人列表
+  useEffect(() => {
+    const fetchAssignees = async () => {
+      if (!task.boardId) return;
+
+      setIsLoadingAssignees(true);
+      try {
+        const assignees = await multiBoardService.getBoardAssignees(task.boardId);
+        setAssigneeOptions(assignees);
+      } catch (error) {
+        console.error('获取可选负责人失败:', error);
+      } finally {
+        setIsLoadingAssignees(false);
+      }
+    };
+
+    fetchAssignees();
+  }, [task.boardId]);
 
   return (
     <div className="space-y-6 overflow-y-auto pr-2 pb-4">
@@ -254,20 +281,48 @@ const TaskDetailsTab: React.FC<{
               <TaskAssigneeStack
                 assignees={
                   task.assignees
-                    ? task.assignees.map(id => ({ id, name: id }))
+                    ? task.assignees.map(id => {
+                        const assignee = assigneeOptions.find(a => a.id === id);
+                        return { id, name: assignee?.username || id };
+                      })
                     : task.assignee
-                      ? [{ id: task.assignee, name: task.assignee }]
+                      ? [{
+                          id: task.assignee,
+                          name: assigneeOptions.find(a => a.id === task.assignee)?.username || task.assignee
+                        }]
                       : []
                 }
                 size="md"
               />
             </div>
-            <InlineEdit
-              value={task.assignee || ''}
-              onSave={(value) => onUpdate('assignee', value || null)}
-              placeholder={t('task:placeholders.assignee')}
-            />
-            {/* TODO: Add multi-select for assignees */}
+            {isLoadingAssignees ? (
+              <div className="text-sm text-text-secondary">{t('common:loading')}</div>
+            ) : (
+              <InlineEdit
+                key={`assignee-${task.id}-${(task.assignees?.[0] || task.assignee)}`}
+                value={(() => {
+                  const currentAssigneeId = task.assignees?.[0] || task.assignee;
+                  return assigneeOptions.find(a => a.id === currentAssigneeId)?.username || '';
+                })()}
+                onSave={(value) => {
+                  // 根据用户名找到对应的用户ID
+                  const selectedAssignee = assigneeOptions.find(a => a.username === value);
+                  const assigneeId = selectedAssignee?.id || null;
+                  const currentAssigneeId = task.assignees?.[0] || task.assignee;
+                  if (assigneeId !== currentAssigneeId) {
+                    // 后端使用 assignees 数组
+                    return onUpdate('assignees', assigneeId ? [assigneeId] : []);
+                  }
+                  return Promise.resolve();
+                }}
+                type="select"
+                options={[
+                  { value: '', label: t('task:placeholders.assignee', { defaultValue: '未分配' }) },
+                  ...assigneeOptions.map((a) => ({ value: a.username, label: a.username }))
+                ]}
+                placeholder={t('task:placeholders.assignee')}
+              />
+            )}
           </div>
 
           {/* 截止日期 */}
@@ -432,24 +487,6 @@ const TaskDetailsTab: React.FC<{
   );
 };
 
-// 时间线标签页组件
-const TimelineTab: React.FC<{ task: Task }> = ({ task }) => {
-  const { t } = useI18n();
-  const timelineEvents = generateTimelineEvents(task, t);
-
-  return (
-    <div className="h-full overflow-hidden">
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold text-text-primary">
-          {t('task:detail.tabs.timeline')}
-        </h3>
-        <p className="text-sm text-text-secondary">{t('task:detail.timelineDescription')}</p>
-      </div>
-      <Timeline events={timelineEvents} maxHeight="50vh" showUserAvatars />
-    </div>
-  );
-};
-
 // 历史记录标签页组件
 const HistoryTab: React.FC<{ taskId: string }> = ({ taskId }) => {
   return (
@@ -478,8 +515,9 @@ const ActionsTab: React.FC<{
     await onUpdate('priority', priority);
   };
 
-  const handleAssigneeChange = async (assignee: string) => {
-    await onUpdate('assignee', assignee);
+  const handleAssigneeChange = async (assignee: string | null) => {
+    // 后端使用 assignees 数组，需要转换
+    await onUpdate('assignees', assignee ? [assignee] : []);
   };
 
   const handleDuplicate = async () => {

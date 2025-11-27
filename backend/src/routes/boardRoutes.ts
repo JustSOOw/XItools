@@ -364,4 +364,127 @@ export default async function boardRoutes(fastify: FastifyInstance) {
       return { success: false, error: '获取当前看板失败' };
     }
   });
+
+  // 获取看板的可选负责人列表
+  // 个人看板：只返回当前用户
+  // 团队看板：返回团队成员列表
+  fastify.get(
+    '/boards/:boardId/assignees',
+    {
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.VIEW)],
+    },
+    async (request, reply) => {
+      try {
+        const { boardId } = request.params as { boardId: string };
+        const userId = request.user?.userId;
+
+        if (!userId) {
+          reply.status(401);
+          return { success: false, error: '未认证' };
+        }
+
+        // 获取看板信息
+        const board = await prisma.board.findUnique({
+          where: { id: boardId },
+          include: {
+            workspace: {
+              include: {
+                team: {
+                  include: {
+                    members: {
+                      where: { status: 'active' },
+                      include: {
+                        user: {
+                          select: {
+                            id: true,
+                            username: true,
+                            email: true,
+                            avatar: true,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (!board) {
+          reply.status(404);
+          return { success: false, error: '看板不存在' };
+        }
+
+        // 如果是团队工作区，返回团队成员
+        if (board.workspace?.team) {
+          const members = board.workspace.team.members.map((member) => ({
+            id: member.user.id,
+            username: member.user.username,
+            email: member.user.email,
+            avatar: member.user.avatar,
+            role: member.role,
+          }));
+
+          // 确保团队所有者也在列表中
+          const ownerInMembers = members.some(m => m.id === board.workspace!.team!.ownerId);
+          if (!ownerInMembers) {
+            const owner = await prisma.user.findUnique({
+              where: { id: board.workspace.team.ownerId },
+              select: {
+                id: true,
+                username: true,
+                email: true,
+                avatar: true,
+              },
+            });
+            if (owner) {
+              members.unshift({
+                id: owner.id,
+                username: owner.username,
+                email: owner.email,
+                avatar: owner.avatar,
+                role: 'owner',
+              });
+            }
+          }
+
+          return { success: true, data: members };
+        }
+
+        // 如果是个人工作区，只返回当前用户
+        const currentUser = await prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            avatar: true,
+          },
+        });
+
+        if (!currentUser) {
+          reply.status(404);
+          return { success: false, error: '用户不存在' };
+        }
+
+        return {
+          success: true,
+          data: [
+            {
+              id: currentUser.id,
+              username: currentUser.username,
+              email: currentUser.email,
+              avatar: currentUser.avatar,
+              role: 'owner',
+            },
+          ],
+        };
+      } catch (error) {
+        console.error('获取可选负责人失败:', error);
+        reply.status(500);
+        return { success: false, error: '获取可选负责人失败' };
+      }
+    }
+  );
 }

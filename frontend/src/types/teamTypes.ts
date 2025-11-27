@@ -10,9 +10,16 @@
 
 /**
  * 团队角色枚举
+ * OWNER - 所有者（团队创建者，不可更改）
+ * ADMIN - 管理员（可以管理成员和邀请）
+ * MEMBER - 成员（可以查看和编辑分配的项目）
+ * GUEST - 访客（只读权限）
  */
 export enum TeamRole {
+  OWNER = 'owner',
+  ADMIN = 'admin',
   MEMBER = 'member',
+  GUEST = 'guest',
 }
 
 /**
@@ -156,6 +163,14 @@ export interface AcceptInvitationInput {
  */
 export interface RejectInvitationInput {
   invitationId: string;
+}
+
+/**
+ * 更新成员角色的输入数据
+ * 注意：不能将成员角色更新为 OWNER
+ */
+export interface UpdateMemberRoleInput {
+  role: TeamRole.ADMIN | TeamRole.MEMBER | TeamRole.GUEST;
 }
 
 // ================================

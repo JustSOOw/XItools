@@ -216,10 +216,8 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
         );
       }
     } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.error || error.message || '发送验证码失败';
-
-      authFeedback.registerError({ message: errorMessage });
+      // 传递原始错误对象给错误处理器，它会正确解析后端返回的错误信息
+      authFeedback.registerError(error);
     } finally {
       setIsSendingCode(false);
     }

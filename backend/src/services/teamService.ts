@@ -15,6 +15,7 @@ import {
   CreateTeamInput,
   UpdateTeamInput,
   InviteMembersInput,
+  UpdateMemberRoleInput,
   TeamError,
   TeamErrorCode,
   InvitationStatus,
@@ -429,6 +430,19 @@ export class TeamService {
       );
     }
 
+    // 检查是否尝试删除团队所有者
+    const team = await prisma.team.findUnique({
+      where: { id: teamId },
+    });
+
+    if (team && member.userId === team.ownerId) {
+      throw new TeamError(
+        TeamErrorCode.CANNOT_REMOVE_OWNER,
+        '不能移除团队创建者，如需解散团队请使用解散功能',
+        400
+      );
+    }
+
     // 删除成员记录
     await prisma.teamMember.delete({
       where: { id: memberId },
@@ -501,6 +515,96 @@ export class TeamService {
       permission: p.permission,
       grantedAt: p.createdAt,
     }));
+  }
+
+  /**
+   * 更新成员角色
+   * 只有团队所有者可以更新成员角色
+   * 不能更新所有者自己的角色
+   * 不能将任何人设置为 OWNER（OWNER 只能通过转让所有权）
+   */
+  async updateMemberRole(
+    teamId: string,
+    memberId: string,
+    operatorId: string,
+    data: UpdateMemberRoleInput
+  ): Promise<TeamMemberDTO> {
+    // 检查操作者是否为团队所有者
+    const isOwner = await this.checkTeamOwnership(teamId, operatorId);
+    if (!isOwner) {
+      throw new TeamError(
+        TeamErrorCode.NOT_TEAM_OWNER,
+        '只有团队创建者可以更新成员角色',
+        403
+      );
+    }
+
+    // 查找成员记录
+    const member = await prisma.teamMember.findUnique({
+      where: { id: memberId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            avatar: true,
+          },
+        },
+      },
+    });
+
+    if (!member) {
+      throw new TeamError(TeamErrorCode.USER_NOT_IN_TEAM, '成员不存在', 404);
+    }
+
+    // 检查成员是否属于该团队
+    if (member.teamId !== teamId) {
+      throw new TeamError(
+        TeamErrorCode.USER_NOT_IN_TEAM,
+        '该成员不属于这个团队',
+        400
+      );
+    }
+
+    // 检查是否尝试更改所有者的角色
+    const team = await prisma.team.findUnique({
+      where: { id: teamId },
+    });
+
+    if (team && member.userId === team.ownerId) {
+      throw new TeamError(
+        TeamErrorCode.CANNOT_REMOVE_OWNER,
+        '不能更改团队所有者的角色',
+        400
+      );
+    }
+
+    // 更新成员角色
+    const updatedMember = await prisma.teamMember.update({
+      where: { id: memberId },
+      data: { role: data.role },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            avatar: true,
+          },
+        },
+      },
+    });
+
+    return {
+      id: updatedMember.id,
+      role: updatedMember.role as TeamRole,
+      status: updatedMember.status as TeamMemberStatus,
+      userId: updatedMember.userId,
+      teamId: updatedMember.teamId,
+      joinedAt: updatedMember.joinedAt,
+      user: updatedMember.user,
+    };
   }
 
   /**

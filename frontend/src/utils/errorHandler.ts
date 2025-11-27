@@ -111,10 +111,36 @@ export class ErrorHandler {
    * 处理验证错误
    */
   private handleValidationError(errorResponse: ApiErrorResponse): ErrorInfo {
+    // 检查是否包含特定的错误关键词，返回更友好的提示
+    const originalError = errorResponse.error || '';
+
+    // 邮箱已被注册
+    if (originalError.includes('邮箱已被注册') || originalError.includes('该邮箱已被注册')) {
+      return {
+        type: ErrorType.VALIDATION,
+        code: AuthErrorCode.EMAIL_TAKEN,
+        message: this.t('errors.register.emailExists'),
+        details: errorResponse.details,
+        statusCode: 400,
+      };
+    }
+
+    // 用户名已被注册
+    if (originalError.includes('用户名已') || originalError.includes('username')) {
+      return {
+        type: ErrorType.VALIDATION,
+        code: AuthErrorCode.USERNAME_TAKEN,
+        message: this.t('errors.register.usernameExists'),
+        details: errorResponse.details,
+        statusCode: 400,
+      };
+    }
+
+    // 其他验证错误，使用后端返回的原始消息
     return {
       type: ErrorType.VALIDATION,
       code: errorResponse.code,
-      message: this.t('auth:errors.validation'),
+      message: originalError || this.t('auth:errors.validation'),
       details: errorResponse.details,
       statusCode: 400,
     };

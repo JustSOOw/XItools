@@ -15,6 +15,7 @@ import {
   CreateTeamInput,
   UpdateTeamInput,
   InviteMembersInput,
+  UpdateMemberRoleInput,
 } from '../types/teamTypes';
 
 /**
@@ -161,6 +162,29 @@ class TeamService extends BaseApiService {
       log.debug('移除成员成功');
     } catch (error) {
       log.error('移除团队成员失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 更新成员角色
+   * PUT /api/teams/:teamId/members/:memberId/role
+   */
+  async updateMemberRole(
+    teamId: string,
+    memberId: string,
+    data: UpdateMemberRoleInput
+  ): Promise<TeamMember> {
+    try {
+      log.debug('更新成员角色:', { teamId, memberId, role: data.role });
+      const updatedMember = await apiService.put<TeamMember>(
+        `/teams/${teamId}/members/${memberId}/role`,
+        data
+      );
+      log.debug('更新成员角色成功:', updatedMember);
+      return updatedMember;
+    } catch (error) {
+      log.error('更新成员角色失败:', error);
       throw error;
     }
   }

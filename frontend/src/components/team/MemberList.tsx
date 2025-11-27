@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useTeamStore, TeamMember } from '../../store/teamStore';
+import { useTeamStore } from '../../store/teamStore';
+import { TeamMember, TeamRole } from '../../types/teamTypes';
 import { useI18n } from '../../hooks/useI18n';
 import globalConfirmDialog from '../../services/globalConfirmDialog';
 import TeamAvatar from './TeamAvatar';
@@ -61,7 +62,11 @@ const MemberList: React.FC<MemberListProps> = ({ teamId, onInvite }) => {
         );
     };
 
-    const handleRoleChange = async (memberId: string, newRole: TeamMember['role']) => {
+    const handleRoleChange = async (memberId: string, newRole: TeamRole) => {
+        // 不能将角色更改为 owner
+        if (newRole === TeamRole.OWNER) {
+            return;
+        }
         await updateMemberRole(teamId, memberId, newRole);
     };
 
@@ -184,30 +189,38 @@ const MemberList: React.FC<MemberListProps> = ({ teamId, onInvite }) => {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <select
-                                            value={member.role}
-                                            onChange={(e) => handleRoleChange(member.id, e.target.value as any)}
-                                            className="text-sm bg-transparent border-none focus:ring-0 cursor-pointer hover:text-primary py-1 pl-0 pr-8"
-                                        >
-                                            <option value="owner">{t('team:role.owner', { defaultValue: '所有者' })}</option>
-                                            <option value="admin">{t('team:role.admin', { defaultValue: '管理员' })}</option>
-                                            <option value="member">{t('team:role.member', { defaultValue: '成员' })}</option>
-                                            <option value="guest">{t('team:role.viewer', { defaultValue: '访客' })}</option>
-                                        </select>
+                                        {member.role === TeamRole.OWNER ? (
+                                            <span className="text-sm text-primary font-medium">
+                                                {t('team:role.owner', { defaultValue: '所有者' })}
+                                            </span>
+                                        ) : (
+                                            <select
+                                                value={member.role}
+                                                onChange={(e) => handleRoleChange(member.id, e.target.value as TeamRole)}
+                                                className="text-sm bg-transparent border-none focus:ring-0 cursor-pointer hover:text-primary py-1 pl-0 pr-8"
+                                            >
+                                                <option value={TeamRole.ADMIN}>{t('team:role.admin', { defaultValue: '管理员' })}</option>
+                                                <option value={TeamRole.MEMBER}>{t('team:role.member', { defaultValue: '成员' })}</option>
+                                                <option value={TeamRole.GUEST}>{t('team:role.viewer', { defaultValue: '访客' })}</option>
+                                            </select>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">
                                         {new Date(member.joinedAt).toLocaleDateString()}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button
-                                            onClick={() => handleRemoveMember(member)}
-                                            className="text-text-secondary hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
-                                            title={t('team:action.remove', { defaultValue: '移除' })}
-                                        >
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </button>
+                                        {/* 所有者不能被删除 */}
+                                        {member.role !== TeamRole.OWNER && (
+                                            <button
+                                                onClick={() => handleRemoveMember(member)}
+                                                className="text-text-secondary hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                                                title={t('team:action.remove', { defaultValue: '移除' })}
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        )}
                                     </td>
                                 </tr>
                             ))

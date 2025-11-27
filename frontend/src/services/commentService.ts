@@ -41,9 +41,12 @@ class CommentService extends BaseApiService {
   async getCommentsByTask(taskId: string, query?: GetCommentsQuery): Promise<TaskComment[]> {
     try {
       log.debug('获取任务评论列表:', { taskId, query });
-      const comments = await apiService.get<TaskComment[]>(`/tasks/${taskId}/comments`, {
+      // 后端返回分页格式 { comments: [...], total, page, pageSize, totalPages }
+      const result = await apiService.get<{ comments: TaskComment[]; total: number; page: number; pageSize: number; totalPages: number }>(`/tasks/${taskId}/comments`, {
         params: query || {},
       });
+      // 从分页结果中提取评论数组
+      const comments = result?.comments || [];
       log.debug('获取评论列表成功:', comments.length);
       return comments;
     } catch (error) {
