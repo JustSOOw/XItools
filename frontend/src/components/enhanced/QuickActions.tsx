@@ -9,6 +9,8 @@ import Button from '../Button';
 import { useI18n } from '../../hooks/useI18n';
 import globalConfirmDialog from '../../services/globalConfirmDialog';
 import multiBoardService from '../../services/multiBoardService';
+import TeamAvatar from '../team/TeamAvatar';
+import { CheckIcon } from '@heroicons/react/24/outline';
 
 // 可选负责人类型
 interface AssigneeOption {
@@ -24,7 +26,8 @@ interface QuickActionsProps {
   columns: Array<{ id: string; name: string }>;
   onStatusChange: (statusId: string) => Promise<void>;
   onPriorityChange: (priority: 'High' | 'Medium' | 'Low' | null) => Promise<void>;
-  onAssigneeChange: (assignee: string | null) => Promise<void>;
+  onAssigneeChange?: (assignee: string | null) => Promise<void>; // 向后兼容
+  onAssigneesChange?: (assignees: string[]) => Promise<void>; // 新的多负责人接口
   onDuplicate?: () => Promise<void>;
   onDelete?: () => Promise<void>;
   className?: string;
@@ -37,6 +40,7 @@ const QuickActions: React.FC<QuickActionsProps> = ({
   onStatusChange,
   onPriorityChange,
   onAssigneeChange,
+  onAssigneesChange,
   onDuplicate,
   onDelete,
   className = '',
@@ -45,6 +49,32 @@ const QuickActions: React.FC<QuickActionsProps> = ({
   const { t } = useI18n();
   const [assigneeOptions, setAssigneeOptions] = useState<AssigneeOption[]>([]);
   const [isLoadingAssignees, setIsLoadingAssignees] = useState(false);
+  const [isSavingAssignee, setIsSavingAssignee] = useState(false);
+
+  // 获取当前负责人ID列表
+  const currentAssigneeIds = task.assignees || (task.assignee ? [task.assignee] : []);
+
+  // 处理负责人变更（支持多选）
+  const handleAssigneeToggle = async (assigneeId: string) => {
+    if (isSavingAssignee) return;
+
+    const isSelected = currentAssigneeIds.includes(assigneeId);
+    const newAssigneeIds = isSelected
+      ? currentAssigneeIds.filter(id => id !== assigneeId)
+      : [...currentAssigneeIds, assigneeId];
+
+    setIsSavingAssignee(true);
+    try {
+      if (onAssigneesChange) {
+        await onAssigneesChange(newAssigneeIds);
+      } else if (onAssigneeChange) {
+        // 向后兼容：只取第一个或设为null
+        await onAssigneeChange(newAssigneeIds[0] || null);
+      }
+    } finally {
+      setIsSavingAssignee(false);
+    }
+  };
 
   // 加载可选负责人列表
   useEffect(() => {
@@ -161,53 +191,63 @@ const QuickActions: React.FC<QuickActionsProps> = ({
 
       {/* 负责人快速设置 */}
       <div>
-        <h4 className="text-sm font-medium text-text-primary mb-2">{t('task:fields.assignee')}</h4>
-        <div className="space-y-2">
+        <h4 className="text-sm font-medium text-text-primary mb-2">
+          {t('task:fields.assignee')}
+          {currentAssigneeIds.length > 0 && (
+            <span className="ml-2 text-xs text-text-secondary">
+              ({currentAssigneeIds.length})
+            </span>
+          )}
+        </h4>
+        <div className="space-y-1">
           {isLoadingAssignees ? (
             <div className="text-sm text-text-secondary py-2">{t('common:loading')}</div>
+          ) : assigneeOptions.length === 0 ? (
+            <div className="text-sm text-text-secondary py-2">
+              {t('task:assignee.noOptions', { defaultValue: '暂无可选负责人' })}
+            </div>
           ) : (
-            <>
-              {/* 下拉选择 - 使用 assignees[0] 作为当前负责人 */}
-              <select
-                value={task.assignees?.[0] || task.assignee || ''}
-                onChange={(e) => onAssigneeChange(e.target.value || null)}
-                disabled={isLoading}
-                className="w-full px-3 py-2 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
-              >
-                <option value="">{t('task:placeholders.assignee', { defaultValue: '未分配' })}</option>
-                {assigneeOptions.map((assignee) => (
-                  <option key={assignee.id} value={assignee.id}>
-                    {assignee.username} ({assignee.role})
-                  </option>
-                ))}
-              </select>
-
-              {/* 快捷按钮 - 显示团队成员 */}
-              {assigneeOptions.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {assigneeOptions.slice(0, 4).map((assignee) => {
-                    const currentAssignee = task.assignees?.[0] || task.assignee;
-                    return (
-                      <button
-                        key={assignee.id}
-                        onClick={() => onAssigneeChange(assignee.id)}
-                        disabled={isLoading || currentAssignee === assignee.id}
-                        className={classNames(
-                          'px-2 py-1 text-xs rounded border transition-colors',
-                          currentAssignee === assignee.id
-                            ? 'bg-primary text-white border-primary cursor-default'
-                            : 'bg-background text-text-secondary border-border hover:border-primary hover:text-primary',
-                        )}
-                      >
-                        {assignee.username}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </>
+            assigneeOptions.map((assignee) => {
+              const isSelected = currentAssigneeIds.includes(assignee.id);
+              return (
+                <button
+                  key={assignee.id}
+                  onClick={() => handleAssigneeToggle(assignee.id)}
+                  disabled={isLoading || isSavingAssignee}
+                  className={classNames(
+                    'w-full px-3 py-2 text-sm rounded-md transition-colors text-left flex items-center gap-3',
+                    isSelected
+                      ? 'bg-primary/10 border border-primary/30'
+                      : 'bg-surface-hover hover:bg-surface-hover/80 border border-transparent',
+                    (isLoading || isSavingAssignee) && 'opacity-50 cursor-not-allowed',
+                  )}
+                >
+                  <TeamAvatar
+                    name={assignee.username}
+                    avatarUrl={assignee.avatar || undefined}
+                    size="sm"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-text-primary truncate">{assignee.username}</p>
+                    <p className="text-xs text-text-secondary truncate">{assignee.role}</p>
+                  </div>
+                  {isSelected && (
+                    <CheckIcon className="w-5 h-5 text-primary flex-shrink-0" />
+                  )}
+                </button>
+              );
+            })
           )}
         </div>
+        {isSavingAssignee && (
+          <div className="mt-2 flex items-center gap-2 text-sm text-text-secondary">
+            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            {t('common:saving', { defaultValue: '保存中...' })}
+          </div>
+        )}
       </div>
 
       {/* 其他操作 */}

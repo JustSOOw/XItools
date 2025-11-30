@@ -14,6 +14,7 @@ import { useI18n } from '../hooks/useI18n';
 import TaskComments from './task/TaskComments';
 import TaskAssigneeStack from './task/TaskAssigneeStack';
 import TaskHistoryList from './task/TaskHistoryList';
+import MultiAssigneeSelector from './task/MultiAssigneeSelector';
 
 // 可选负责人类型
 interface AssigneeOption {
@@ -277,52 +278,12 @@ const TaskDetailsTab: React.FC<{
             <label className="block text-sm font-medium text-text-primary mb-2">
               {t('task:fields.assignee')}
             </label>
-            <div className="flex items-center gap-2 mb-2">
-              <TaskAssigneeStack
-                assignees={
-                  task.assignees
-                    ? task.assignees.map(id => {
-                        const assignee = assigneeOptions.find(a => a.id === id);
-                        return { id, name: assignee?.username || id };
-                      })
-                    : task.assignee
-                      ? [{
-                          id: task.assignee,
-                          name: assigneeOptions.find(a => a.id === task.assignee)?.username || task.assignee
-                        }]
-                      : []
-                }
-                size="md"
-              />
-            </div>
-            {isLoadingAssignees ? (
-              <div className="text-sm text-text-secondary">{t('common:loading')}</div>
-            ) : (
-              <InlineEdit
-                key={`assignee-${task.id}-${(task.assignees?.[0] || task.assignee)}`}
-                value={(() => {
-                  const currentAssigneeId = task.assignees?.[0] || task.assignee;
-                  return assigneeOptions.find(a => a.id === currentAssigneeId)?.username || '';
-                })()}
-                onSave={(value) => {
-                  // 根据用户名找到对应的用户ID
-                  const selectedAssignee = assigneeOptions.find(a => a.username === value);
-                  const assigneeId = selectedAssignee?.id || null;
-                  const currentAssigneeId = task.assignees?.[0] || task.assignee;
-                  if (assigneeId !== currentAssigneeId) {
-                    // 后端使用 assignees 数组
-                    return onUpdate('assignees', assigneeId ? [assigneeId] : []);
-                  }
-                  return Promise.resolve();
-                }}
-                type="select"
-                options={[
-                  { value: '', label: t('task:placeholders.assignee', { defaultValue: '未分配' }) },
-                  ...assigneeOptions.map((a) => ({ value: a.username, label: a.username }))
-                ]}
-                placeholder={t('task:placeholders.assignee')}
-              />
-            )}
+            <MultiAssigneeSelector
+              assigneeOptions={assigneeOptions}
+              selectedIds={task.assignees || (task.assignee ? [task.assignee] : [])}
+              onChange={(ids) => onUpdate('assignees', ids)}
+              isLoading={isLoadingAssignees}
+            />
           </div>
 
           {/* 截止日期 */}
@@ -515,9 +476,8 @@ const ActionsTab: React.FC<{
     await onUpdate('priority', priority);
   };
 
-  const handleAssigneeChange = async (assignee: string | null) => {
-    // 后端使用 assignees 数组，需要转换
-    await onUpdate('assignees', assignee ? [assignee] : []);
+  const handleAssigneesChange = async (assignees: string[]) => {
+    await onUpdate('assignees', assignees);
   };
 
   const handleDuplicate = async () => {
@@ -550,7 +510,7 @@ const ActionsTab: React.FC<{
           columns={columns}
           onStatusChange={handleStatusChange}
           onPriorityChange={handlePriorityChange}
-          onAssigneeChange={handleAssigneeChange}
+          onAssigneesChange={handleAssigneesChange}
           onDuplicate={handleDuplicate}
           onDelete={handleDelete}
           isLoading={isSaving}

@@ -306,30 +306,50 @@ export class PermissionService {
         return false;
       }
 
-      // 获取成员对该项目的权限
-      const permission = await prisma.projectPermission.findUnique({
-        where: {
-          projectId_memberId: {
-            projectId,
-            memberId: member.id,
-          },
-        },
-      });
+      const memberRole = member.role.toLowerCase();
 
-      if (!permission) {
-        return false;
+      // 访客（guest）必须有明确的权限记录才能访问
+      if (memberRole === 'guest') {
+        const permission = await prisma.projectPermission.findUnique({
+          where: {
+            projectId_memberId: {
+              projectId,
+              memberId: member.id,
+            },
+          },
+        });
+
+        // 访客只能有查看权限，不能有编辑权限
+        if (!permission || permission.permission !== ProjectPermissionType.VIEW) {
+          return false;
+        }
+
+        // 访客即使有权限记录，也只能查看，不能编辑
+        return requiredPermission === ProjectPermissionType.VIEW;
       }
 
-      // 检查权限级别
+      // admin 角色拥有所有权限
+      if (memberRole === 'admin') {
+        return true;
+      }
+
+      // 普通成员（member）默认拥有查看权限
       if (requiredPermission === ProjectPermissionType.VIEW) {
-        // VIEW 权限：拥有 VIEW 或 EDIT 都可以
-        return (
-          permission.permission === ProjectPermissionType.VIEW ||
-          permission.permission === ProjectPermissionType.EDIT
-        );
-      } else if (requiredPermission === ProjectPermissionType.EDIT) {
-        // EDIT 权限：必须拥有 EDIT
-        return permission.permission === ProjectPermissionType.EDIT;
+        return true;
+      }
+
+      // 对于编辑权限，检查是否有明确的权限记录
+      if (requiredPermission === ProjectPermissionType.EDIT) {
+        const permission = await prisma.projectPermission.findUnique({
+          where: {
+            projectId_memberId: {
+              projectId,
+              memberId: member.id,
+            },
+          },
+        });
+
+        return permission?.permission === ProjectPermissionType.EDIT;
       }
     }
 
@@ -466,16 +486,27 @@ export class PermissionService {
         return false;
       }
 
-      // 对于团队成员，根据权限类型判断
-      // 活跃的团队成员默认有查看权限
+      const memberRole = member.role.toLowerCase();
+
+      // 访客（guest）对工作区没有任何默认权限
+      // 工作区级别不支持单独授权，访客需要通过项目权限访问
+      if (memberRole === 'guest') {
+        return false;
+      }
+
+      // admin 角色拥有所有权限
+      if (memberRole === 'admin') {
+        return true;
+      }
+
+      // 普通成员（member）默认有查看权限
       if (requiredPermission === ProjectPermissionType.VIEW) {
         return true;
       }
 
-      // 对于编辑权限，检查团队成员角色
-      // admin 角色拥有编辑权限，普通 member 只有查看权限
+      // 对于编辑权限，普通成员没有
       if (requiredPermission === ProjectPermissionType.EDIT) {
-        return member.role === 'admin';
+        return false;
       }
     }
 
