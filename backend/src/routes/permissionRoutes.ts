@@ -87,6 +87,51 @@ export default async function permissionRoutes(fastify: FastifyInstance) {
           userId
         );
 
+        // 获取成员信息和项目信息，用于发送通知
+        const member = await prisma.teamMember.findUnique({
+          where: { id: validatedData.memberId },
+          include: { user: true },
+        });
+
+        const project = await prisma.project.findUnique({
+          where: { id: projectId },
+        });
+
+        if (member && project) {
+          // 发送权限变更通知给成员
+          const { NotificationService } = await import('../services/notificationService');
+          const notificationService = new NotificationService();
+
+          const permissionText = validatedData.permission === 'VIEW' ? '查看' : '编辑';
+          await notificationService.createNotification({
+            userId: member.userId,
+            type: 'permission_changed' as any,
+            title: '项目权限变更',
+            content: `您在项目"${project.name}"中的权限已更新为：${permissionText}权限`,
+            resourceType: 'project' as any,
+            resourceId: projectId,
+          });
+
+          // WebSocket 推送通知
+          const io = fastify.io;
+          if (io) {
+            io.to(`user:${member.userId}`).emit('notification_received', {
+              type: 'permission_changed',
+              title: '项目权限变更',
+              content: `您在项目"${project.name}"中的权限已更新为：${permissionText}权限`,
+            });
+          }
+        }
+
+        // WebSocket 广播权限授予事件
+        const io = fastify.io;
+        if (io) {
+          io.emit('project_permission_granted', {
+            projectId,
+            permission,
+          });
+        }
+
         reply.send({
           success: true,
           data: permission,
@@ -152,6 +197,52 @@ export default async function permissionRoutes(fastify: FastifyInstance) {
           validatedData.permission
         );
 
+        // 获取权限详情，用于发送通知
+        const permissionWithDetails = await prisma.projectPermission.findUnique({
+          where: { id: permissionId },
+          include: {
+            member: {
+              include: { user: true },
+            },
+            project: true,
+          },
+        });
+
+        if (permissionWithDetails) {
+          // 发送权限变更通知给成员
+          const { NotificationService } = await import('../services/notificationService');
+          const notificationService = new NotificationService();
+
+          const permissionText = validatedData.permission === 'VIEW' ? '查看' : '编辑';
+          await notificationService.createNotification({
+            userId: permissionWithDetails.member.userId,
+            type: 'permission_changed' as any,
+            title: '项目权限变更',
+            content: `您在项目"${permissionWithDetails.project.name}"中的权限已更新为：${permissionText}权限`,
+            resourceType: 'project' as any,
+            resourceId: permissionWithDetails.projectId,
+          });
+
+          // WebSocket 推送通知
+          const io = fastify.io;
+          if (io) {
+            io.to(`user:${permissionWithDetails.member.userId}`).emit('notification_received', {
+              type: 'permission_changed',
+              title: '项目权限变更',
+              content: `您在项目"${permissionWithDetails.project.name}"中的权限已更新为：${permissionText}权限`,
+            });
+          }
+        }
+
+        // WebSocket 广播权限更新事件
+        const io = fastify.io;
+        if (io) {
+          io.emit('project_permission_updated', {
+            permissionId,
+            permission,
+          });
+        }
+
         reply.send({
           success: true,
           data: permission,
@@ -199,9 +290,54 @@ export default async function permissionRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       try {
-        const { permissionId } = request.params;
+        const { projectId, permissionId } = request.params;
+
+        // 在删除前获取权限详情，用于发送通知
+        const permissionWithDetails = await prisma.projectPermission.findUnique({
+          where: { id: permissionId },
+          include: {
+            member: {
+              include: { user: true },
+            },
+            project: true,
+          },
+        });
 
         await permissionService.removeProjectPermission(permissionId);
+
+        if (permissionWithDetails) {
+          // 发送权限撤销通知给成员
+          const { NotificationService } = await import('../services/notificationService');
+          const notificationService = new NotificationService();
+
+          await notificationService.createNotification({
+            userId: permissionWithDetails.member.userId,
+            type: 'permission_changed' as any,
+            title: '项目权限变更',
+            content: `您在项目"${permissionWithDetails.project.name}"中的权限已被撤销`,
+            resourceType: 'project' as any,
+            resourceId: permissionWithDetails.projectId,
+          });
+
+          // WebSocket 推送通知
+          const io = fastify.io;
+          if (io) {
+            io.to(`user:${permissionWithDetails.member.userId}`).emit('notification_received', {
+              type: 'permission_changed',
+              title: '项目权限变更',
+              content: `您在项目"${permissionWithDetails.project.name}"中的权限已被撤销`,
+            });
+          }
+        }
+
+        // WebSocket 广播权限移除事件
+        const io = fastify.io;
+        if (io) {
+          io.emit('project_permission_revoked', {
+            projectId,
+            permissionId,
+          });
+        }
 
         reply.send({
           success: true,

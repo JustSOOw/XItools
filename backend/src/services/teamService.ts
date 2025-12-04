@@ -715,6 +715,27 @@ export class TeamService {
       });
 
       invitations.push(invitation as TeamInvitationDTO);
+
+      // 如果被邀请的用户已存在，发送在线通知
+      if (existingUser) {
+        try {
+          const { NotificationService } = await import('./notificationService');
+          const notificationService = new NotificationService();
+
+          await notificationService.createNotification({
+            userId: existingUser.id,
+            type: 'team_invitation' as any,
+            title: '团队邀请',
+            content: `您收到了加入团队"${team.name}"的邀请`,
+            resourceType: 'invitation' as any,
+            resourceId: invitation.id,
+          });
+
+          console.log(`[TeamService] 在线通知已发送给用户 ${existingUser.id}`);
+        } catch (error) {
+          console.error('[TeamService] 发送在线通知失败:', error);
+        }
+      }
     }
 
     // 发送邀请邮件
@@ -800,7 +821,7 @@ export class TeamService {
   async acceptInvitation(
     invitationId: string,
     userId: string
-  ): Promise<void> {
+  ): Promise<{ teamId: string }> {
     // 获取邀请信息
     const invitation = await prisma.teamInvitation.findUnique({
       where: { id: invitationId },
@@ -931,6 +952,8 @@ export class TeamService {
       console.error('[TeamService] 发送团队成员加入通知邮件失败:', error);
       // 不中断流程，邮件发送失败不影响加入团队
     }
+
+    return { teamId: invitation.teamId };
   }
 
   /**
@@ -939,7 +962,7 @@ export class TeamService {
   async rejectInvitation(
     invitationId: string,
     userId: string
-  ): Promise<void> {
+  ): Promise<{ teamId: string }> {
     // 获取邀请信息
     const invitation = await prisma.teamInvitation.findUnique({
       where: { id: invitationId },
@@ -971,6 +994,8 @@ export class TeamService {
         invitedUserId: userId,
       },
     });
+
+    return { teamId: invitation.teamId };
   }
 
   /**
@@ -980,7 +1005,7 @@ export class TeamService {
   async cancelInvitation(
     invitationId: string,
     userId: string
-  ): Promise<void> {
+  ): Promise<{ teamId: string }> {
     // 获取邀请信息
     const invitation = await prisma.teamInvitation.findUnique({
       where: { id: invitationId },
@@ -1023,6 +1048,8 @@ export class TeamService {
         cancelledAt: new Date(),
       },
     });
+
+    return { teamId: invitation.team.id };
   }
 
   /**

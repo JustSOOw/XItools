@@ -32,6 +32,7 @@ interface TeamState {
   updateTeam: (id: string, data: UpdateTeamInput) => Promise<void>;
   dissolveTeam: (id: string) => Promise<void>;
   selectTeam: (team: Team | null) => void;
+  setCurrentTeam: (team: Team | null) => void; // 新增：仅更新currentTeam，不触发其他操作
   leaveTeam: (id: string) => Promise<void>;
 
   fetchMembers: (teamId: string) => Promise<void>;
@@ -157,6 +158,7 @@ export const useTeamStore = create<TeamState>()(
 
       /**
        * 选择团队（设置当前团队）
+       * 会触发成员和邀请列表的加载
        */
       selectTeam: (team) => {
         set({ currentTeam: team });
@@ -164,6 +166,14 @@ export const useTeamStore = create<TeamState>()(
           get().fetchMembers(team.id);
           get().fetchInvitations(team.id);
         }
+      },
+
+      /**
+       * 设置当前团队（仅更新状态，不触发其他操作）
+       * 用于WebSocket实时更新
+       */
+      setCurrentTeam: (team) => {
+        set({ currentTeam: team });
       },
 
       /**

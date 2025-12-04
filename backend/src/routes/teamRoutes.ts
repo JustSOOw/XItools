@@ -207,6 +207,15 @@ export default async function teamRoutes(fastify: FastifyInstance) {
 
         const team = await teamService.updateTeam(teamId, userId, validatedData);
 
+        // WebSocket 广播团队信息更新事件
+        const io = fastify.io;
+        if (io) {
+          io.emit('team_updated', {
+            teamId,
+            team,
+          });
+        }
+
         reply.send({
           success: true,
           data: team,
@@ -247,6 +256,14 @@ export default async function teamRoutes(fastify: FastifyInstance) {
         const userId = request.user!.userId;
 
         await teamService.dissolveTeam(teamId, userId);
+
+        // WebSocket 广播团队解散事件
+        const io = fastify.io;
+        if (io) {
+          io.emit('team_dissolved', {
+            teamId,
+          });
+        }
 
         reply.send({
           success: true,
@@ -368,7 +385,50 @@ export default async function teamRoutes(fastify: FastifyInstance) {
         const { teamId, memberId } = request.params;
         const userId = request.user!.userId;
 
+        // 在移除前获取成员信息和团队信息，用于发送通知
+        const member = await prisma.teamMember.findUnique({
+          where: { id: memberId },
+          include: {
+            user: true,
+            team: true,
+          },
+        });
+
         await teamService.removeMember(teamId, memberId, userId);
+
+        if (member) {
+          // 发送成员移除通知
+          const { NotificationService } = await import('../services/notificationService');
+          const notificationService = new NotificationService();
+
+          await notificationService.createNotification({
+            userId: member.userId,
+            type: 'member_left' as any,
+            title: '已从团队移除',
+            content: `您已被从团队"${member.team.name}"中移除`,
+            resourceType: 'team' as any,
+            resourceId: teamId,
+          });
+
+          // WebSocket 推送通知
+          const io = fastify.io;
+          if (io) {
+            io.to(`user:${member.userId}`).emit('notification_received', {
+              type: 'member_left',
+              title: '已从团队移除',
+              content: `您已被从团队"${member.team.name}"中移除`,
+            });
+          }
+        }
+
+        // WebSocket 广播成员移除事件
+        const io = fastify.io;
+        if (io) {
+          io.emit('team_member_removed', {
+            teamId,
+            memberId,
+          });
+        }
 
         reply.send({
           success: true,
@@ -431,6 +491,52 @@ export default async function teamRoutes(fastify: FastifyInstance) {
           validatedData
         );
 
+        // 获取团队信息和成员信息，用于发送通知
+        const { PrismaClient } = await import('@prisma/client');
+        const prisma = new PrismaClient();
+        const memberWithDetails = await prisma.teamMember.findUnique({
+          where: { id: memberId },
+          include: {
+            user: true,
+            team: true,
+          },
+        });
+        await prisma.$disconnect();
+
+        // 发送角色变更通知
+        if (memberWithDetails) {
+          const { NotificationService } = await import('../services/notificationService');
+          const notificationService = new NotificationService();
+
+          const roleText = validatedData.role === 'admin' ? '管理员' : validatedData.role === 'member' ? '成员' : '访客';
+          await notificationService.createNotification({
+            userId: memberWithDetails.userId,
+            type: 'role_changed' as any,
+            title: '团队角色变更',
+            content: `您在团队"${memberWithDetails.team.name}"的角色已变更为${roleText}`,
+            resourceType: 'team' as any,
+            resourceId: teamId,
+          });
+
+          // WebSocket 推送通知
+          const io = fastify.io;
+          if (io) {
+            io.to(`user:${memberWithDetails.userId}`).emit('notification_received', {
+              type: 'role_changed',
+              title: '团队角色变更',
+              content: `您在团队"${memberWithDetails.team.name}"的角色已变更为${roleText}`,
+            });
+
+            // 广播成员角色变更事件
+            io.emit('team_member_role_changed', {
+              teamId,
+              memberId,
+              role: validatedData.role,
+              member: updatedMember,
+            });
+          }
+        }
+
         reply.send({
           success: true,
           data: updatedMember,
@@ -491,6 +597,37 @@ export default async function teamRoutes(fastify: FastifyInstance) {
           userId,
           validatedData
         );
+
+        // 获取团队信息
+        const team = await prisma.team.findUnique({
+          where: { id: teamId },
+        });
+
+        // 为每个被邀请的已注册用户发送WebSocket通知
+        const io = fastify.io;
+        if (io && team) {
+          for (const invitation of invitations) {
+            if (invitation.invitedUserId) {
+              // 发送WebSocket通知
+              io.to(`user:${invitation.invitedUserId}`).emit('notification_received', {
+                type: 'team_invitation',
+                title: '团队邀请',
+                content: `您收到了加入团队"${team.name}"的邀请`,
+                resourceType: 'invitation',
+                resourceId: invitation.id,
+              });
+            }
+          }
+        }
+
+        // WebSocket 广播邀请发送事件
+        if (io) {
+          io.emit('team_invitations_sent', {
+            teamId,
+            invitations,
+            count: invitations.length,
+          });
+        }
 
         reply.status(201).send({
           success: true,

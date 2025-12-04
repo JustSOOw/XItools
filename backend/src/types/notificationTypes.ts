@@ -11,6 +11,8 @@ export enum NotificationType {
   PERMISSION_CHANGED = 'permission_changed',   // 权限变更
   MEMBER_JOINED = 'member_joined',             // 成员加入
   MEMBER_LEFT = 'member_left',                 // 成员离开
+  ROLE_CHANGED = 'role_changed',               // 团队角色变更
+  TASK_STATUS_CHANGED = 'task_status_changed', // 任务状态变更
 }
 
 /**
@@ -156,5 +158,17 @@ export const NOTIFICATION_TEMPLATES = {
     title: '成员离开',
     contentTemplate: (data: { userName: string; teamName: string }) =>
       `${data.userName} 离开了团队"${data.teamName}"`,
+  },
+  [NotificationType.ROLE_CHANGED]: {
+    title: '团队角色变更',
+    contentTemplate: (data: { teamName: string; role: string }) =>
+      `您在团队"${data.teamName}"的角色已变更为${data.role === 'admin' ? '管理员' : data.role === 'member' ? '成员' : '访客'}`,
+  },
+  [NotificationType.TASK_STATUS_CHANGED]: {
+    title: '任务状态变更',
+    contentTemplate: (data: { taskTitle: string; status: string; updaterName?: string }) =>
+      data.updaterName
+        ? `${data.updaterName} 更新了任务"${data.taskTitle}"的状态`
+        : `任务"${data.taskTitle}"的状态已更新`,
   },
 };

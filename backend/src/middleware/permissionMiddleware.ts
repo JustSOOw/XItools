@@ -475,3 +475,64 @@ export async function requireProjectAdmin(
     });
   }
 }
+
+/**
+ * 创建工作区访问验证中间件
+ * 支持工作区所有者和团队成员访问
+ * @param requiredPermission 所需权限类型，默认为VIEW
+ */
+export function createWorkspaceAccessVerifier(requiredPermission: ProjectPermissionType = ProjectPermissionType.VIEW) {
+  return async (
+    request: FastifyRequest<{ Params: { workspaceId: string } }>,
+    reply: FastifyReply
+  ) => {
+    try {
+      const userId = request.user?.userId;
+
+      if (!userId) {
+        return reply.status(401).send({
+          success: false,
+          error: '未认证',
+        });
+      }
+
+      const { workspaceId } = request.params;
+
+      if (!workspaceId) {
+        return reply.status(400).send({
+          success: false,
+          error: '缺少工作区ID',
+        });
+      }
+
+      // 检查工作区权限
+      const hasPermission = await permissionService.checkWorkspacePermission(
+        userId,
+        workspaceId,
+        requiredPermission
+      );
+
+      if (!hasPermission) {
+        const permissionName = requiredPermission === ProjectPermissionType.VIEW
+          ? '查看'
+          : '编辑';
+
+        return reply.status(403).send({
+          success: false,
+          error: `您没有${permissionName}该工作区的权限`,
+        });
+      }
+
+      // 将工作区ID添加到请求上下文中
+      (request as any).workspaceId = workspaceId;
+
+      // 通过验证，继续处理请求
+    } catch (error) {
+      console.error('工作区权限验证错误:', error);
+      return reply.status(500).send({
+        success: false,
+        error: '权限验证失败',
+      });
+    }
+  };
+}

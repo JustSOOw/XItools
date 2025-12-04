@@ -8,7 +8,8 @@ import { taskHistoryService } from '../services/taskHistoryService';
 import { extendedTaskSchema, extendedTaskUpdateSchema } from '../types/multiBoardSchema';
 import { authMiddleware, requireAuth, createOwnershipVerifier } from '../middleware/authMiddleware';
 import {
-  createOwnershipOrPermissionVerifier
+  createOwnershipOrPermissionVerifier,
+  createWorkspaceAccessVerifier
 } from '../middleware/permissionMiddleware';
 import { ProjectPermissionType } from '../types/teamTypes';
 
@@ -53,11 +54,11 @@ export default async function taskRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // 获取指定工作区的所有任务（需要验证工作区所有权）
+  // 获取指定工作区的所有任务（需要验证工作区访问权限，支持团队成员）
   fastify.get(
     '/workspaces/:workspaceId/tasks',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('workspace')],
+      preHandler: [authMiddleware, createWorkspaceAccessVerifier(ProjectPermissionType.VIEW)],
     },
     async (request, reply) => {
       try {
@@ -181,7 +182,67 @@ export default async function taskRoutes(fastify: FastifyInstance) {
       try {
         const { id } = request.params as { id: string };
         const updateData = extendedTaskUpdateSchema.parse(request.body);
+
+        // 获取旧任务数据（用于比较assignees变化）
+        const oldTask = await taskService.getTaskById(id);
+        if (!oldTask) {
+          reply.status(404);
+          return { success: false, error: '任务不存在' };
+        }
+
         const task = await taskService.updateTask(id, updateData, request.user!.userId);
+
+        // 检测assignees变更并发送通知
+        if (updateData.assignees && Array.isArray(updateData.assignees)) {
+          const oldAssignees = new Set(oldTask.assignees || []);
+          const newAssignees = new Set(updateData.assignees);
+
+          // 找出新增的负责人
+          const addedAssignees = Array.from(newAssignees).filter(id => !oldAssignees.has(id));
+
+          if (addedAssignees.length > 0) {
+            const { NotificationService } = await import('../services/notificationService');
+            const notificationService = new NotificationService();
+            const assignerId = request.user!.userId;
+
+            // 获取分配者信息
+            const { PrismaClient } = await import('@prisma/client');
+            const prisma = new PrismaClient();
+            const assigner = await prisma.user.findUnique({
+              where: { id: assignerId },
+              select: { username: true },
+            });
+            await prisma.$disconnect();
+
+            // 为每个新增的负责人发送通知
+            for (const userId of addedAssignees) {
+              await notificationService.createNotification({
+                userId,
+                type: 'task_assigned' as any,
+                title: '任务分配给您',
+                content: assigner
+                  ? `${assigner.username} 将任务"${task.title}"分配给您`
+                  : `任务"${task.title}"已分配给您`,
+                resourceType: 'task' as any,
+                resourceId: id,
+              });
+
+              // WebSocket 推送通知
+              const io = fastify.io;
+              if (io) {
+                io.to(`user:${userId}`).emit('notification_received', {
+                  type: 'task_assigned',
+                  title: '任务分配给您',
+                  content: assigner
+                    ? `${assigner.username} 将任务"${task.title}"分配给您`
+                    : `任务"${task.title}"已分配给您`,
+                  resourceType: 'task',
+                  resourceId: id,
+                });
+              }
+            }
+          }
+        }
 
         // 广播任务更新事件
         const io = fastify.io;
@@ -265,14 +326,53 @@ export default async function taskRoutes(fastify: FastifyInstance) {
 
         const updatedTask = await taskService.assignTask(id, userIds);
 
+        // 发送任务分配通知给新分配的负责人
+        const { NotificationService } = await import('../services/notificationService');
+        const notificationService = new NotificationService();
+        const assignerId = request.user!.userId;
+
+        // 获取分配者信息
+        const { PrismaClient } = await import('@prisma/client');
+        const prisma = new PrismaClient();
+        const assigner = await prisma.user.findUnique({
+          where: { id: assignerId },
+          select: { username: true },
+        });
+        await prisma.$disconnect();
+
+        // 为每个新分配的负责人发送通知
+        for (const userId of userIds) {
+          await notificationService.createNotification({
+            userId,
+            type: 'task_assigned' as any,
+            title: '任务分配给您',
+            content: assigner
+              ? `${assigner.username} 将任务"${updatedTask.title}"分配给您`
+              : `任务"${updatedTask.title}"已分配给您`,
+            resourceType: 'task' as any,
+            resourceId: id,
+          });
+
+          // WebSocket 推送通知
+          const io = fastify.io;
+          if (io) {
+            io.to(`user:${userId}`).emit('notification_received', {
+              type: 'task_assigned',
+              title: '任务分配给您',
+              content: assigner
+                ? `${assigner.username} 将任务"${updatedTask.title}"分配给您`
+                : `任务"${updatedTask.title}"已分配给您`,
+              resourceType: 'task',
+              resourceId: id,
+            });
+          }
+        }
+
         // 广播任务更新事件
         const io = fastify.io;
         if (io) {
           io.emit('task_updated', updatedTask);
         }
-
-        // TODO: 发送通知给新分配的负责人
-        // await notificationService.notifyTaskAssigned(updatedTask, userIds);
 
         return { success: true, data: updatedTask };
       } catch (error) {

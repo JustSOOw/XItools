@@ -9,18 +9,19 @@ import { boardSchema, boardUpdateSchema, reorderSchema } from '../types/multiBoa
 import { authMiddleware, requireAuth, createOwnershipVerifier } from '../middleware/authMiddleware';
 import {
   createOwnershipOrPermissionVerifier,
-  requireProjectEdit
+  requireProjectEdit,
+  createWorkspaceAccessVerifier
 } from '../middleware/permissionMiddleware';
 import { ProjectPermissionType } from '../types/teamTypes';
 
 const prisma = new PrismaClient();
 
 export default async function boardRoutes(fastify: FastifyInstance) {
-  // 获取工作区下的所有看板（需要验证工作区所有权）
+  // 获取工作区下的所有看板（需要验证工作区访问权限，支持团队成员）
   fastify.get(
     '/workspaces/:workspaceId/boards',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('workspace')],
+      preHandler: [authMiddleware, createWorkspaceAccessVerifier(ProjectPermissionType.VIEW)],
     },
     async (request, reply) => {
       try {
@@ -99,6 +100,20 @@ export default async function boardRoutes(fastify: FastifyInstance) {
           return { success: false, error: '您没有在该项目中创建看板的权限' };
         }
       }
+      // 检查用户是否对工作区有编辑权限（工作区直属看板）
+      else if (boardData.workspaceId) {
+        const { permissionService } = await import('../services/permissionService');
+        const hasPermission = await permissionService.checkWorkspacePermission(
+          userId,
+          boardData.workspaceId,
+          ProjectPermissionType.EDIT
+        );
+
+        if (!hasPermission) {
+          reply.status(403);
+          return { success: false, error: '您没有在该工作区中创建看板的权限' };
+        }
+      }
 
       const board = await boardService.createBoard(boardData, userId);
 
@@ -173,11 +188,11 @@ export default async function boardRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // 移动看板
+  // 移动看板（需要编辑权限，支持团队管理员）
   fastify.post(
     '/boards/:id/move',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('board')],
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.EDIT)],
     },
     async (request, reply) => {
       try {
@@ -205,11 +220,11 @@ export default async function boardRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // 重新排序看板（工作区下）
+  // 重新排序看板（工作区下，需要编辑权限，支持团队管理员）
   fastify.post(
     '/workspaces/:workspaceId/boards/reorder',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('workspace')],
+      preHandler: [authMiddleware, createWorkspaceAccessVerifier(ProjectPermissionType.EDIT)],
     },
     async (request, reply) => {
       try {
@@ -235,11 +250,11 @@ export default async function boardRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // 重新排序看板（项目下）
+  // 重新排序看板（项目下，需要编辑权限，支持团队管理员）
   fastify.post(
     '/projects/:projectId/boards/reorder',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('project')],
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.EDIT)],
     },
     async (request, reply) => {
       try {
@@ -298,11 +313,11 @@ export default async function boardRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // 获取看板统计信息
+  // 获取看板统计信息（需要查看权限，支持团队成员）
   fastify.get(
     '/boards/:id/stats',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('board')],
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.VIEW)],
     },
     async (request, reply) => {
       try {
