@@ -68,6 +68,9 @@ ENTRYPOINT ["docker-entrypoint.sh"]
 # 阶段4: 构建阶段
 FROM dependencies AS build
 
+# 设置Node.js内存限制，防止TypeScript编译时内存溢出
+ENV NODE_OPTIONS=--max-old-space-size=4096
+
 # 复制源代码
 COPY . .
 

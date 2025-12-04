@@ -18,9 +18,16 @@ import { z } from 'zod';
 
 /**
  * 团队角色枚举
+ * OWNER - 所有者（团队创建者，不可更改）
+ * ADMIN - 管理员（可以管理成员和邀请）
+ * MEMBER - 成员（可以查看和编辑分配的项目）
+ * GUEST - 访客（只读权限）
  */
 export enum TeamRole {
+  OWNER = 'owner',
+  ADMIN = 'admin',
   MEMBER = 'member',
+  GUEST = 'guest',
 }
 
 /**
@@ -64,6 +71,33 @@ export enum NotificationType {
 }
 
 // ================================
+// 自定义验证器
+// ================================
+
+/**
+ * 头像字段验证器
+ * 支持两种格式:
+ * 1. 标准 URL (https://...)
+ * 2. Base64 数据 URL (data:image/...)
+ */
+const avatarSchema = z.string().refine(
+  (val) => {
+    // 如果为空或未定义，通过验证（optional 会处理）
+    if (!val) return true;
+    // 检查是否为 Base64 数据 URL
+    if (val.startsWith('data:image/')) return true;
+    // 检查是否为有效 URL
+    try {
+      new URL(val);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  { message: '头像必须是有效的 URL 或 Base64 图片数据' }
+).optional();
+
+// ================================
 // Zod 验证 Schemas
 // ================================
 
@@ -73,7 +107,7 @@ export enum NotificationType {
 export const createTeamSchema = z.object({
   name: z.string().trim().min(1, '团队名称不能为空').max(100, '团队名称不能超过100个字符'),
   description: z.string().trim().max(500, '团队描述不能超过500个字符').optional(),
-  avatar: z.string().url('头像URL格式不正确').optional(),
+  avatar: avatarSchema,
 });
 
 export type CreateTeamInput = z.infer<typeof createTeamSchema>;
@@ -84,7 +118,7 @@ export type CreateTeamInput = z.infer<typeof createTeamSchema>;
 export const updateTeamSchema = z.object({
   name: z.string().trim().min(1, '团队名称不能为空').max(100, '团队名称不能超过100个字符').optional(),
   description: z.string().trim().max(500, '团队描述不能超过500个字符').optional(),
-  avatar: z.string().url('头像URL格式不正确').optional(),
+  avatar: avatarSchema,
 });
 
 export type UpdateTeamInput = z.infer<typeof updateTeamSchema>;
@@ -117,6 +151,18 @@ export const rejectInvitationSchema = z.object({
 });
 
 export type RejectInvitationInput = z.infer<typeof rejectInvitationSchema>;
+
+/**
+ * 更新成员角色的验证 schema
+ * 注意：不能将成员角色更新为 OWNER，OWNER 只能通过转让所有权设置
+ */
+export const updateMemberRoleSchema = z.object({
+  role: z.enum([TeamRole.ADMIN, TeamRole.MEMBER, TeamRole.GUEST], {
+    errorMap: () => ({ message: '角色必须为 admin、member 或 guest' }),
+  }),
+});
+
+export type UpdateMemberRoleInput = z.infer<typeof updateMemberRoleSchema>;
 
 /**
  * 设置项目权限的验证 schema

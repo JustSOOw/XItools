@@ -143,26 +143,33 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onClick, onColorChange, onDel
                 )}
               </div>
 
-              {/* 任务ID */}
-              <span className="text-xs text-text-secondary">{task.id.substring(0, 6)}</span>
-            </div>
+              {/* 右侧：负责人头像 + 任务ID */}
+              <div className="flex items-center gap-2">
+                {/* 负责人头像 - 使用后端提供的 assigneeDetails */}
+                {(task.assigneeDetails?.length || task.assignees?.length || task.assignee) && (
+                  <TaskAssigneeStack
+                    assignees={
+                      task.assigneeDetails && task.assigneeDetails.length > 0
+                        ? task.assigneeDetails.map(detail => ({
+                            id: detail.id,
+                            name: detail.username,
+                            avatarUrl: detail.avatar || undefined,
+                          }))
+                        : task.assignees
+                          ? task.assignees.map(id => ({ id, name: id }))
+                          : task.assignee
+                            ? [{ id: task.assignee, name: task.assignee }]
+                            : []
+                    }
+                    size="sm"
+                    maxDisplay={2}
+                  />
+                )}
 
-            {/* 负责人 */}
-            {(task.assignees?.length || task.assignee) && (
-              <div className="mt-1.5">
-                <TaskAssigneeStack
-                  assignees={
-                    task.assignees
-                      ? task.assignees.map(id => ({ id, name: id })) // Map string IDs to objects
-                      : task.assignee
-                        ? [{ id: task.assignee, name: task.assignee }]
-                        : []
-                  }
-                  size="sm"
-                  maxDisplay={3}
-                />
+                {/* 任务ID */}
+                <span className="text-xs text-text-secondary">{task.id.substring(0, 6)}</span>
               </div>
-            )}
+            </div>
           </div>
         </Card>
       </CardAnimation>

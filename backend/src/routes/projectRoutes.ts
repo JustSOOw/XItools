@@ -8,16 +8,17 @@ import { projectSchema, projectUpdateSchema, reorderSchema } from '../types/mult
 import { authMiddleware, requireAuth, createOwnershipVerifier } from '../middleware/authMiddleware';
 import {
   createOwnershipOrPermissionVerifier,
-  requireProjectAdmin
+  requireProjectAdmin,
+  createWorkspaceAccessVerifier
 } from '../middleware/permissionMiddleware';
 import { ProjectPermissionType } from '../types/teamTypes';
 
 export default async function projectRoutes(fastify: FastifyInstance) {
-  // 获取工作区下的所有项目（需要验证工作区所有权）
+  // 获取工作区下的所有项目（需要验证工作区访问权限，支持团队成员）
   fastify.get(
     '/workspaces/:workspaceId/projects',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('workspace')],
+      preHandler: [authMiddleware, createWorkspaceAccessVerifier(ProjectPermissionType.VIEW)],
     },
     async (request, reply) => {
       try {
@@ -73,7 +74,9 @@ export default async function projectRoutes(fastify: FastifyInstance) {
       return { success: true, data: project };
     } catch (error) {
       console.error('创建项目失败:', error);
-      reply.status(500);
+      // 业务逻辑错误返回 400，服务器错误返回 500
+      const statusCode = error instanceof Error && error.message.includes('已存在') ? 400 : 500;
+      reply.status(statusCode);
       return { success: false, error: error instanceof Error ? error.message : '创建项目失败' };
     }
   });
@@ -99,7 +102,9 @@ export default async function projectRoutes(fastify: FastifyInstance) {
         return { success: true, data: project };
       } catch (error) {
         console.error('更新项目失败:', error);
-        reply.status(500);
+        // 业务逻辑错误返回 400，服务器错误返回 500
+        const statusCode = error instanceof Error && error.message.includes('已存在') ? 400 : 500;
+        reply.status(statusCode);
         return { success: false, error: error instanceof Error ? error.message : '更新项目失败' };
       }
     },
@@ -135,7 +140,7 @@ export default async function projectRoutes(fastify: FastifyInstance) {
   fastify.post(
     '/workspaces/:workspaceId/projects/reorder',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('workspace')],
+      preHandler: [authMiddleware, createWorkspaceAccessVerifier(ProjectPermissionType.EDIT)],
     },
     async (request, reply) => {
       try {

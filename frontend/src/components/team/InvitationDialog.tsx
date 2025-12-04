@@ -1,10 +1,20 @@
+/*
+ * @Author: wang22338014 wang22338014@gmail.com
+ * @Date: 2025-11-22 17:51:21
+ * @LastEditors: wang22338014 wang22338014@gmail.com
+ * @LastEditTime: 2025-11-25 22:23:05
+ * @FilePath: /XItools/frontend/src/components/team/InvitationDialog.tsx
+ * @Description: 
+ * 
+ * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+ */
 import React, { useState } from 'react';
 import { useTeamStore } from '../../store/teamStore';
 import { useI18n } from '../../hooks/useI18n';
 import Modal from '../Modal';
 import Button from '../Button';
 
-interface InvitationDialogProps {
+export interface InvitationDialogProps {
     isOpen: boolean;
     onClose: () => void;
     teamId: string;
@@ -14,7 +24,6 @@ const InvitationDialog: React.FC<InvitationDialogProps> = ({ isOpen, onClose, te
     const { t } = useI18n();
     const { sendInvitations, isLoading } = useTeamStore();
     const [emails, setEmails] = useState('');
-    const [role, setRole] = useState<'admin' | 'member' | 'guest'>('member');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -26,7 +35,7 @@ const InvitationDialog: React.FC<InvitationDialogProps> = ({ isOpen, onClose, te
         if (emailList.length === 0) return;
 
         try {
-            await sendInvitations(teamId, emailList, role);
+            await sendInvitations(teamId, emailList);
             onClose();
             setEmails('');
         } catch (error) {
@@ -55,21 +64,6 @@ const InvitationDialog: React.FC<InvitationDialogProps> = ({ isOpen, onClose, te
                     <p className="mt-1 text-xs text-text-secondary">
                         {t('team:invitation.emailHelp', { defaultValue: '使用逗号或换行分隔多个邮箱' })}
                     </p>
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1">
-                        {t('team:invitation.defaultRole', { defaultValue: '默认角色' })}
-                    </label>
-                    <select
-                        value={role}
-                        onChange={(e) => setRole(e.target.value as any)}
-                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:ring-2 focus:ring-primary/50 outline-none"
-                    >
-                        <option value="admin">{t('team:role.admin', { defaultValue: '管理员' })}</option>
-                        <option value="member">{t('team:role.member', { defaultValue: '成员' })}</option>
-                        <option value="guest">{t('team:role.viewer', { defaultValue: '访客' })}</option>
-                    </select>
                 </div>
 
                 <div className="flex justify-end gap-3 pt-4">

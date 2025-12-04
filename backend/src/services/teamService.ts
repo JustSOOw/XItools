@@ -15,6 +15,7 @@ import {
   CreateTeamInput,
   UpdateTeamInput,
   InviteMembersInput,
+  UpdateMemberRoleInput,
   TeamError,
   TeamErrorCode,
   InvitationStatus,
@@ -63,14 +64,39 @@ export class TeamService {
       );
     }
 
-    // 创建团队
-    const team = await prisma.team.create({
-      data: {
-        name: data.name,
-        description: data.description,
-        avatar: data.avatar,
-        ownerId: userId,
-      },
+    // 使用事务创建团队、添加所有者为成员、并创建团队工作区
+    const team = await prisma.$transaction(async (tx) => {
+      // 创建团队
+      const newTeam = await tx.team.create({
+        data: {
+          name: data.name,
+          description: data.description,
+          avatar: data.avatar,
+          ownerId: userId,
+        },
+      });
+
+      // 将所有者添加为团队成员（OWNER角色）
+      await tx.teamMember.create({
+        data: {
+          teamId: newTeam.id,
+          userId: userId,
+          role: 'OWNER',
+        },
+      });
+
+      // 自动创建团队工作区
+      await tx.workspace.create({
+        data: {
+          name: `${data.name}的工作区`,
+          description: `${data.name}的团队工作区`,
+          ownerId: userId,
+          teamId: newTeam.id,
+          isDefault: false,
+        },
+      });
+
+      return newTeam;
     });
 
     return team;
@@ -404,6 +430,19 @@ export class TeamService {
       );
     }
 
+    // 检查是否尝试删除团队所有者
+    const team = await prisma.team.findUnique({
+      where: { id: teamId },
+    });
+
+    if (team && member.userId === team.ownerId) {
+      throw new TeamError(
+        TeamErrorCode.CANNOT_REMOVE_OWNER,
+        '不能移除团队创建者，如需解散团队请使用解散功能',
+        400
+      );
+    }
+
     // 删除成员记录
     await prisma.teamMember.delete({
       where: { id: memberId },
@@ -476,6 +515,96 @@ export class TeamService {
       permission: p.permission,
       grantedAt: p.createdAt,
     }));
+  }
+
+  /**
+   * 更新成员角色
+   * 只有团队所有者可以更新成员角色
+   * 不能更新所有者自己的角色
+   * 不能将任何人设置为 OWNER（OWNER 只能通过转让所有权）
+   */
+  async updateMemberRole(
+    teamId: string,
+    memberId: string,
+    operatorId: string,
+    data: UpdateMemberRoleInput
+  ): Promise<TeamMemberDTO> {
+    // 检查操作者是否为团队所有者
+    const isOwner = await this.checkTeamOwnership(teamId, operatorId);
+    if (!isOwner) {
+      throw new TeamError(
+        TeamErrorCode.NOT_TEAM_OWNER,
+        '只有团队创建者可以更新成员角色',
+        403
+      );
+    }
+
+    // 查找成员记录
+    const member = await prisma.teamMember.findUnique({
+      where: { id: memberId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            avatar: true,
+          },
+        },
+      },
+    });
+
+    if (!member) {
+      throw new TeamError(TeamErrorCode.USER_NOT_IN_TEAM, '成员不存在', 404);
+    }
+
+    // 检查成员是否属于该团队
+    if (member.teamId !== teamId) {
+      throw new TeamError(
+        TeamErrorCode.USER_NOT_IN_TEAM,
+        '该成员不属于这个团队',
+        400
+      );
+    }
+
+    // 检查是否尝试更改所有者的角色
+    const team = await prisma.team.findUnique({
+      where: { id: teamId },
+    });
+
+    if (team && member.userId === team.ownerId) {
+      throw new TeamError(
+        TeamErrorCode.CANNOT_REMOVE_OWNER,
+        '不能更改团队所有者的角色',
+        400
+      );
+    }
+
+    // 更新成员角色
+    const updatedMember = await prisma.teamMember.update({
+      where: { id: memberId },
+      data: { role: data.role },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            avatar: true,
+          },
+        },
+      },
+    });
+
+    return {
+      id: updatedMember.id,
+      role: updatedMember.role as TeamRole,
+      status: updatedMember.status as TeamMemberStatus,
+      userId: updatedMember.userId,
+      teamId: updatedMember.teamId,
+      joinedAt: updatedMember.joinedAt,
+      user: updatedMember.user,
+    };
   }
 
   /**
@@ -586,6 +715,27 @@ export class TeamService {
       });
 
       invitations.push(invitation as TeamInvitationDTO);
+
+      // 如果被邀请的用户已存在，发送在线通知
+      if (existingUser) {
+        try {
+          const { NotificationService } = await import('./notificationService');
+          const notificationService = new NotificationService();
+
+          await notificationService.createNotification({
+            userId: existingUser.id,
+            type: 'team_invitation' as any,
+            title: '团队邀请',
+            content: `您收到了加入团队"${team.name}"的邀请`,
+            resourceType: 'invitation' as any,
+            resourceId: invitation.id,
+          });
+
+          console.log(`[TeamService] 在线通知已发送给用户 ${existingUser.id}`);
+        } catch (error) {
+          console.error('[TeamService] 发送在线通知失败:', error);
+        }
+      }
     }
 
     // 发送邀请邮件
@@ -671,7 +821,7 @@ export class TeamService {
   async acceptInvitation(
     invitationId: string,
     userId: string
-  ): Promise<void> {
+  ): Promise<{ teamId: string }> {
     // 获取邀请信息
     const invitation = await prisma.teamInvitation.findUnique({
       where: { id: invitationId },
@@ -802,6 +952,8 @@ export class TeamService {
       console.error('[TeamService] 发送团队成员加入通知邮件失败:', error);
       // 不中断流程，邮件发送失败不影响加入团队
     }
+
+    return { teamId: invitation.teamId };
   }
 
   /**
@@ -810,7 +962,7 @@ export class TeamService {
   async rejectInvitation(
     invitationId: string,
     userId: string
-  ): Promise<void> {
+  ): Promise<{ teamId: string }> {
     // 获取邀请信息
     const invitation = await prisma.teamInvitation.findUnique({
       where: { id: invitationId },
@@ -842,6 +994,8 @@ export class TeamService {
         invitedUserId: userId,
       },
     });
+
+    return { teamId: invitation.teamId };
   }
 
   /**
@@ -851,7 +1005,7 @@ export class TeamService {
   async cancelInvitation(
     invitationId: string,
     userId: string
-  ): Promise<void> {
+  ): Promise<{ teamId: string }> {
     // 获取邀请信息
     const invitation = await prisma.teamInvitation.findUnique({
       where: { id: invitationId },
@@ -894,6 +1048,8 @@ export class TeamService {
         cancelledAt: new Date(),
       },
     });
+
+    return { teamId: invitation.team.id };
   }
 
   /**

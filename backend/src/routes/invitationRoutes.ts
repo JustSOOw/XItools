@@ -163,7 +163,17 @@ export default async function invitationRoutes(fastify: FastifyInstance) {
         const { invitationId } = request.params;
         const userId = request.user!.userId;
 
-        await teamService.acceptInvitation(invitationId, userId);
+        const result = await teamService.acceptInvitation(invitationId, userId);
+
+        // WebSocket 广播邀请接受事件
+        const io = fastify.io;
+        if (io) {
+          io.emit('team_invitation_accepted', {
+            invitationId,
+            teamId: result.teamId,
+            userId,
+          });
+        }
 
         reply.send({
           success: true,
@@ -213,7 +223,16 @@ export default async function invitationRoutes(fastify: FastifyInstance) {
         const { invitationId } = request.params;
         const userId = request.user!.userId;
 
-        await teamService.rejectInvitation(invitationId, userId);
+        const result = await teamService.rejectInvitation(invitationId, userId);
+
+        // WebSocket 广播邀请拒绝事件
+        const io = fastify.io;
+        if (io) {
+          io.emit('team_invitation_rejected', {
+            invitationId,
+            teamId: result.teamId,
+          });
+        }
 
         reply.send({
           success: true,
@@ -263,7 +282,16 @@ export default async function invitationRoutes(fastify: FastifyInstance) {
         const { invitationId } = request.params;
         const userId = request.user!.userId;
 
-        await teamService.cancelInvitation(invitationId, userId);
+        const result = await teamService.cancelInvitation(invitationId, userId);
+
+        // WebSocket 广播邀请撤销事件
+        const io = fastify.io;
+        if (io) {
+          io.emit('team_invitation_cancelled', {
+            invitationId,
+            teamId: result.teamId,
+          });
+        }
 
         reply.send({
           success: true,

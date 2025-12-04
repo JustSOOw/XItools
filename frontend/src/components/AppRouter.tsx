@@ -44,6 +44,18 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   return children;
 };
 
+// Public Route Wrapper - 已登录用户重定向到主页
+const PublicRoute = ({ children }: { children: JSX.Element }) => {
+  const { loginStatus } = useUserStore();
+  const isLoggedIn = userStoreHelpers.isLoggedIn();
+
+  if (isLoggedIn && loginStatus === LoginStatus.LOGGED_IN) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+};
+
 export const AppRouter: React.FC<AppRouterProps> = ({ className = '' }) => {
   const { t } = useTranslation();
   const { checkAuthStatus } = useUserStore();
@@ -97,8 +109,16 @@ export const AppRouter: React.FC<AppRouterProps> = ({ className = '' }) => {
   return (
     <div className={`app-router ${className}`}>
       <Routes>
-        <Route path="/auth" element={<AuthPage initialMode="login" className="full-screen" />} />
+        <Route
+          path="/auth"
+          element={
+            <PublicRoute>
+              <AuthPage initialMode="login" className="full-screen" />
+            </PublicRoute>
+          }
+        />
         <Route path="/accept-invitation" element={<AcceptInvitation />} />
+        <Route path="/invite/:inviteCode" element={<AcceptInvitation />} />
 
         {/* Protected Routes */}
         <Route
@@ -127,9 +147,7 @@ export const AppRouter: React.FC<AppRouterProps> = ({ className = '' }) => {
           path="/team/settings"
           element={
             <ProtectedRoute>
-              <Layout>
-                <TeamSettings />
-              </Layout>
+              <App />
             </ProtectedRoute>
           }
         />

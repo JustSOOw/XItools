@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import socketService from '../services/socketService';
 import taskService from '../services/taskService';
 import useTaskStore from '../store/taskStore';
+import { useUserStore } from '../store/userStore';
 import { getBackendUrl, log } from '../utils/env';
 
 /**
@@ -10,6 +11,7 @@ import { getBackendUrl, log } from '../utils/env';
  */
 const useMcpConnection = (mcpUrl?: string) => {
   const { setTasks, setLoading, setError } = useTaskStore();
+  const { user } = useUserStore();
   const [isConnected, setIsConnected] = useState(false);
 
   // 初始化连接
@@ -21,8 +23,8 @@ const useMcpConnection = (mcpUrl?: string) => {
       const backendUrl = mcpUrl || getBackendUrl();
       log.info('初始化MCP连接:', backendUrl);
 
-      // 连接到WebSocket
-      socketService.connect(backendUrl);
+      // 连接到WebSocket，传递用户ID用于接收个人通知
+      socketService.connect(backendUrl, user?.id);
 
       // 直接设置连接状态，不再测试getTaskSchema（因为它现在需要boardId参数）
       setIsConnected(true);
@@ -36,7 +38,7 @@ const useMcpConnection = (mcpUrl?: string) => {
       setLoading(false);
       setIsConnected(false);
     }
-  }, [mcpUrl, setTasks, setLoading, setError]);
+  }, [mcpUrl, user?.id, setTasks, setLoading, setError]);
 
   // 重新连接
   const reconnect = useCallback(() => {

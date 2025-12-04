@@ -488,6 +488,29 @@ XItools集成了MCP（Model Context Protocol）工具，支持通过AI编辑器�
 }
 ```
 
+### 测试账号（开发环境）
+
+**主账号（团队所有者）：**
+- test@test.com / test123
+
+**团队成员账号（密码统一为 test123）：**
+| 邮箱 | 密码 |
+|------|------|
+| tester01@test.com | test123 |
+| tester02@test.com | test123 |
+| tester03@test.com | test123 |
+| tester04@test.com | test123 |
+| tester05@test.com | test123 |
+| tester06@test.com | test123 |
+| tester07@test.com | test123 |
+| tester08@test.com | test123 |
+| tester09@test.com | test123 |
+| tester10@test.com | test123 |
+
+> 这些账号已加入到 test@test.com 的团队中，可用于团队协作功能测试。
+
+
+
 ### 📚 详细文档
 
 完整的配置指南请参考：[MCP设置指南](docs/mcp/mcp-setup-guide.md)

@@ -140,6 +140,9 @@ export class ProjectService {
       throw new Error('工作区不存在或无权限访问');
     }
 
+    // 检查同一工作区内是否存在同名项目
+    await this.checkProjectNameDuplicate(validatedData.name, validatedData.workspaceId);
+
     // 如果没有指定order，设置为最大值+1
     if (validatedData.order === undefined || validatedData.order === 0) {
       const maxOrder = await prisma.project.aggregate({
@@ -167,6 +170,16 @@ export class ProjectService {
   async updateProject(id: string, data: ProjectUpdate) {
     // 验证数据
     const validatedData = projectUpdateSchema.parse(data);
+
+    // 如果更新名称，检查是否重复
+    if (validatedData.name) {
+      const project = await prisma.project.findUnique({
+        where: { id },
+      });
+      if (project) {
+        await this.checkProjectNameDuplicate(validatedData.name, project.workspaceId, id);
+      }
+    }
 
     return await prisma.project.update({
       where: { id },
@@ -371,6 +384,35 @@ export class ProjectService {
     }
 
     return await this.getProjectById(newProject.id);
+  }
+
+  /**
+   * 检查项目名称是否重复
+   * @param name 项目名称
+   * @param workspaceId 工作区ID
+   * @param excludeId 排除的项目ID（用于更新时排除自身）
+   */
+  private async checkProjectNameDuplicate(name: string, workspaceId: string, excludeId?: string) {
+    const whereClause: {
+      name: string;
+      workspaceId: string;
+      id?: { not: string };
+    } = {
+      name,
+      workspaceId,
+    };
+
+    if (excludeId) {
+      whereClause.id = { not: excludeId };
+    }
+
+    const existingProject = await prisma.project.findFirst({
+      where: whereClause,
+    });
+
+    if (existingProject) {
+      throw new Error(`该工作区中已存在名为"${name}"的项目`);
+    }
   }
 }
 

@@ -78,7 +78,9 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
       return { success: true, data: workspace };
     } catch (error) {
       console.error('创建工作区失败:', error);
-      reply.status(500);
+      // 业务逻辑错误返回 400，服务器错误返回 500
+      const statusCode = error instanceof Error && error.message.includes('已存在') ? 400 : 500;
+      reply.status(statusCode);
       return { success: false, error: error instanceof Error ? error.message : '创建工作区失败' };
     }
   });
@@ -104,7 +106,9 @@ export default async function workspaceRoutes(fastify: FastifyInstance) {
         return { success: true, data: workspace };
       } catch (error) {
         console.error('更新工作区失败:', error);
-        reply.status(500);
+        // 业务逻辑错误返回 400，服务器错误返回 500
+        const statusCode = error instanceof Error && error.message.includes('已存在') ? 400 : 500;
+        reply.status(statusCode);
         return { success: false, error: error instanceof Error ? error.message : '更新工作区失败' };
       }
     },

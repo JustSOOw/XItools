@@ -2,6 +2,15 @@
  * 任务对象类型定义
  * 基于MCP服务设计文档中的Task JSON Schema
  */
+
+// 负责人详情类型
+export interface AssigneeDetail {
+  id: string;
+  username: string;
+  email: string;
+  avatar: string | null;
+}
+
 export interface Task {
   // 必填字段
   id: string;
@@ -15,7 +24,8 @@ export interface Task {
   priority?: 'High' | 'Medium' | 'Low' | null;
   dueDate?: string | null;
   assignee?: string | null;
-  assignees?: string[]; // 多人协作：负责人列表
+  assignees?: string[]; // 多人协作：负责人ID列表
+  assigneeDetails?: AssigneeDetail[]; // 负责人详细信息（后端自动填充）
   color?: string | null; // 任务卡片颜色
   tags?: string[] | Array<{ id: string; name: string; createdAt: string; updatedAt: string }>;
   parentId?: string | null;

@@ -15,7 +15,60 @@ import { TaskHistoryAction } from '../types/taskHistoryTypes.js';
 
 const prisma = new PrismaClient();
 
+// 负责人详情类型
+interface AssigneeDetail {
+  id: string;
+  username: string;
+  email: string;
+  avatar: string | null;
+}
+
 export class TaskService {
+  /**
+   * 为任务列表填充负责人详细信息
+   * @param tasks 任务列表
+   * @returns 带有 assigneeDetails 的任务列表
+   */
+  private async populateAssigneeDetails<T extends { assignees: string[] }>(
+    tasks: T[]
+  ): Promise<(T & { assigneeDetails: AssigneeDetail[] })[]> {
+    // 收集所有唯一的负责人ID
+    const assigneeIds = new Set<string>();
+    tasks.forEach(task => {
+      task.assignees?.forEach(id => assigneeIds.add(id));
+    });
+
+    if (assigneeIds.size === 0) {
+      return tasks.map(task => ({ ...task, assigneeDetails: [] }));
+    }
+
+    // 批量获取用户信息
+    const users = await prisma.user.findMany({
+      where: {
+        id: { in: Array.from(assigneeIds) },
+      },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        avatar: true,
+      },
+    });
+
+    // 创建用户ID到详情的映射
+    const userMap = new Map<string, AssigneeDetail>();
+    users.forEach(user => {
+      userMap.set(user.id, user);
+    });
+
+    // 为每个任务填充负责人详情
+    return tasks.map(task => ({
+      ...task,
+      assigneeDetails: (task.assignees || [])
+        .map(id => userMap.get(id))
+        .filter((detail): detail is AssigneeDetail => detail !== undefined),
+    }));
+  }
   /**
    * 获取用户的所有任务（包括个人任务和有权限的团队任务）
    */
@@ -122,13 +175,16 @@ export class TaskService {
         { createdAt: 'desc' },
       ],
     });
+
+    // 填充负责人详情
+    return this.populateAssigneeDetails(tasks);
   }
 
   /**
    * 获取指定看板的所有任务
    */
   async getTasksByBoard(boardId: string) {
-    return await prisma.task.findMany({
+    const tasks = await prisma.task.findMany({
       where: { boardId },
       include: {
         tags: true,
@@ -137,13 +193,16 @@ export class TaskService {
       },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
     });
+
+    // 填充负责人详情
+    return this.populateAssigneeDetails(tasks);
   }
 
   /**
    * 获取指定项目的所有任务
    */
   async getTasksByProject(projectId: string) {
-    return await prisma.task.findMany({
+    const tasks = await prisma.task.findMany({
       where: {
         board: {
           projectId,
@@ -157,13 +216,16 @@ export class TaskService {
       },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
     });
+
+    // 填充负责人详情
+    return this.populateAssigneeDetails(tasks);
   }
 
   /**
    * 获取指定工作区的所有任务
    */
   async getTasksByWorkspace(workspaceId: string) {
-    return await prisma.task.findMany({
+    const tasks = await prisma.task.findMany({
       where: {
         board: {
           workspaceId,
@@ -177,6 +239,9 @@ export class TaskService {
       },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
     });
+
+    // 填充负责人详情
+    return this.populateAssigneeDetails(tasks);
   }
 
   /**

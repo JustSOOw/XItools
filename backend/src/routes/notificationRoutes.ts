@@ -38,29 +38,35 @@ export async function notificationRoutes(server: FastifyInstance) {
           200: {
             type: 'object',
             properties: {
+              success: { type: 'boolean' },
               data: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    id: { type: 'string' },
-                    userId: { type: 'string' },
-                    type: { type: 'string' },
-                    title: { type: 'string' },
-                    content: { type: 'string' },
-                    resourceType: { type: 'string', nullable: true },
-                    resourceId: { type: 'string', nullable: true },
-                    isRead: { type: 'boolean' },
-                    createdAt: { type: 'string' },
-                    updatedAt: { type: 'string' },
+                type: 'object',
+                properties: {
+                  data: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string' },
+                        userId: { type: 'string' },
+                        type: { type: 'string' },
+                        title: { type: 'string' },
+                        content: { type: 'string' },
+                        resourceType: { type: 'string', nullable: true },
+                        resourceId: { type: 'string', nullable: true },
+                        isRead: { type: 'boolean' },
+                        createdAt: { type: 'string' },
+                        updatedAt: { type: 'string' },
+                      },
+                    },
                   },
+                  total: { type: 'number' },
+                  page: { type: 'number' },
+                  pageSize: { type: 'number' },
+                  totalPages: { type: 'number' },
+                  unreadCount: { type: 'number' },
                 },
               },
-              total: { type: 'number' },
-              page: { type: 'number' },
-              pageSize: { type: 'number' },
-              totalPages: { type: 'number' },
-              unreadCount: { type: 'number' },
             },
           },
         },
@@ -77,7 +83,7 @@ export async function notificationRoutes(server: FastifyInstance) {
       }>,
       reply: FastifyReply
     ) => {
-      const userId = request.user.id;
+      const userId = request.user!.userId;
 
       // 验证查询参数
       const validatedQuery = getNotificationsQuerySchema.parse(request.query);
@@ -91,7 +97,10 @@ export async function notificationRoutes(server: FastifyInstance) {
 
       const result = await notificationService.getUserNotifications(userId, options);
 
-      return reply.status(200).send(result);
+      return reply.status(200).send({
+        success: true,
+        data: result,
+      });
     }
   );
 
@@ -111,18 +120,27 @@ export async function notificationRoutes(server: FastifyInstance) {
           200: {
             type: 'object',
             properties: {
-              count: { type: 'number' },
+              success: { type: 'boolean' },
+              data: {
+                type: 'object',
+                properties: {
+                  count: { type: 'number' },
+                },
+              },
             },
           },
         },
       },
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const userId = request.user.id;
+      const userId = request.user!.userId;
 
       const count = await notificationService.getUnreadCount(userId);
 
-      return reply.status(200).send({ count });
+      return reply.status(200).send({
+        success: true,
+        data: { count },
+      });
     }
   );
 
@@ -149,16 +167,22 @@ export async function notificationRoutes(server: FastifyInstance) {
           200: {
             type: 'object',
             properties: {
-              id: { type: 'string' },
-              userId: { type: 'string' },
-              type: { type: 'string' },
-              title: { type: 'string' },
-              content: { type: 'string' },
-              resourceType: { type: 'string', nullable: true },
-              resourceId: { type: 'string', nullable: true },
-              isRead: { type: 'boolean' },
-              createdAt: { type: 'string' },
-              updatedAt: { type: 'string' },
+              success: { type: 'boolean' },
+              data: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  userId: { type: 'string' },
+                  type: { type: 'string' },
+                  title: { type: 'string' },
+                  content: { type: 'string' },
+                  resourceType: { type: 'string', nullable: true },
+                  resourceId: { type: 'string', nullable: true },
+                  isRead: { type: 'boolean' },
+                  createdAt: { type: 'string' },
+                  updatedAt: { type: 'string' },
+                },
+              },
             },
           },
         },
@@ -170,7 +194,7 @@ export async function notificationRoutes(server: FastifyInstance) {
       }>,
       reply: FastifyReply
     ) => {
-      const userId = request.user.id;
+      const userId = request.user!.userId;
       const { notificationId } = request.params;
 
       // 验证参数
@@ -178,11 +202,14 @@ export async function notificationRoutes(server: FastifyInstance) {
 
       try {
         const notification = await notificationService.markAsRead(notificationId, userId);
-        return reply.status(200).send(notification);
+        return reply.status(200).send({
+          success: true,
+          data: notification,
+        });
       } catch (error: any) {
         return reply.status(400).send({
-          error: 'Bad Request',
-          message: error.message,
+          success: false,
+          error: error.message,
         });
       }
     }
@@ -213,8 +240,14 @@ export async function notificationRoutes(server: FastifyInstance) {
           200: {
             type: 'object',
             properties: {
-              count: { type: 'number' },
-              message: { type: 'string' },
+              success: { type: 'boolean' },
+              data: {
+                type: 'object',
+                properties: {
+                  count: { type: 'number' },
+                  message: { type: 'string' },
+                },
+              },
             },
           },
         },
@@ -226,7 +259,7 @@ export async function notificationRoutes(server: FastifyInstance) {
       }>,
       reply: FastifyReply
     ) => {
-      const userId = request.user.id;
+      const userId = request.user!.userId;
       const { notificationIds } = request.body;
 
       // 验证参数
@@ -237,8 +270,11 @@ export async function notificationRoutes(server: FastifyInstance) {
         : await notificationService.markAllAsRead(userId);
 
       return reply.status(200).send({
-        count: result.count,
-        message: `成功标记 ${result.count} 条通知为已读`,
+        success: true,
+        data: {
+          count: result.count,
+          message: `成功标记 ${result.count} 条通知为已读`,
+        },
       });
     }
   );
@@ -266,7 +302,13 @@ export async function notificationRoutes(server: FastifyInstance) {
           200: {
             type: 'object',
             properties: {
-              message: { type: 'string' },
+              success: { type: 'boolean' },
+              data: {
+                type: 'object',
+                properties: {
+                  message: { type: 'string' },
+                },
+              },
             },
           },
         },
@@ -278,7 +320,7 @@ export async function notificationRoutes(server: FastifyInstance) {
       }>,
       reply: FastifyReply
     ) => {
-      const userId = request.user.id;
+      const userId = request.user!.userId;
       const { notificationId } = request.params;
 
       // 验证参数
@@ -287,12 +329,15 @@ export async function notificationRoutes(server: FastifyInstance) {
       try {
         await notificationService.deleteNotification(notificationId, userId);
         return reply.status(200).send({
-          message: '通知已删除',
+          success: true,
+          data: {
+            message: '通知已删除',
+          },
         });
       } catch (error: any) {
         return reply.status(400).send({
-          error: 'Bad Request',
-          message: error.message,
+          success: false,
+          error: error.message,
         });
       }
     }
@@ -314,21 +359,30 @@ export async function notificationRoutes(server: FastifyInstance) {
           200: {
             type: 'object',
             properties: {
-              count: { type: 'number' },
-              message: { type: 'string' },
+              success: { type: 'boolean' },
+              data: {
+                type: 'object',
+                properties: {
+                  count: { type: 'number' },
+                  message: { type: 'string' },
+                },
+              },
             },
           },
         },
       },
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const userId = request.user.id;
+      const userId = request.user!.userId;
 
       const result = await notificationService.deleteReadNotifications(userId);
 
       return reply.status(200).send({
-        count: result.count,
-        message: `成功删除 ${result.count} 条已读通知`,
+        success: true,
+        data: {
+          count: result.count,
+          message: `成功删除 ${result.count} 条已读通知`,
+        },
       });
     }
   );

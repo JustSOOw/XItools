@@ -1,6 +1,10 @@
 import { io, Socket } from 'socket.io-client';
 import useTaskStore from '../store/taskStore';
+import { useTeamStore } from '../store/teamStore';
+import { useNotificationStore } from '../store/notificationStore';
 import { Task } from '../types/Task';
+import { TaskComment, CommentCreatedEvent, CommentDeletedEvent } from '../types/commentTypes';
+import { Notification } from '../types/notificationTypes';
 import { getBackendUrl, log } from '../utils/env';
 
 class SocketService {
@@ -10,8 +14,9 @@ class SocketService {
   /**
    * 初始化Socket.IO连接
    * @param url 后端MCP服务WebSocket URL
+   * @param userId 用户ID，用于加入个人通知房间
    */
-  connect(url?: string): void {
+  connect(url?: string, userId?: string): void {
     const backendUrl = url || getBackendUrl();
     if (this.isConnected && this.socket) return;
 
@@ -22,6 +27,9 @@ class SocketService {
         reconnectionDelay: 1000,
         reconnectionAttempts: 5,
         timeout: 5000,
+        auth: {
+          userId: userId, // 传递用户ID用于房间加入
+        },
       });
 
       this.setupEventListeners();
@@ -54,6 +62,9 @@ class SocketService {
 
     // MCP服务事件监听
     this.setupTaskEventListeners();
+
+    // 团队协作事件监听
+    this.setupTeamEventListeners();
   }
 
   /**
@@ -157,6 +168,306 @@ class SocketService {
     this.socket.on('column_deleted', ({ columnId }: { columnId: string }) => {
       console.log('收到列删除事件:', columnId);
       useTaskStore.getState().deleteColumn(columnId);
+    });
+  }
+
+  /**
+   * 设置团队协作相关的事件监听器
+   * 监听评论、通知、团队成员变更等事件
+   */
+  private setupTeamEventListeners(): void {
+    if (!this.socket) return;
+
+    // ========================================
+    // 团队信息变更事件
+    // ========================================
+
+    /**
+     * 团队信息更新事件
+     * 后端广播格式: { teamId: string, team: Team }
+     */
+    this.socket.on('team_updated', (data: { teamId: string; team: any }) => {
+      console.log('收到团队更新事件:', data);
+
+      const currentTeam = useTeamStore.getState().currentTeam;
+
+      // 如果是当前团队，更新store
+      if (currentTeam && currentTeam.id === data.teamId) {
+        useTeamStore.getState().setCurrentTeam(data.team);
+      }
+
+      // 触发自定义事件，通知其他组件
+      window.dispatchEvent(new CustomEvent('team_updated', { detail: data }));
+    });
+
+    /**
+     * 团队解散事件
+     * 后端广播格式: { teamId: string }
+     */
+    this.socket.on('team_dissolved', (data: { teamId: string }) => {
+      console.log('收到团队解散事件:', data);
+
+      const currentTeam = useTeamStore.getState().currentTeam;
+
+      // 如果是当前团队，清除团队信息
+      if (currentTeam && currentTeam.id === data.teamId) {
+        useTeamStore.getState().setCurrentTeam(null);
+        // 显示提示信息
+        window.dispatchEvent(new CustomEvent('team_dissolved', { detail: data }));
+      }
+    });
+
+    // ========================================
+    // 成员管理事件
+    // ========================================
+
+    /**
+     * 成员移除事件
+     * 后端广播格式: { teamId: string, memberId: string }
+     */
+    this.socket.on('team_member_removed', (data: { teamId: string; memberId: string }) => {
+      console.log('收到成员移除事件:', data);
+
+      const currentTeam = useTeamStore.getState().currentTeam;
+
+      // 如果是当前团队，刷新成员列表
+      if (currentTeam && currentTeam.id === data.teamId) {
+        useTeamStore.getState().fetchMembers(data.teamId);
+      }
+    });
+
+    /**
+     * 成员角色变更事件
+     * 后端广播格式: { teamId: string, memberId: string, role: string, member: TeamMember }
+     */
+    this.socket.on('team_member_role_changed', (data: { teamId: string; memberId: string; role: string; member: any }) => {
+      console.log('收到成员角色变更事件:', data);
+
+      const currentTeam = useTeamStore.getState().currentTeam;
+
+      // 如果是当前团队，刷新成员列表
+      if (currentTeam && currentTeam.id === data.teamId) {
+        useTeamStore.getState().fetchMembers(data.teamId);
+      }
+    });
+
+    // ========================================
+    // 邀请状态变更事件
+    // ========================================
+
+    /**
+     * 邀请发送事件
+     * 后端广播格式: { teamId: string, invitations: TeamInvitation[], count: number }
+     */
+    this.socket.on('team_invitations_sent', (data: { teamId: string; invitations: any[]; count: number }) => {
+      console.log('收到邀请发送事件:', data);
+
+      const currentTeam = useTeamStore.getState().currentTeam;
+
+      // 如果是当前团队，刷新邀请列表
+      if (currentTeam && currentTeam.id === data.teamId) {
+        useTeamStore.getState().fetchInvitations(data.teamId);
+      }
+    });
+
+    /**
+     * 邀请接受事件
+     * 后端广播格式: { invitationId: string, teamId: string, userId: string }
+     */
+    this.socket.on('team_invitation_accepted', (data: { invitationId: string; teamId: string; userId: string }) => {
+      console.log('收到邀请接受事件:', data);
+
+      const currentTeam = useTeamStore.getState().currentTeam;
+
+      // 如果是当前团队，刷新邀请列表和成员列表
+      if (currentTeam && currentTeam.id === data.teamId) {
+        useTeamStore.getState().fetchInvitations(data.teamId);
+        useTeamStore.getState().fetchMembers(data.teamId);
+      }
+    });
+
+    /**
+     * 邀请拒绝事件
+     * 后端广播格式: { invitationId: string, teamId: string }
+     */
+    this.socket.on('team_invitation_rejected', (data: { invitationId: string; teamId: string }) => {
+      console.log('收到邀请拒绝事件:', data);
+
+      const currentTeam = useTeamStore.getState().currentTeam;
+
+      // 如果是当前团队，刷新邀请列表
+      if (currentTeam && currentTeam.id === data.teamId) {
+        useTeamStore.getState().fetchInvitations(data.teamId);
+      }
+    });
+
+    /**
+     * 邀请撤销事件
+     * 后端广播格式: { invitationId: string, teamId: string }
+     */
+    this.socket.on('team_invitation_cancelled', (data: { invitationId: string; teamId: string }) => {
+      console.log('收到邀请撤销事件:', data);
+
+      const currentTeam = useTeamStore.getState().currentTeam;
+
+      // 如果是当前团队，刷新邀请列表
+      if (currentTeam && currentTeam.id === data.teamId) {
+        useTeamStore.getState().fetchInvitations(data.teamId);
+      }
+    });
+
+    // ========================================
+    // 权限变更事件
+    // ========================================
+
+    /**
+     * 权限授予事件
+     * 后端广播格式: { projectId: string, permission: ProjectPermission }
+     */
+    this.socket.on('project_permission_granted', (data: { projectId: string; permission: any }) => {
+      console.log('收到权限授予事件:', data);
+
+      // 触发自定义事件，通知权限管理组件刷新
+      window.dispatchEvent(new CustomEvent('permission_granted', { detail: data }));
+    });
+
+    /**
+     * 权限更新事件
+     * 后端广播格式: { permissionId: string, permission: ProjectPermission }
+     */
+    this.socket.on('project_permission_updated', (data: { permissionId: string; permission: any }) => {
+      console.log('收到权限更新事件:', data);
+
+      // 触发自定义事件
+      window.dispatchEvent(new CustomEvent('permission_updated', { detail: data }));
+    });
+
+    /**
+     * 权限撤销事件
+     * 后端广播格式: { projectId: string, permissionId: string }
+     */
+    this.socket.on('project_permission_revoked', (data: { projectId: string; permissionId: string }) => {
+      console.log('收到权限撤销事件:', data);
+
+      // 触发自定义事件
+      window.dispatchEvent(new CustomEvent('permission_revoked', { detail: data }));
+    });
+
+    // ========================================
+    // 评论事件
+    // ========================================
+
+    /**
+     * 评论创建事件
+     * 后端广播格式: { comment: TaskComment, taskId: string }
+     */
+    this.socket.on('comment_created', (data: CommentCreatedEvent) => {
+      console.log('收到评论创建事件:', data);
+
+      // 这里可以触发评论列表的刷新
+      // 由于评论通常在任务详情页面显示，可以通过自定义事件通知组件刷新
+      window.dispatchEvent(new CustomEvent('comment_created', { detail: data }));
+    });
+
+    /**
+     * 评论删除事件
+     * 后端广播格式: { commentId: string, taskId: string }
+     */
+    this.socket.on('comment_deleted', (data: CommentDeletedEvent) => {
+      console.log('收到评论删除事件:', data);
+
+      // 触发评论删除的自定义事件
+      window.dispatchEvent(new CustomEvent('comment_deleted', { detail: data }));
+    });
+
+    // ========================================
+    // 通知事件
+    // ========================================
+
+    /**
+     * 新通知事件
+     * 后端广播格式: Notification对象
+     */
+    this.socket.on('notification_created', (notification: Notification) => {
+      console.log('收到新通知:', notification);
+
+      // 添加通知到store
+      useNotificationStore.getState().addNotification(notification);
+    });
+
+    /**
+     * 实时推送通知事件（针对特定用户）
+     * 后端通过 io.to(userId).emit('notification_received', ...) 发送
+     */
+    this.socket.on('notification_received', (data: {
+      type: string;
+      title: string;
+      content: string;
+      resourceType?: string;
+      resourceId?: string;
+    }) => {
+      console.log('收到实时通知推送:', data);
+
+      // 刷新未读数量
+      useNotificationStore.getState().fetchUnreadCount();
+
+      // 刷新通知列表
+      useNotificationStore.getState().fetchNotifications({
+        page: 1,
+        pageSize: 20,
+      });
+
+      // 可选：显示toast提示
+      // toast.info(data.title);
+    });
+
+    // ========================================
+    // 团队成员事件
+    // ========================================
+
+    /**
+     * 成员加入团队事件
+     * 后端广播格式: { teamId: string, member: TeamMember }
+     */
+    this.socket.on('team_member_joined', (data: { teamId: string; member: any }) => {
+      console.log('收到成员加入事件:', data);
+
+      const currentTeam = useTeamStore.getState().currentTeam;
+
+      // 如果是当前团队，刷新成员列表
+      if (currentTeam && currentTeam.id === data.teamId) {
+        useTeamStore.getState().fetchMembers(data.teamId);
+      }
+    });
+
+    /**
+     * 成员离开团队事件
+     * 后端广播格式: { teamId: string, memberId: string, userId: string }
+     */
+    this.socket.on('team_member_left', (data: { teamId: string; memberId: string; userId: string }) => {
+      console.log('收到成员离开事件:', data);
+
+      const currentTeam = useTeamStore.getState().currentTeam;
+
+      // 如果是当前团队，刷新成员列表
+      if (currentTeam && currentTeam.id === data.teamId) {
+        useTeamStore.getState().fetchMembers(data.teamId);
+      }
+    });
+
+    // ========================================
+    // 任务分配事件（已有通知系统，这里可选）
+    // ========================================
+
+    /**
+     * 任务分配事件
+     * 后端广播格式: { taskId: string, assignees: string[] }
+     */
+    this.socket.on('task_assigned', (data: { taskId: string; assignees: string[] }) => {
+      console.log('收到任务分配事件:', data);
+
+      // 刷新任务详情（如果任务详情页面打开）
+      window.dispatchEvent(new CustomEvent('task_assigned', { detail: data }));
     });
   }
 
