@@ -73,7 +73,7 @@ export class TaskService {
    * 获取用户的所有任务（包括个人任务和有权限的团队任务）
    */
   async getUserTasks(userId: string) {
-    return await prisma.task.findMany({
+    const tasks = await prisma.task.findMany({
       where: {
         OR: [
           // 个人任务：用户拥有的非团队工作区中的任务

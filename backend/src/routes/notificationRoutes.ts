@@ -73,14 +73,7 @@ export async function notificationRoutes(server: FastifyInstance) {
       },
     },
     async (
-      request: FastifyRequest<{
-        Querystring: {
-          page?: string;
-          pageSize?: string;
-          isRead?: string;
-          type?: string;
-        };
-      }>,
+      request: FastifyRequest,
       reply: FastifyReply
     ) => {
       const userId = request.user!.userId;
@@ -189,13 +182,11 @@ export async function notificationRoutes(server: FastifyInstance) {
       },
     },
     async (
-      request: FastifyRequest<{
-        Params: { notificationId: string };
-      }>,
+      request: FastifyRequest,
       reply: FastifyReply
     ) => {
       const userId = request.user!.userId;
-      const { notificationId } = request.params;
+      const { notificationId } = request.params as { notificationId: string };
 
       // 验证参数
       markAsReadSchema.parse({ notificationId });
@@ -254,13 +245,11 @@ export async function notificationRoutes(server: FastifyInstance) {
       },
     },
     async (
-      request: FastifyRequest<{
-        Body: { notificationIds?: string[] };
-      }>,
+      request: FastifyRequest,
       reply: FastifyReply
     ) => {
       const userId = request.user!.userId;
-      const { notificationIds } = request.body;
+      const { notificationIds } = request.body as { notificationIds?: string[] };
 
       // 验证参数
       batchMarkAsReadSchema.parse({ notificationIds });
@@ -315,13 +304,11 @@ export async function notificationRoutes(server: FastifyInstance) {
       },
     },
     async (
-      request: FastifyRequest<{
-        Params: { notificationId: string };
-      }>,
+      request: FastifyRequest,
       reply: FastifyReply
     ) => {
       const userId = request.user!.userId;
-      const { notificationId } = request.params;
+      const { notificationId } = request.params as { notificationId: string };
 
       // 验证参数
       deleteNotificationSchema.parse({ notificationId });

@@ -152,7 +152,7 @@ export default async function commentRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       try {
         const { commentId } = request.params as { commentId: string };
-        const userId = request.user?.userId;
+        const userId = request.user!.userId;
 
         // 获取评论详情（用于 WebSocket 广播）
         const comment = await commentService.getCommentById(commentId);

@@ -67,10 +67,6 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
   const mcpServer = new McpServer({
     name: 'xitools-mcp-server',
     version: '1.0.0',
-    capabilities: {
-      resources: {},
-      tools: {},
-    },
   });
 
   // 创建存储活跃传输实例的映射
@@ -833,14 +829,8 @@ export async function setupMCPService(server: FastifyInstance, io: SocketIOServe
     'update_task_color',
     '更新任务的颜色',
     {
-      task_id: {
-        type: 'string',
-        description: '任务ID',
-      },
-      color: {
-        type: 'string',
-        description: '颜色值（CSS颜色格式）',
-      },
+      task_id: z.string().min(1, '任务ID不能为空'),
+      color: z.string().optional(),
     },
     async (args) => {
       try {

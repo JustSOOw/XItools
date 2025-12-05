@@ -268,7 +268,7 @@ export default async function taskRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       try {
         const { id } = request.params as { id: string };
-        const userId = request.user.id;
+        const userId = request.user!.userId;
         await taskService.deleteTask(id, userId);
 
         // 广播任务删除事件

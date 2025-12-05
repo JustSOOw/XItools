@@ -8,6 +8,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { permissionService } from '../services/permissionService';
 import { authMiddleware } from '../middleware/authMiddleware';
 import { requireTeamOwnerByProject } from '../middleware/permissionMiddleware';
+import { prisma } from '../lib/prisma';
 import {
   setProjectPermissionSchema,
   updateProjectPermissionSchema,
@@ -102,7 +103,7 @@ export default async function permissionRoutes(fastify: FastifyInstance) {
           const { NotificationService } = await import('../services/notificationService');
           const notificationService = new NotificationService();
 
-          const permissionText = validatedData.permission === 'VIEW' ? '查看' : '编辑';
+          const permissionText = validatedData.permission === ProjectPermissionType.VIEW ? '查看' : '编辑';
           await notificationService.createNotification({
             userId: member.userId,
             type: 'permission_changed' as any,
@@ -213,7 +214,7 @@ export default async function permissionRoutes(fastify: FastifyInstance) {
           const { NotificationService } = await import('../services/notificationService');
           const notificationService = new NotificationService();
 
-          const permissionText = validatedData.permission === 'VIEW' ? '查看' : '编辑';
+          const permissionText = validatedData.permission === ProjectPermissionType.VIEW ? '查看' : '编辑';
           await notificationService.createNotification({
             userId: permissionWithDetails.member.userId,
             type: 'permission_changed' as any,

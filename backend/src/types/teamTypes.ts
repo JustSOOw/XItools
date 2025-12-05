@@ -222,8 +222,8 @@ export interface CreateNotificationParams {
 export interface TeamDTO {
   id: string;
   name: string;
-  description?: string;
-  avatar?: string;
+  description?: string | null;
+  avatar?: string | null;
   isActive: boolean;
   ownerId: string;
   createdAt: Date;
@@ -252,7 +252,7 @@ export interface TeamMemberDTO {
     id: string;
     username: string;
     email: string;
-    avatar?: string;
+    avatar?: string | null;
   };
 }
 

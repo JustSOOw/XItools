@@ -231,7 +231,7 @@ export class CommentService {
 
     // 3. 团队管理员可以删除任何评论
     const workspace = comment.task.board.workspace;
-    if (workspace.teamId) {
+    if (workspace && workspace.teamId) {
       const team = workspace.team;
       if (team && team.ownerId === userId) {
         return { canDelete: true };

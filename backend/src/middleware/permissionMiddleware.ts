@@ -10,15 +10,14 @@ import { ProjectPermissionType } from '../types/teamTypes';
 import { prisma } from '../lib/prisma';
 
 /**
- * 中间件参数类型定义
+ * 中间件参数类型定义（内部使用）
  */
-interface ProjectPermissionParams {
-  Params: {
-    id?: string;
-    projectId?: string;
-    boardId?: string;
-    taskId?: string;
-  };
+interface PermissionParams {
+  id?: string;
+  projectId?: string;
+  boardId?: string;
+  taskId?: string;
+  workspaceId?: string;
 }
 
 /**
@@ -36,9 +35,10 @@ interface PermissionContext {
  * 返回项目ID或工作区ID（当看板直接属于工作区时）
  */
 async function getPermissionContextFromRequest(
-  request: FastifyRequest<ProjectPermissionParams>
+  request: FastifyRequest
 ): Promise<PermissionContext | null> {
-  const { id, projectId, boardId, taskId } = request.params;
+  const params = request.params as PermissionParams;
+  const { id, projectId, boardId, taskId } = params;
 
   // 如果有 projectId 参数，直接作为项目ID
   if (projectId) {
@@ -143,7 +143,7 @@ async function getPermissionContextFromRequest(
  * @deprecated 使用 getPermissionContextFromRequest 代替
  */
 async function getProjectIdFromRequest(
-  request: FastifyRequest<ProjectPermissionParams>
+  request: FastifyRequest
 ): Promise<string | null> {
   const context = await getPermissionContextFromRequest(request);
   if (context?.type === 'project') {
@@ -158,7 +158,7 @@ async function getProjectIdFromRequest(
  */
 function createPermissionMiddleware(requiredPermission: ProjectPermissionType) {
   return async (
-    request: FastifyRequest<ProjectPermissionParams>,
+    request: FastifyRequest,
     reply: FastifyReply
   ) => {
     try {
@@ -250,7 +250,7 @@ export function requireProjectPermission(permission: ProjectPermissionType) {
  * 使用方法: preHandler: [authMiddleware, requireTeamOwnerByProject]
  */
 export async function requireTeamOwnerByProject(
-  request: FastifyRequest<ProjectPermissionParams>,
+  request: FastifyRequest,
   reply: FastifyReply
 ) {
   try {
@@ -304,7 +304,7 @@ export async function requireTeamOwnerByProject(
  */
 export function createOwnershipOrPermissionVerifier(requiredPermission: ProjectPermissionType) {
   return async (
-    request: FastifyRequest<ProjectPermissionParams>,
+    request: FastifyRequest,
     reply: FastifyReply
   ) => {
     try {
@@ -409,7 +409,7 @@ export function createOwnershipOrPermissionVerifier(requiredPermission: ProjectP
  * 使用方法: preHandler: [authMiddleware, requireProjectAdmin]
  */
 export async function requireProjectAdmin(
-  request: FastifyRequest<ProjectPermissionParams>,
+  request: FastifyRequest,
   reply: FastifyReply
 ) {
   try {
@@ -483,7 +483,7 @@ export async function requireProjectAdmin(
  */
 export function createWorkspaceAccessVerifier(requiredPermission: ProjectPermissionType = ProjectPermissionType.VIEW) {
   return async (
-    request: FastifyRequest<{ Params: { workspaceId: string } }>,
+    request: FastifyRequest,
     reply: FastifyReply
   ) => {
     try {
@@ -496,7 +496,8 @@ export function createWorkspaceAccessVerifier(requiredPermission: ProjectPermiss
         });
       }
 
-      const { workspaceId } = request.params;
+      const params = request.params as PermissionParams;
+      const { workspaceId } = params;
 
       if (!workspaceId) {
         return reply.status(400).send({

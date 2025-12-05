@@ -1,4 +1,4 @@
-import cron from 'node-cron';
+import * as cron from 'node-cron';
 import { notificationService } from './notificationService.js';
 
 /**
@@ -6,7 +6,7 @@ import { notificationService } from './notificationService.js';
  * 定期清理过期的已读通知（30天前的已读通知）
  */
 export class NotificationExpirationManager {
-  private task: cron.ScheduledTask | null = null;
+  private task: ReturnType<typeof cron.schedule> | null = null;
 
   /**
    * 启动定时任务（每天凌晨2点执行）

@@ -30,10 +30,6 @@ async function createMCPServer(): Promise<McpServer> {
   const server = new McpServer({
     name: 'xitools-mcp-server',
     version: '1.0.0',
-    capabilities: {
-      resources: {},
-      tools: {},
-    },
   });
 
   // 注册所有MCP工具

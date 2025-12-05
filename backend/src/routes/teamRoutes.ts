@@ -8,6 +8,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { teamService } from '../services/teamService';
 import { authMiddleware } from '../middleware/authMiddleware';
 import { requireTeamOwner, requireTeamMember } from '../middleware/teamMiddleware';
+import { prisma } from '../lib/prisma';
 import {
   createTeamSchema,
   updateTeamSchema,
