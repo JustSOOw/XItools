@@ -68,17 +68,16 @@ ENTRYPOINT ["docker-entrypoint.sh"]
 # 阶段4: 构建阶段
 FROM dependencies AS build
 
-# 设置Node.js内存限制，防止TypeScript编译时内存溢出
-ENV NODE_OPTIONS=--max-old-space-size=4096
-
 # 复制源代码
 COPY . .
 
 # 生成Prisma客户端
 RUN npx prisma generate
 
-# 构建应用
-RUN npm run build
+# 构建应用 - 直接在命令中设置内存限制，确保生效
+RUN echo "Node版本: $(node -v)" && \
+    echo "可用内存: $(cat /proc/meminfo | grep MemTotal)" && \
+    NODE_OPTIONS="--max-old-space-size=4096" npm run build
 
 # 阶段5: 生产环境
 FROM base AS production

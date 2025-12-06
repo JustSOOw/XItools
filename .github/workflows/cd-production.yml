@@ -105,7 +105,8 @@ jobs:
 
         # 构建后端镜像
         echo "🔨 构建后端镜像..."
-        docker build -t ghcr.io/${REPO_LOWERCASE}/backend:${{ steps.version.outputs.version }} ./backend --target production
+        # 禁用 BuildKit 以避免内存限制问题
+        DOCKER_BUILDKIT=0 docker build -t ghcr.io/${REPO_LOWERCASE}/backend:${{ steps.version.outputs.version }} ./backend --target production
 
         # 同时打上 latest 标签
         docker tag ghcr.io/${REPO_LOWERCASE}/backend:${{ steps.version.outputs.version }} ghcr.io/${REPO_LOWERCASE}/backend:latest

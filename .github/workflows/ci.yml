@@ -124,7 +124,8 @@ jobs:
         echo "📦 构建前端镜像（Web版本）..."
         docker build -t xitools-frontend:test ./frontend --target production
         echo "📦 构建后端镜像..."
-        docker build -t xitools-backend:test ./backend --target production
+        # 禁用 BuildKit 以避免内存限制问题
+        DOCKER_BUILDKIT=0 docker build -t xitools-backend:test ./backend --target production
         echo "✅ Docker 构建验证完成"
 
     - name: CI 状态汇总
