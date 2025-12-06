@@ -18,6 +18,7 @@ import {
   InviteMembersInput,
   UpdateMemberRoleInput,
 } from '../types/teamTypes';
+import { prisma } from '../lib/prisma';
 
 /**
  * 注册团队相关路由

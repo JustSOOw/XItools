@@ -147,7 +147,7 @@ export const NOTIFICATION_TEMPLATES = {
   [NotificationType.PERMISSION_CHANGED]: {
     title: '项目权限变更',
     contentTemplate: (data: { projectName: string; permission: string }) =>
-      `您在项目"${data.projectName}"的权限已变更为${permission === 'edit' ? '编辑' : '查看'}权限`,
+      `您在项目"${data.projectName}"的权限已变更为${data.permission === 'edit' ? '编辑' : '查看'}权限`,
   },
   [NotificationType.MEMBER_JOINED]: {
     title: '新成员加入',
