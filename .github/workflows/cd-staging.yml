@@ -100,8 +100,7 @@ jobs:
 
         # 构建后端镜像（带版本标签）
         echo "🔨 构建后端镜像..."
-        # 禁用 BuildKit 以避免内存限制问题
-        DOCKER_BUILDKIT=0 docker build -t ghcr.io/${REPO_LOWERCASE}/backend:${{ steps.version.outputs.version }} ./backend --target production
+        docker build -t ghcr.io/${REPO_LOWERCASE}/backend:${{ steps.version.outputs.version }} ./backend --target production
 
         # 同时打上 staging 标签
         docker tag ghcr.io/${REPO_LOWERCASE}/backend:${{ steps.version.outputs.version }} ghcr.io/${REPO_LOWERCASE}/backend:staging
