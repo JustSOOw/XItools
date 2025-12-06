@@ -4,7 +4,7 @@
  * 提供项目权限验证功能
  */
 
-import { FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyRequest, FastifyReply, preHandlerHookHandler } from 'fastify';
 import { permissionService } from '../services/permissionService';
 import { ProjectPermissionType } from '../types/teamTypes';
 import { prisma } from '../lib/prisma';
@@ -12,12 +12,13 @@ import { prisma } from '../lib/prisma';
 /**
  * 中间件参数类型定义
  */
-interface ProjectPermissionParams {
+export interface ProjectPermissionParams {
   Params: {
     id?: string;
     projectId?: string;
     boardId?: string;
     taskId?: string;
+    workspaceId?: string;
   };
 }
 
@@ -156,9 +157,9 @@ async function getProjectIdFromRequest(
  * 创建权限检查中间件
  * @param requiredPermission 所需权限类型
  */
-function createPermissionMiddleware(requiredPermission: ProjectPermissionType) {
+function createPermissionMiddleware(requiredPermission: ProjectPermissionType): preHandlerHookHandler {
   return async (
-    request: FastifyRequest<ProjectPermissionParams>,
+    request: FastifyRequest,
     reply: FastifyReply
   ) => {
     try {
@@ -172,7 +173,7 @@ function createPermissionMiddleware(requiredPermission: ProjectPermissionType) {
       }
 
       // 获取权限上下文
-      const context = await getPermissionContextFromRequest(request);
+      const context = await getPermissionContextFromRequest(request as FastifyRequest<ProjectPermissionParams>);
 
       if (!context) {
         return reply.status(400).send({
@@ -249,10 +250,10 @@ export function requireProjectPermission(permission: ProjectPermissionType) {
  * 检查用户是否为团队所有者(通过项目ID)
  * 使用方法: preHandler: [authMiddleware, requireTeamOwnerByProject]
  */
-export async function requireTeamOwnerByProject(
-  request: FastifyRequest<ProjectPermissionParams>,
+export const requireTeamOwnerByProject: preHandlerHookHandler = async (
+  request: FastifyRequest,
   reply: FastifyReply
-) {
+) => {
   try {
     const userId = request.user?.userId;
 
@@ -264,7 +265,7 @@ export async function requireTeamOwnerByProject(
     }
 
     // 获取项目ID
-    const projectId = await getProjectIdFromRequest(request);
+    const projectId = await getProjectIdFromRequest(request as FastifyRequest<ProjectPermissionParams>);
 
     if (!projectId) {
       return reply.status(400).send({
@@ -294,7 +295,7 @@ export async function requireTeamOwnerByProject(
       error: '权限验证失败',
     });
   }
-}
+};
 
 /**
  * 创建所有权或权限验证的组合中间件
@@ -302,9 +303,9 @@ export async function requireTeamOwnerByProject(
  * 支持项目级别和工作区级别的权限检查
  * @param requiredPermission 所需权限类型
  */
-export function createOwnershipOrPermissionVerifier(requiredPermission: ProjectPermissionType) {
+export function createOwnershipOrPermissionVerifier(requiredPermission: ProjectPermissionType): preHandlerHookHandler {
   return async (
-    request: FastifyRequest<ProjectPermissionParams>,
+    request: FastifyRequest,
     reply: FastifyReply
   ) => {
     try {
@@ -318,7 +319,7 @@ export function createOwnershipOrPermissionVerifier(requiredPermission: ProjectP
       }
 
       // 获取权限上下文
-      const context = await getPermissionContextFromRequest(request);
+      const context = await getPermissionContextFromRequest(request as FastifyRequest<ProjectPermissionParams>);
 
       if (!context) {
         return reply.status(400).send({
@@ -408,10 +409,10 @@ export function createOwnershipOrPermissionVerifier(requiredPermission: ProjectP
  * 要求项目管理员权限（项目所有者或团队所有者）
  * 使用方法: preHandler: [authMiddleware, requireProjectAdmin]
  */
-export async function requireProjectAdmin(
-  request: FastifyRequest<ProjectPermissionParams>,
+export const requireProjectAdmin: preHandlerHookHandler = async (
+  request: FastifyRequest,
   reply: FastifyReply
-) {
+) => {
   try {
     const userId = request.user?.userId;
 
@@ -423,7 +424,7 @@ export async function requireProjectAdmin(
     }
 
     // 获取项目ID
-    const projectId = await getProjectIdFromRequest(request);
+    const projectId = await getProjectIdFromRequest(request as FastifyRequest<ProjectPermissionParams>);
 
     if (!projectId) {
       return reply.status(400).send({
@@ -474,16 +475,16 @@ export async function requireProjectAdmin(
       error: '权限验证失败',
     });
   }
-}
+};
 
 /**
  * 创建工作区访问验证中间件
  * 支持工作区所有者和团队成员访问
  * @param requiredPermission 所需权限类型，默认为VIEW
  */
-export function createWorkspaceAccessVerifier(requiredPermission: ProjectPermissionType = ProjectPermissionType.VIEW) {
+export function createWorkspaceAccessVerifier(requiredPermission: ProjectPermissionType = ProjectPermissionType.VIEW): preHandlerHookHandler {
   return async (
-    request: FastifyRequest<{ Params: { workspaceId: string } }>,
+    request: FastifyRequest,
     reply: FastifyReply
   ) => {
     try {
@@ -496,7 +497,8 @@ export function createWorkspaceAccessVerifier(requiredPermission: ProjectPermiss
         });
       }
 
-      const { workspaceId } = request.params;
+      const params = request.params as { workspaceId?: string };
+      const workspaceId = params.workspaceId;
 
       if (!workspaceId) {
         return reply.status(400).send({

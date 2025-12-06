@@ -112,7 +112,10 @@ export class PermissionService {
         },
       });
 
-      return updatedPermission;
+      return {
+        ...updatedPermission,
+        permission: updatedPermission.permission as ProjectPermissionType,
+      };
     }
 
     // 创建新权限
@@ -126,7 +129,10 @@ export class PermissionService {
       },
     });
 
-    return newPermission;
+    return {
+      ...newPermission,
+      permission: newPermission.permission as ProjectPermissionType,
+    };
   }
 
   /**
@@ -160,7 +166,10 @@ export class PermissionService {
       },
     });
 
-    return updatedPermission;
+    return {
+      ...updatedPermission,
+      permission: updatedPermission.permission as ProjectPermissionType,
+    };
   }
 
   /**
