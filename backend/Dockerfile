@@ -74,10 +74,18 @@ COPY . .
 # 生成Prisma客户端
 RUN npx prisma generate
 
-# 构建应用 - 直接在命令中设置内存限制，确保生效
-RUN echo "Node版本: $(node -v)" && \
+# 诊断信息
+RUN echo "=== 构建诊断信息 ===" && \
+    echo "Node 版本: $(node -v)" && \
+    echo "npm 版本: $(npm -v)" && \
+    echo "TypeScript 版本: $(npx tsc --version)" && \
+    echo "安装的包数量: $(ls node_modules | wc -l)" && \
     echo "可用内存: $(cat /proc/meminfo | grep MemTotal)" && \
-    NODE_OPTIONS="--max-old-space-size=4096" npm run build
+    echo "src 目录文件数: $(find src -name '*.ts' | wc -l)" && \
+    echo "src 目录总行数: $(find src -name '*.ts' -exec cat {} \; | wc -l)"
+
+# 构建应用 - 使用诊断模式
+RUN NODE_OPTIONS="--max-old-space-size=4096" npx tsc --diagnostics
 
 # 阶段5: 生产环境
 FROM base AS production
