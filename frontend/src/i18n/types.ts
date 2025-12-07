@@ -80,8 +80,8 @@ export type TranslationKey<T = TranslationResources> = {
 // 特定命名空间的翻译键类型
 export type NamespaceKey<NS extends Namespace> = TranslationKey<TranslationResources[NS]>;
 
-// 支持的语言类型
-export type SupportedLanguage = 'zh-CN' | 'en-US';
+// 支持的语言类型（已禁用多语言，仅支持中文）
+export type SupportedLanguage = 'zh-CN';
 
 // 语言配置类型
 export interface LanguageConfig {
@@ -241,8 +241,8 @@ export interface TranslationFormatter {
   formatRelativeTime: (date: Date, language?: SupportedLanguage) => string;
 }
 
-// 导出所有类型
-export type { zhCN as ZhCNTranslations, enUS as EnUSTranslations };
+// 导出所有类型（已禁用多语言）
+// export type { zhCN as ZhCNTranslations, enUS as EnUSTranslations };
 
 // 默认导出主要类型
 export default TranslationResources;

@@ -2,6 +2,8 @@ import { FastifyInstance } from 'fastify';
 import { Server as SocketIOServer } from 'socket.io';
 import { columnService, columnSchema, columnUpdateSchema } from '../services/columnService';
 import { authMiddleware, requireAuth, createOwnershipVerifier } from '../middleware/authMiddleware';
+import { createOwnershipOrPermissionVerifier } from '../middleware/permissionMiddleware';
+import { ProjectPermissionType } from '../types/teamTypes';
 
 // 扩展FastifyInstance类型以包含io属性
 declare module 'fastify' {
@@ -14,11 +16,11 @@ declare module 'fastify' {
  * 列管理相关的API路由
  */
 export default async function columnRoutes(fastify: FastifyInstance) {
-  // 获取指定看板的所有列（需要验证看板所有权）
+  // 获取指定看板的所有列（需要查看权限，支持团队成员）
   fastify.get(
     '/boards/:boardId/columns',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('board')],
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.VIEW)],
     },
     async (request, reply) => {
       try {
@@ -60,11 +62,11 @@ export default async function columnRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // 获取单个列（需要验证列所有权）
+  // 获取单个列（需要查看权限，支持团队成员）
   fastify.get(
     '/columns/:id',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('column')],
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.VIEW)],
     },
     async (request, reply) => {
       try {
@@ -109,11 +111,11 @@ export default async function columnRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // 更新列
+  // 更新列（需要编辑权限，支持团队管理员）
   fastify.put(
     '/columns/:id',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('column')],
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.EDIT)],
     },
     async (request, reply) => {
       try {
@@ -140,11 +142,11 @@ export default async function columnRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // 删除列
+  // 删除列（需要编辑权限，支持团队管理员）
   fastify.delete(
     '/columns/:id',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('column')],
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.EDIT)],
     },
     async (request, reply) => {
       try {
@@ -169,11 +171,11 @@ export default async function columnRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // 重新排序指定看板的列
+  // 重新排序指定看板的列（需要编辑权限，支持团队管理员）
   fastify.post(
     '/boards/:boardId/columns/reorder',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('board')],
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.EDIT)],
     },
     async (request, reply) => {
       try {

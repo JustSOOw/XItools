@@ -5,6 +5,17 @@
 import React, { useState } from 'react';
 import classNames from 'classnames';
 import { NavigationItem } from '../../store/navigationStore';
+import {
+  HomeIcon,
+  FolderIcon,
+  ClipboardDocumentListIcon,
+  DocumentIcon,
+  ChevronRightIcon,
+  ChevronDownIcon,
+  PencilIcon,
+  TrashIcon,
+  PlusIcon,
+} from '@heroicons/react/24/outline';
 
 interface SidebarItemProps {
   type: 'workspace' | 'project' | 'board';
@@ -41,26 +52,35 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
 
   // 获取图标
   const getIcon = () => {
+    // 如果item有自定义图标（字符串形式），这里暂时保留，但通常我们现在用组件
+    // 如果未来支持自定义图标组件，需要调整类型
     if (item.icon) {
-      return item.icon;
+      return <span className="text-lg">{item.icon}</span>;
     }
+
+    const iconClass = "w-5 h-5";
 
     switch (type) {
       case 'workspace':
-        return '🏠';
+        return <HomeIcon className={iconClass} />;
       case 'project':
-        return '📁';
+        return <FolderIcon className={iconClass} />;
       case 'board':
-        return '📋';
+        return <ClipboardDocumentListIcon className={iconClass} />;
       default:
-        return '📄';
+        return <DocumentIcon className={iconClass} />;
     }
   };
 
   // 获取展开/收起图标
   const getExpandIcon = () => {
     if (type === 'board') return null;
-    return isExpanded ? '▼' : '▶';
+    const iconClass = "w-3 h-3";
+    return isExpanded ? (
+      <ChevronDownIcon className={iconClass} />
+    ) : (
+      <ChevronRightIcon className={iconClass} />
+    );
   };
 
   // 处理点击事件
@@ -189,7 +209,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
         >
           {/* 图标 */}
           <span
-            className={classNames('flex-shrink-0 text-lg', item.color && `text-[${item.color}]`)}
+            className={classNames('flex-shrink-0 flex items-center justify-center', item.color && `text-[${item.color}]`)}
           >
             {getIcon()}
           </span>
@@ -233,13 +253,12 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
             className="flex items-center pr-2 flex-shrink-0"
             style={{
               minWidth: isHovered
-                ? `${
-                    (type !== 'board' ? 32 : 0) + // 展开按钮
-                    (onRename ? 32 : 0) + // 重命名按钮
-                    ((type === 'workspace' || type === 'project') && onAdd ? 32 : 0) + // 新建按钮
-                    (canDelete && onDelete ? 32 : 0) + // 删除按钮
-                    8 // 间距
-                  }px`
+                ? `${(type !== 'board' ? 32 : 0) + // 展开按钮
+                (onRename ? 32 : 0) + // 重命名按钮
+                ((type === 'workspace' || type === 'project') && onAdd ? 32 : 0) + // 新建按钮
+                (canDelete && onDelete ? 32 : 0) + // 删除按钮
+                8 // 间距
+                }px`
                 : `${type !== 'board' ? 32 : 0}px`, // 只保留展开按钮的空间
             }}
           >
@@ -247,7 +266,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
             {type !== 'board' && (
               <button
                 onClick={handleToggle}
-                className="p-1.5 rounded hover:bg-primary/20 transition-colors text-xs opacity-70 hover:opacity-100 flex-shrink-0"
+                className="p-1.5 rounded hover:bg-primary/20 transition-colors text-text-secondary hover:text-primary flex-shrink-0"
                 aria-label={isExpanded ? '收起' : '展开'}
               >
                 {getExpandIcon()}
@@ -261,10 +280,10 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
                 {onRename && (
                   <button
                     onClick={handleRename}
-                    className="p-1.5 rounded text-xs hover:bg-blue-500/20 text-text-secondary hover:text-blue-500 transition-colors flex-shrink-0 z-10"
+                    className="p-1.5 rounded hover:bg-blue-500/20 text-text-secondary hover:text-blue-500 transition-colors flex-shrink-0 z-10"
                     title="重命名"
                   >
-                    ✏️
+                    <PencilIcon className="w-3.5 h-3.5" />
                   </button>
                 )}
 
@@ -272,10 +291,10 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
                 {(type === 'workspace' || type === 'project') && onAdd && (
                   <button
                     onClick={handleAdd}
-                    className="p-1.5 rounded text-xs hover:bg-green-500/20 text-text-secondary hover:text-green-500 transition-colors flex-shrink-0"
+                    className="p-1.5 rounded hover:bg-green-500/20 text-text-secondary hover:text-green-500 transition-colors flex-shrink-0"
                     title={type === 'workspace' ? '新建项目/看板' : '新建看板'}
                   >
-                    ➕
+                    <PlusIcon className="w-3.5 h-3.5" />
                   </button>
                 )}
 
@@ -283,10 +302,10 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
                 {canDelete && onDelete && (
                   <button
                     onClick={handleDelete}
-                    className="p-1.5 rounded text-xs hover:bg-red-500/20 text-text-secondary hover:text-red-500 transition-colors flex-shrink-0"
+                    className="p-1.5 rounded hover:bg-red-500/20 text-text-secondary hover:text-red-500 transition-colors flex-shrink-0"
                     title="删除"
                   >
-                    🗑️
+                    <TrashIcon className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>

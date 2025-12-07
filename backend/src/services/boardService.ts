@@ -15,6 +15,94 @@ const prisma = new PrismaClient();
 
 export class BoardService {
   /**
+   * 获取用户的所有看板（包括个人看板和有权限的团队看板）
+   */
+  async getUserBoards(userId: string) {
+    return await prisma.board.findMany({
+      where: {
+        OR: [
+          // 个人看板：用户拥有的非团队工作区中的看板
+          {
+            ownerId: userId,
+            workspace: {
+              teamId: null,
+            },
+          },
+          // 团队看板（直属工作区）：用户是团队成员的工作区中的看板
+          {
+            workspace: {
+              team: {
+                members: {
+                  some: {
+                    userId: userId,
+                  },
+                },
+              },
+            },
+            projectId: null, // 直属工作区的看板
+          },
+          // 团队看板（项目下）：用户有权限访问的项目中的看板
+          {
+            project: {
+              OR: [
+                // 用户是项目所有者
+                {
+                  ownerId: userId,
+                },
+                // 用户有项目权限
+                {
+                  permissions: {
+                    some: {
+                      member: {
+                        userId: userId,
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+      include: {
+        workspace: {
+          select: {
+            id: true,
+            name: true,
+            teamId: true,
+            team: {
+              select: {
+                id: true,
+                name: true,
+                ownerId: true,
+              },
+            },
+          },
+        },
+        project: {
+          select: {
+            id: true,
+            name: true,
+            workspaceId: true,
+          },
+        },
+        columns: {
+          orderBy: { order: 'asc' },
+        },
+        tasks: {
+          orderBy: { sortOrder: 'asc' },
+          include: {
+            tags: true,
+          },
+        },
+      },
+      orderBy: [
+        { createdAt: 'desc' },
+      ],
+    });
+  }
+
+  /**
    * 获取工作区下的所有看板
    */
   async getBoardsByWorkspace(workspaceId: string) {
@@ -102,6 +190,13 @@ export class BoardService {
       }
     }
 
+    // 检查同一容器内是否存在同名看板
+    await this.checkBoardNameDuplicate(
+      validatedData.name,
+      validatedData.workspaceId,
+      validatedData.projectId,
+    );
+
     // 如果没有指定order，设置为最大值+1
     if (validatedData.order === undefined || validatedData.order === 0) {
       const whereClause = validatedData.workspaceId
@@ -138,6 +233,21 @@ export class BoardService {
   async updateBoard(id: string, data: BoardUpdate) {
     // 验证数据
     const validatedData = boardUpdateSchema.parse(data);
+
+    // 如果更新名称，检查是否重复
+    if (validatedData.name) {
+      const board = await prisma.board.findUnique({
+        where: { id },
+      });
+      if (board) {
+        await this.checkBoardNameDuplicate(
+          validatedData.name,
+          board.workspaceId || undefined,
+          board.projectId || undefined,
+          id,
+        );
+      }
+    }
 
     return await prisma.board.update({
       where: { id },
@@ -397,6 +507,51 @@ export class BoardService {
     });
 
     return completedColumns.map((col) => col.id);
+  }
+
+  /**
+   * 检查看板名称是否重复
+   * @param name 看板名称
+   * @param workspaceId 工作区ID（直属工作区的看板）
+   * @param projectId 项目ID（项目下的看板）
+   * @param excludeId 排除的看板ID（用于更新时排除自身）
+   */
+  private async checkBoardNameDuplicate(
+    name: string,
+    workspaceId?: string,
+    projectId?: string,
+    excludeId?: string,
+  ) {
+    const whereClause: {
+      name: string;
+      workspaceId?: string | null;
+      projectId?: string | null;
+      id?: { not: string };
+    } = {
+      name,
+    };
+
+    if (excludeId) {
+      whereClause.id = { not: excludeId };
+    }
+
+    if (projectId) {
+      // 项目下的看板：检查同一项目内是否有同名看板
+      whereClause.projectId = projectId;
+    } else if (workspaceId) {
+      // 直属工作区的看板：检查同一工作区内的直属看板是否有同名
+      whereClause.workspaceId = workspaceId;
+      whereClause.projectId = null; // 只检查直属看板，不包括项目下的看板
+    }
+
+    const existingBoard = await prisma.board.findFirst({
+      where: whereClause,
+    });
+
+    if (existingBoard) {
+      const scopeDesc = projectId ? '该项目' : '该工作区';
+      throw new Error(`${scopeDesc}中已存在名为"${name}"的看板`);
+    }
   }
 }
 

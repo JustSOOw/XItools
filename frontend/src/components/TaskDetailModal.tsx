@@ -1,17 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Task, TaskUpdate } from '../types/Task';
 import Modal from './Modal';
 import taskService from '../services/taskService';
+import multiBoardService from '../services/multiBoardService';
 import useTaskStore from '../store/taskStore';
 import { toast } from './ui/Toast';
 import {
   InlineEdit,
   MarkdownEditor,
-  Timeline,
   QuickActions,
-  generateTimelineEvents,
 } from './enhanced';
 import { useI18n } from '../hooks/useI18n';
+import TaskComments from './task/TaskComments';
+import TaskAssigneeStack from './task/TaskAssigneeStack';
+import TaskHistoryList from './task/TaskHistoryList';
+import MultiAssigneeSelector from './task/MultiAssigneeSelector';
+
+// 可选负责人类型
+interface AssigneeOption {
+  id: string;
+  username: string;
+  email: string;
+  avatar: string | null;
+  role: string;
+}
 
 interface TaskDetailModalProps {
   isOpen: boolean;
@@ -24,7 +36,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
   const [task, setTask] = useState<Task | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'timeline' | 'actions'>('details');
+  const [activeTab, setActiveTab] = useState<'actions' | 'details' | 'history'>('actions');
   const { columns, updateTask: updateTaskInStore } = useTaskStore();
 
   // 加载任务详情
@@ -38,7 +50,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
         setTask(taskDetails);
       } catch (error) {
         console.error('获取任务详情失败:', error);
-        toast.error('获取任务详情失败，请重试');
+        toast.error(t('feedback:messages.fetchTaskDetailsFailed'));
       } finally {
         setIsLoading(false);
       }
@@ -72,7 +84,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
 
   // 处理关闭模态框
   const handleClose = () => {
-    setActiveTab('details');
+    setActiveTab('actions');
     onClose();
   };
 
@@ -95,18 +107,17 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
           {/* 标签页导航 */}
           <div className="flex border-b border-border mb-4 flex-shrink-0">
             {[
-              { key: 'details', label: t('task:detail.tabs.details'), icon: '📋' },
-              { key: 'timeline', label: t('task:detail.tabs.timeline'), icon: '📅' },
               { key: 'actions', label: t('task:detail.tabs.actions'), icon: '⚡' },
+              { key: 'details', label: t('task:detail.tabs.details'), icon: '📋' },
+              { key: 'history', label: t('task:detail.tabs.history', { defaultValue: '历史记录' }), icon: '🕐' },
             ].map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key as any)}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === tab.key
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-text-secondary hover:text-text-primary hover:border-border'
-                }`}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.key
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-text-secondary hover:text-text-primary hover:border-border'
+                  }`}
               >
                 <span className="mr-2">{tab.icon}</span>
                 {tab.label}
@@ -116,15 +127,6 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
 
           {/* 标签页内容 */}
           <div className="flex-1 overflow-y-auto min-h-0">
-            {activeTab === 'details' && (
-              <TaskDetailsTab
-                task={task}
-                columns={columns}
-                onUpdate={handleInlineUpdate}
-                isSaving={isSaving}
-              />
-            )}
-            {activeTab === 'timeline' && <TimelineTab task={task} />}
             {activeTab === 'actions' && (
               <ActionsTab
                 task={task}
@@ -134,6 +136,15 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ isOpen, taskId, onClo
                 onClose={handleClose}
               />
             )}
+            {activeTab === 'details' && (
+              <TaskDetailsTab
+                task={task}
+                columns={columns}
+                onUpdate={handleInlineUpdate}
+                isSaving={isSaving}
+              />
+            )}
+            {activeTab === 'history' && <HistoryTab taskId={task.id} />}
           </div>
         </div>
       )}
@@ -150,11 +161,32 @@ const TaskDetailsTab: React.FC<{
 }> = ({ task, columns, onUpdate, isSaving }) => {
   const { t } = useI18n();
   const [localDescription, setLocalDescription] = useState(task.description || '');
+  const [assigneeOptions, setAssigneeOptions] = useState<AssigneeOption[]>([]);
+  const [isLoadingAssignees, setIsLoadingAssignees] = useState(false);
 
   // 当task.description变化时，更新本地状态
   useEffect(() => {
     setLocalDescription(task.description || '');
   }, [task.description]);
+
+  // 加载可选负责人列表
+  useEffect(() => {
+    const fetchAssignees = async () => {
+      if (!task.boardId) return;
+
+      setIsLoadingAssignees(true);
+      try {
+        const assignees = await multiBoardService.getBoardAssignees(task.boardId);
+        setAssigneeOptions(assignees);
+      } catch (error) {
+        console.error('获取可选负责人失败:', error);
+      } finally {
+        setIsLoadingAssignees(false);
+      }
+    };
+
+    fetchAssignees();
+  }, [task.boardId]);
 
   return (
     <div className="space-y-6 overflow-y-auto pr-2 pb-4">
@@ -246,10 +278,11 @@ const TaskDetailsTab: React.FC<{
             <label className="block text-sm font-medium text-text-primary mb-2">
               {t('task:fields.assignee')}
             </label>
-            <InlineEdit
-              value={task.assignee || ''}
-              onSave={(value) => onUpdate('assignee', value || null)}
-              placeholder={t('task:placeholders.assignee')}
+            <MultiAssigneeSelector
+              assigneeOptions={assigneeOptions}
+              selectedIds={task.assignees || (task.assignee ? [task.assignee] : [])}
+              onChange={(ids) => onUpdate('assignees', ids)}
+              isLoading={isLoadingAssignees}
             />
           </div>
 
@@ -352,9 +385,9 @@ const TaskDetailsTab: React.FC<{
               onSave={(value) => {
                 const tags = value
                   ? value
-                      .split(',')
-                      .map((tag) => tag.trim())
-                      .filter(Boolean)
+                    .split(',')
+                    .map((tag) => tag.trim())
+                    .filter(Boolean)
                   : [];
                 return onUpdate('tags', tags);
               }}
@@ -406,24 +439,20 @@ const TaskDetailsTab: React.FC<{
           </div>
         </div>
       </div>
+
+      {/* 评论区域 */}
+      <div className="bg-accent/5 rounded-lg p-4 mt-6">
+        <TaskComments taskId={task.id} />
+      </div>
     </div>
   );
 };
 
-// 时间线标签页组件
-const TimelineTab: React.FC<{ task: Task }> = ({ task }) => {
-  const { t } = useI18n();
-  const timelineEvents = generateTimelineEvents(task, t);
-
+// 历史记录标签页组件
+const HistoryTab: React.FC<{ taskId: string }> = ({ taskId }) => {
   return (
-    <div className="h-full overflow-hidden">
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold text-text-primary">
-          {t('task:detail.tabs.timeline')}
-        </h3>
-        <p className="text-sm text-text-secondary">{t('task:detail.timelineDescription')}</p>
-      </div>
-      <Timeline events={timelineEvents} maxHeight="50vh" showUserAvatars />
+    <div className="h-full overflow-y-auto px-1 pb-4">
+      <TaskHistoryList taskId={taskId} />
     </div>
   );
 };
@@ -447,8 +476,8 @@ const ActionsTab: React.FC<{
     await onUpdate('priority', priority);
   };
 
-  const handleAssigneeChange = async (assignee: string) => {
-    await onUpdate('assignee', assignee);
+  const handleAssigneesChange = async (assignees: string[]) => {
+    await onUpdate('assignees', assignees);
   };
 
   const handleDuplicate = async () => {
@@ -481,7 +510,7 @@ const ActionsTab: React.FC<{
           columns={columns}
           onStatusChange={handleStatusChange}
           onPriorityChange={handlePriorityChange}
-          onAssigneeChange={handleAssigneeChange}
+          onAssigneesChange={handleAssigneesChange}
           onDuplicate={handleDuplicate}
           onDelete={handleDelete}
           isLoading={isSaving}

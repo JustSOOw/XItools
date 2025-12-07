@@ -2,7 +2,7 @@
 # 支持开发和生产环境
 
 # 阶段1: 基础镜像
-FROM node:18-alpine AS base
+FROM node:20-alpine AS base
 
 # 安装系统依赖
 RUN apk add --no-cache \
@@ -67,6 +67,9 @@ ENTRYPOINT ["docker-entrypoint.sh"]
 
 # 阶段4: 构建阶段
 FROM dependencies AS build
+
+# 设置Node.js内存限制，防止TypeScript编译时内存溢出
+ENV NODE_OPTIONS=--max-old-space-size=4096
 
 # 复制源代码
 COPY . .

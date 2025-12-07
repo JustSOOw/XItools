@@ -10,6 +10,7 @@ export const workspaceSchema = z.object({
   name: z.string().min(1, '工作区名称不能为空').max(100, '工作区名称不能超过100个字符'),
   description: z.string().max(500, '工作区描述不能超过500个字符').optional(),
   isDefault: z.boolean().optional().default(false),
+  teamId: z.string().uuid('无效的团队ID').optional(), // 团队工作区关联
   createdAt: z.string().datetime().optional(),
   updatedAt: z.string().datetime().optional(),
 });
@@ -77,7 +78,7 @@ export const extendedBoardColumnUpdateSchema = extendedBoardColumnSchema
   .partial()
   .omit({ id: true, boardId: true });
 
-// 扩展的任务Schema（添加boardId）
+// 扩展的任务Schema（添加boardId，支持多负责人）
 export const extendedTaskSchema = z.object({
   id: z.string().uuid().optional(),
   title: z.string().min(1, '任务标题不能为空').max(200, '任务标题不能超过200个字符'),
@@ -85,7 +86,7 @@ export const extendedTaskSchema = z.object({
   status: z.string().uuid('无效的状态ID'),
   priority: z.enum(['High', 'Medium', 'Low']).nullable().optional(),
   dueDate: z.string().datetime().nullable().optional(),
-  assignee: z.string().nullable().optional(),
+  assignees: z.array(z.string().uuid('无效的用户ID')).optional().default([]), // 支持多负责人
   color: z.string().nullable().optional(),
   tags: z.array(z.string()).optional(),
   parentId: z.string().uuid().nullable().optional(),

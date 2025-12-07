@@ -8,10 +8,9 @@ import { initReactI18next } from 'react-i18next';
 
 // 导入翻译资源
 import zhCN from './locales/zh-CN';
-import enUS from './locales/en-US';
 
-// 支持的语言列表
-export const supportedLanguages = ['zh-CN', 'en-US'] as const;
+// 支持的语言列表（仅中文）
+export const supportedLanguages = ['zh-CN'] as const;
 export type SupportedLanguage = (typeof supportedLanguages)[number];
 
 // 默认语言
@@ -264,252 +263,6 @@ const inlineAuthResources = {
       },
     },
   },
-  'en-US': {
-    common: {
-      loading: {
-        text: 'Loading...',
-      },
-      app: {
-        name: 'XItools',
-        title: 'Smart Task Board',
-      },
-      feedback: {
-        success: 'Success',
-        error: 'Error',
-        warning: 'Warning',
-        info: 'Info',
-      },
-      settings: 'Settings',
-    },
-    auth: {
-      brand: {
-        title: 'XItools',
-        subtitle: 'Smart Task Board',
-        description: 'Efficient collaboration, intelligent management, making teamwork easier',
-        feature1: 'Smart Task Management',
-        feature2: 'Team Collaboration',
-        feature3: 'Data Analytics',
-        highlight1: {
-          title: 'MCP AI Integration',
-          desc: 'Direct AI editor connection, smart task management',
-        },
-        highlight2: {
-          title: 'Real-time Kanban',
-          desc: 'WebSocket sync, multi-user collaboration',
-        },
-        highlight3: {
-          title: 'Multi-view Management',
-          desc: 'Board, list, and calendar views',
-        },
-        stats: {
-          tools: 'MCP Tools',
-          views: 'View Modes',
-          sync: 'Real-time Sync',
-        },
-      },
-      login: {
-        title: 'Login',
-        subtitle: 'Welcome back',
-        identifier: 'Username/Email',
-        identifierPlaceholder: 'Enter username or email',
-        password: 'Password',
-        passwordPlaceholder: 'Enter password',
-        rememberMe: 'Remember me',
-        submit: 'Login',
-        loggingIn: 'Logging in...',
-        noAccount: "Don't have an account?",
-        switchToRegister: 'Sign up now',
-        forgotPassword: 'Forgot password?',
-      },
-      register: {
-        title: 'Register',
-        subtitle: 'Create your account',
-        username: 'Username',
-        usernamePlaceholder: 'Enter username',
-        email: 'Email',
-        emailPlaceholder: 'Enter email address',
-
-        password: 'Password',
-        passwordPlaceholder: 'Enter password',
-        confirmPassword: 'Confirm Password',
-        confirmPasswordPlaceholder: 'Enter password again',
-        submit: 'Register',
-        registering: 'Registering...',
-        hasAccount: 'Already have an account?',
-        switchToLogin: 'Sign in now',
-      },
-      forgotPassword: {
-        title: 'Reset Password',
-        subtitle: 'Enter your username and email to receive a verification code',
-        usernameLabel: 'Username',
-        usernamePlaceholder: 'Enter username',
-        emailLabel: 'Email',
-        emailPlaceholder: 'Enter email address',
-        verificationCodeLabel: 'Verification Code',
-        verificationCodePlaceholder: 'Enter the 6-digit code from your email',
-        sendCode: 'Send Code',
-        sendingCode: 'Sending...',
-        resendCode: 'Resend',
-        codeSent: 'Code sent successfully',
-        sendCodeFailed: 'Failed to send verification code',
-        maskedEmailHint: 'Verification code sent to {{email}}',
-        resendAfter: 'Resend in {{seconds}}s',
-        pleaseGetCode: 'Please get verification code first',
-        newPasswordLabel: 'New Password',
-        newPasswordPlaceholder: 'Enter new password',
-        confirmPasswordLabel: 'Confirm Password',
-        confirmPasswordPlaceholder: 'Enter new password again',
-        submit: 'Reset Password',
-        resetting: 'Resetting...',
-        backToLogin: 'Back to Login',
-        resetSuccess: 'Password reset successful',
-        resetFailed: 'Password reset failed, please try again later',
-        successTitle: 'Reset Successful',
-        successMessage: 'Your password has been reset. Redirecting to login...',
-        error: 'Reset Failed',
-      },
-      password: {
-        strength: 'Password Strength',
-        weak: 'Weak',
-        medium: 'Medium',
-        strong: 'Strong',
-        veryStrong: 'Very Strong',
-      },
-      profile: {
-        title: 'Profile',
-        profileTab: 'Profile',
-        passwordTab: 'Change Password',
-        username: 'Username',
-        email: 'Email Address',
-        avatar: 'Avatar',
-        avatarPlaceholder: 'Enter avatar URL (optional)',
-        currentPassword: 'Current Password',
-        newPassword: 'New Password',
-        confirmNewPassword: 'Confirm New Password',
-        updateProfile: 'Update Profile',
-        updating: 'Updating...',
-        changePassword: 'Change Password',
-        changingPassword: 'Changing...',
-        logout: 'Logout',
-        updateSuccess: 'Profile updated successfully',
-        passwordChangeSuccess: 'Password changed successfully',
-        logoutConfirm: 'Are you sure you want to logout?',
-        notLoggedIn: 'Please login first',
-        lastLogin: 'Last Login',
-      },
-      roles: {
-        admin: 'Administrator',
-        user: 'User',
-        guest: 'Guest',
-      },
-      validation: {
-        identifierRequired: 'Please enter username or email',
-        passwordRequired: 'Please enter password',
-        passwordMinLength: 'Password must be at least 6 characters',
-        usernameRequired: 'Please enter username',
-        usernameMinLength: 'Username must be at least 3 characters',
-        usernameMaxLength: 'Username cannot exceed 20 characters',
-        usernameInvalid: 'Username can only contain letters, numbers and underscores',
-        usernameFormat: 'Username can only contain letters, numbers and underscores',
-        emailRequired: 'Please enter email address',
-        emailInvalid: 'Please enter a valid email address',
-        emailFormat: 'Please enter a valid email address',
-        usernameUpdateRequired: 'Please enter username',
-        usernameUpdateMinLength: 'Username must be at least 3 characters',
-        currentPasswordRequired: 'Please enter current password',
-        newPasswordRequired: 'Please enter new password',
-        passwordStrength: 'Password is weak, consider using a more complex password',
-        passwordSameAsCurrent: 'New password cannot be the same as current password',
-        confirmPasswordRequired: 'Please confirm password',
-        verificationCodeRequired: 'Please enter the captcha',
-        verificationCodeMismatch: 'Captcha verification failed',
-        passwordMismatch: 'Passwords do not match',
-      },
-      footer: {
-        privacy: 'Privacy Policy',
-        terms: 'Terms of Service',
-        help: 'Help Center',
-        copyright: 'All rights reserved',
-      },
-      feedback: {
-        welcome: 'Welcome',
-        welcomeNew: 'Welcome new user',
-        goodbye: 'Goodbye',
-        loginSuccess: 'Login successful, welcome {{username}}!',
-        loginSuccessGeneric: 'Login successful!',
-        loginFailed: 'Login failed',
-        registerSuccess: 'Registration successful, welcome {{username}}!',
-        registerSuccessGeneric: 'Registration successful!',
-        registerFailed: 'Registration failed',
-        logoutSuccess: 'Logged out safely',
-        passwordChanged: 'Password changed successfully',
-        passwordChangeFailed: 'Password change failed',
-        securityUpdate: 'Security Update',
-        profileUpdated: 'Profile updated successfully',
-        profileSaved: 'Profile saved',
-        profileUpdateFailed: 'Profile update failed',
-        sessionExpired: 'Session has expired, please log in again',
-        sessionExpiredTitle: 'Session Expired',
-        relogin: 'Log in again',
-        networkError: 'Network connection failed',
-        connectionProblem: 'Connection Problem',
-        retry: 'Retry',
-      },
-      errors: {
-        unknown: 'Unknown error, please try again later',
-        network: 'Network connection failed, please check your network settings',
-        server: 'Server error, please try again later',
-        login: {
-          failed: 'Login failed, please try again',
-          invalidCredentials: 'Invalid username or password',
-          userNotFound: 'User not found',
-          userInactive: 'Account has been disabled',
-        },
-        register: {
-          failed: 'Registration failed, please try again',
-          usernameExists: 'Username already exists',
-          usernameTaken: 'Username already exists',
-          emailExists: 'Email already registered',
-          emailTaken: 'Email already registered',
-          weakPassword: 'Password is too weak',
-          invalidData: 'Invalid input data',
-          serverError: 'Server error, please try again later',
-        },
-        token: {
-          expired: 'Login has expired, please log in again',
-          invalid: 'Invalid login status, please log in again',
-          missing: 'Missing authentication information, please log in again',
-        },
-        session: {
-          revoked: 'Session has been revoked, please log in again',
-        },
-        permission: {
-          insufficient: 'Insufficient permissions',
-          forbidden: 'Access forbidden',
-          accessDenied: 'Access denied',
-        },
-        profile: {
-          updateFailed: 'Profile update failed',
-          currentPasswordIncorrect: 'Current password is incorrect',
-          passwordSameAsCurrent: 'New password cannot be the same as current password',
-          passwordChangeFailed: 'Password change failed',
-          avatarUploadFailed: 'Avatar upload failed',
-        },
-      },
-      loading: {
-        checking: 'Checking authentication status...',
-      },
-      unauthorized: {
-        title: 'Access Denied',
-        message:
-          'You need {{requiredRole}} permission to access this page. Current permission: {{currentRole}}',
-        goBack: 'Go Back',
-      },
-      roleGuard: {
-        accessDenied: 'Access Denied',
-      },
-    },
-  },
 };
 
 // 合并翻译资源：深度合并JSON文件与内联的认证资源
@@ -523,16 +276,6 @@ const resources = {
     },
     // 添加auth命名空间（来自内联资源）
     auth: inlineAuthResources['zh-CN'].auth,
-  },
-  'en-US': {
-    ...enUS,
-    // 深度合并common命名空间，避免覆盖
-    common: {
-      ...enUS.common,
-      ...inlineAuthResources['en-US'].common,
-    },
-    // 添加auth命名空间（来自内联资源）
-    auth: inlineAuthResources['en-US'].auth,
   },
 };
 
@@ -551,15 +294,10 @@ i18n.use(initReactI18next).init({
   },
 });
 
-// 语言规范化函数
+// 语言规范化函数（已禁用多语言，始终返回中文）
 const normalizeLanguage = (lng: string): SupportedLanguage => {
-  if (lng === 'zh' || lng.startsWith('zh-')) {
-    return 'zh-CN';
-  }
-  if (lng === 'en' || lng.startsWith('en-')) {
-    return 'en-US';
-  }
-  return defaultLanguage;
+  // 所有语言都映射到中文
+  return 'zh-CN';
 };
 
 export default i18n;

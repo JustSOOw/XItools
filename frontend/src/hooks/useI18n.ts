@@ -207,20 +207,18 @@ export function useLanguageDetection() {
   const { i18n } = useI18n();
 
   const detectLanguage = useCallback(() => {
-    // 检测浏览器语言
-    const browserLanguage = navigator.language;
-    const supportedLanguages: SupportedLanguage[] = ['zh-CN', 'en-US'];
+    // 已禁用多语言功能，始终返回中文
+    return 'zh-CN' as SupportedLanguage;
 
-    // 精确匹配
-    if (supportedLanguages.includes(browserLanguage as SupportedLanguage)) {
-      return browserLanguage as SupportedLanguage;
-    }
-
-    // 语言代码匹配（如 'zh' 匹配 'zh-CN'）
-    const languageCode = browserLanguage.split('-')[0];
-    const matchedLanguage = supportedLanguages.find((lang) => lang.startsWith(languageCode));
-
-    return matchedLanguage || 'zh-CN';
+    // 原有的浏览器语言检测逻辑（已禁用）
+    // const browserLanguage = navigator.language;
+    // const supportedLanguages: SupportedLanguage[] = ['zh-CN'];
+    // if (supportedLanguages.includes(browserLanguage as SupportedLanguage)) {
+    //   return browserLanguage as SupportedLanguage;
+    // }
+    // const languageCode = browserLanguage.split('-')[0];
+    // const matchedLanguage = supportedLanguages.find((lang) => lang.startsWith(languageCode));
+    // return matchedLanguage || 'zh-CN';
   }, []);
 
   const applyDetectedLanguage = useCallback(async () => {

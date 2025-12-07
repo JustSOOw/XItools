@@ -9,13 +9,16 @@
  * Copyright (c) 2025 by XItools Team, All Rights Reserved.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useUserStore, userStoreHelpers } from '../store/userStore';
 import { LoginStatus } from '../types/User';
 import { AuthPage } from '../pages/AuthPage';
 import App from '../App';
+import TeamSettings from '../pages/TeamSettings';
+import AcceptInvitation from '../pages/AcceptInvitation';
+import Layout from './Layout';
 import { useTranslation } from 'react-i18next';
-import i18n from '../i18n';
 
 // 页面类型枚举
 export enum PageType {
@@ -28,10 +31,34 @@ interface AppRouterProps {
   className?: string;
 }
 
+// Protected Route Wrapper
+const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
+  const { loginStatus } = useUserStore();
+  const location = useLocation();
+  const isLoggedIn = userStoreHelpers.isLoggedIn();
+
+  if (!isLoggedIn || loginStatus !== LoginStatus.LOGGED_IN) {
+    return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+
+  return children;
+};
+
+// Public Route Wrapper - 已登录用户重定向到主页
+const PublicRoute = ({ children }: { children: JSX.Element }) => {
+  const { loginStatus } = useUserStore();
+  const isLoggedIn = userStoreHelpers.isLoggedIn();
+
+  if (isLoggedIn && loginStatus === LoginStatus.LOGGED_IN) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+};
+
 export const AppRouter: React.FC<AppRouterProps> = ({ className = '' }) => {
   const { t } = useTranslation();
-  const { user, loginStatus, checkAuthStatus, isLoading } = useUserStore();
-  const [currentPage, setCurrentPage] = useState<PageType>(PageType.LOADING);
+  const { checkAuthStatus } = useUserStore();
   const [isInitialized, setIsInitialized] = useState(false);
 
   // 初始化认证状态
@@ -49,28 +76,7 @@ export const AppRouter: React.FC<AppRouterProps> = ({ className = '' }) => {
     if (!isInitialized) {
       initializeAuth();
     }
-  }, [isInitialized]); // 只依赖isInitialized，避免checkAuthStatus引起的循环
-
-  // 根据认证状态决定显示哪个页面
-  useEffect(() => {
-    if (!isInitialized) {
-      setCurrentPage(PageType.LOADING);
-      return;
-    }
-
-    const isLoggedIn = userStoreHelpers.isLoggedIn();
-
-    if (isLoggedIn && loginStatus === LoginStatus.LOGGED_IN) {
-      setCurrentPage(PageType.MAIN);
-    } else {
-      setCurrentPage(PageType.AUTH);
-    }
-  }, [isInitialized, user, loginStatus]);
-
-  // 处理认证成功
-  const handleAuthSuccess = () => {
-    setCurrentPage(PageType.MAIN);
-  };
+  }, [isInitialized, checkAuthStatus]);
 
   // 渲染加载页面
   const renderLoadingPage = () => (
@@ -96,32 +102,61 @@ export const AppRouter: React.FC<AppRouterProps> = ({ className = '' }) => {
     </div>
   );
 
-  // 渲染认证页面
-  const renderAuthPage = () => (
-    <AuthPage initialMode="login" onAuthSuccess={handleAuthSuccess} className="full-screen" />
+  if (!isInitialized) {
+    return renderLoadingPage();
+  }
+
+  return (
+    <div className={`app-router ${className}`}>
+      <Routes>
+        <Route
+          path="/auth"
+          element={
+            <PublicRoute>
+              <AuthPage initialMode="login" className="full-screen" />
+            </PublicRoute>
+          }
+        />
+        <Route path="/accept-invitation" element={<AcceptInvitation />} />
+        <Route path="/invite/:inviteCode" element={<AcceptInvitation />} />
+
+        {/* Protected Routes */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <App />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Team Settings Route - Wrapped in Layout if App doesn't handle it, 
+            but App renders Layout. So we might need to nest this or make App handle child routes.
+            For now, let's assume App is the main dashboard and we want TeamSettings to replace the board view 
+            BUT keep the Sidebar. 
+            
+            However, App.tsx renders Layout and then the board content.
+            If we want TeamSettings to show inside Layout, we should probably move Layout out of App 
+            or make App a layout route.
+            
+            Let's try to make App a layout route or use a separate layout for team settings.
+            Since I can't easily refactor App.tsx to be a layout route without changing its internal structure significantly,
+            I will wrap TeamSettings in Layout here.
+        */}
+        <Route
+          path="/team/settings"
+          element={
+            <ProtectedRoute>
+              <App />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Catch all - redirect to home */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </div>
   );
-
-  // 渲染主应用
-  const renderMainApp = () => <App />;
-
-  // 根据当前页面类型渲染对应内容
-  const renderCurrentPage = () => {
-    switch (currentPage) {
-      case PageType.LOADING:
-        return renderLoadingPage();
-
-      case PageType.AUTH:
-        return renderAuthPage();
-
-      case PageType.MAIN:
-        return renderMainApp();
-
-      default:
-        return renderLoadingPage();
-    }
-  };
-
-  return <div className={`app-router ${className}`}>{renderCurrentPage()}</div>;
 };
 
 export default AppRouter;

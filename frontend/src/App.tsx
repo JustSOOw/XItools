@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import classNames from 'classnames';
 import {
   DndContext,
@@ -40,10 +41,12 @@ import { SkeletonCard, SkeletonList, SkeletonCalendar } from './components/ui/Lo
 import { toast } from './components/ui/Toast';
 import { ErrorBoundary, SimpleErrorFallback } from './components/ui/ErrorBoundary';
 import { EmptyTasks, EmptySearchResults, EmptyFilterResults } from './components/ui/EmptyState';
+import TeamSettings from './pages/TeamSettings';
 
 // 动画组件
 import { ViewTransition } from './components/animations';
 import NavigationOverview from './components/navigation/NavigationOverview';
+import NotificationCenter from './components/notification/NotificationCenter';
 
 // 反馈组件
 import { useConfirmDialog, useSuccessAnimation, useKeyboardShortcuts } from './components/feedback';
@@ -63,6 +66,10 @@ import { useI18n } from './hooks/useI18n';
 import { setupAxiosInterceptors } from './utils/axiosConfig';
 
 function App() {
+  // 翻译函数
+  const { t, i18n } = useI18n();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [isTaskDetailModalOpen, setIsTaskDetailModalOpen] = useState(false);
@@ -72,8 +79,8 @@ function App() {
     status: '', // 将在列加载后更新为第一个列的UUID
   });
 
-  // 翻译函数
-  const { t } = useI18n();
+
+  const isTeamSettingsPage = location.pathname === '/team/settings';
 
   // 用户状态管理（认证状态由AppRouter处理）
 
@@ -400,7 +407,7 @@ function App() {
       if (firstColumn) {
         statusColumnId = firstColumn.id;
       } else {
-        toast.error('看板没有可用的列');
+        toast.error(t('feedback:messages.noAvailableColumns'));
         return;
       }
     }
@@ -657,12 +664,12 @@ function App() {
         } catch (error) {
           console.error('任务拖拽持久化失败:', error);
           // 持久化失败时，可以选择显示警告但不回滚UI
-          toast.warning('任务保存失败，但界面已更新');
+          toast.warning(t('feedback:messages.taskSaveFailedUIUpdated'));
         }
       });
     } catch (error) {
       console.error('任务拖拽失败:', error);
-      toast.error('任务移动失败');
+      toast.error(t('feedback:messages.taskMoveFailed'));
       // 失败时恢复到拖拽开始时的状态
       if (dragStartState) {
         setTasks(dragStartState.tasks);
@@ -736,9 +743,9 @@ function App() {
         message:
           columnTasks.length > 0
             ? t('feedback:confirmation.deleteColumnWithTasksMessage', {
-                columnName,
-                taskCount: columnTasks.length,
-              })
+              columnName,
+              taskCount: columnTasks.length,
+            })
             : t('feedback:confirmation.deleteColumnMessage', { columnName }),
         type: 'danger',
         confirmText: t('feedback:dialog.delete'),
@@ -910,6 +917,10 @@ function App() {
 
   // 渲染视图内容
   const renderViewContent = () => {
+    if (isTeamSettingsPage) {
+      return <TeamSettings />;
+    }
+
     switch (currentView) {
       case 'list':
         return (
@@ -945,7 +956,7 @@ function App() {
               // 通过MCP服务更新任务
               taskService.updateTask(taskId, updates).catch((error) => {
                 console.error('更新任务失败:', error);
-                toast.error('更新任务失败，请重试');
+                toast.error(t('feedback:messages.taskUpdateFailed'));
               });
             }}
             onCreateTask={() => setIsCreateModalOpen(true)}
@@ -1213,33 +1224,54 @@ function App() {
         <div className="flex flex-col h-full">
           {/* 顶部操作栏 */}
           <header className="modern-container mx-4 mt-4 px-6 py-4 flex items-center justify-between">
-            {/* 左侧：搜索和筛选 */}
-            <div className="flex items-center space-x-4">
-              {/* 搜索框 */}
-              <div className="w-80">
-                <SearchBox
-                  value={filterOptions.searchText || ''}
-                  placeholder={t('task:placeholders.searchTasks')}
-                  onSearch={(searchText: string) =>
-                    setFilterOptions({ searchText: searchText || undefined })
-                  }
-                  onClear={() => setFilterOptions({ searchText: undefined })}
+            {/* 左侧：搜索和筛选 - 仅在非团队设置页面显示 */}
+            {!isTeamSettingsPage && (
+              <div className="flex items-center space-x-4">
+                {/* 搜索框 */}
+                <div className="w-80">
+                  <SearchBox
+                    value={filterOptions.searchText || ''}
+                    placeholder={t('task:placeholders.searchTasks')}
+                    onSearch={(searchText: string) =>
+                      setFilterOptions({ searchText: searchText || undefined })
+                    }
+                    onClear={() => setFilterOptions({ searchText: undefined })}
+                  />
+                </div>
+
+                {/* 筛选器 */}
+                <TaskFilter
+                  filterOptions={filterOptions}
+                  onFilterChange={setFilterOptions}
+                  onClearFilters={clearFilters}
+                  columns={columns}
+                  tasks={tasks}
+                  displayTasks={displayTasks}
                 />
               </div>
+            )}
 
-              {/* 筛选器 */}
-              <TaskFilter
-                filterOptions={filterOptions}
-                onFilterChange={setFilterOptions}
-                onClearFilters={clearFilters}
-                columns={columns}
-                tasks={tasks}
-                displayTasks={displayTasks}
-              />
-            </div>
+            {/* 团队设置页面标题 */}
+            {isTeamSettingsPage && (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => navigate('/')}
+                  className="p-1.5 -ml-2 text-text-secondary hover:text-text-primary hover:bg-surface/80 rounded-full transition-colors"
+                  title={t('common:actions.backToHome', { defaultValue: '返回主页' })}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                </button>
+                <div className="h-5 w-px bg-border/50"></div>
+                <h1 className="text-xl font-bold text-text-primary">
+                  {t('team:settings.title', { defaultValue: '团队设置' })}
+                </h1>
+              </div>
+            )}
 
-            {/* 中间：视图切换按钮 - 只在选中看板时显示 */}
-            {currentBoardId && (
+            {/* 中间：视图切换按钮 - 只在选中看板且非团队设置页面时显示 */}
+            {currentBoardId && !isTeamSettingsPage && (
               <div className="flex items-center space-x-2 bg-surface/50 rounded-lg p-1">
                 <button
                   onClick={() => useTaskStore.getState().setCurrentView('board')}
@@ -1311,24 +1343,11 @@ function App() {
 
             {/* 右侧：操作按钮 */}
             <div className="flex items-center space-x-4">
-              {/* 连接状态指示器 - 小点样式 */}
-              <div className="flex items-center">
-                <span
-                  className={`w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}
-                ></span>
-                <span className="text-xs text-text-secondary">
-                  {isConnected ? t('common:status.connected') : t('common:status.disconnected')}
-                </span>
-              </div>
+              {/* 通知中心 */}
+              <NotificationCenter />
 
-              {!isConnected && (
-                <Button variant="danger" size="sm" onClick={reconnect}>
-                  {t('common:actions.reconnect', { defaultValue: '重新连接' })}
-                </Button>
-              )}
-
-              {/* 删除所有任务按钮 */}
-              {tasks.length > 0 && (
+              {/* 删除所有任务按钮 - 仅在非团队设置页面显示 */}
+              {tasks.length > 0 && !isTeamSettingsPage && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1384,23 +1403,18 @@ function App() {
                 </Button>
               )}
 
-              {/* 只有在选中看板时才显示创建任务按钮 */}
-              {currentBoardId && (
+              {/* 只有在选中看板且非团队设置页面时才显示创建任务按钮 */}
+              {currentBoardId && !isTeamSettingsPage && (
                 <Button variant="secondary" size="sm" onClick={() => setIsCreateModalOpen(true)}>
                   {t('task:actions.createTask')}
                 </Button>
               )}
 
-              <BoardColorPicker />
+              {!isTeamSettingsPage && <BoardColorPicker />}
             </div>
           </header>
 
-          {/* 连接状态提示 */}
-          {!isConnected && (
-            <div className="modern-card mx-4 mt-4 bg-warning/10 border border-warning text-warning px-4 py-2">
-              <p>未连接到MCP服务，部分功能可能不可用</p>
-            </div>
-          )}
+
 
           {/* 主要内容区 */}
           <ViewTransition
@@ -1408,8 +1422,8 @@ function App() {
             mode="scale"
             className="flex-1 p-4 flex flex-col min-h-0"
           >
-            {/* 如果选中了看板，显示看板内容；否则显示导航概览 */}
-            {currentBoardId ? (
+            {/* 如果是团队设置页面，或者选中了看板，显示内容；否则显示导航概览 */}
+            {isTeamSettingsPage || currentBoardId ? (
               // 显示看板内容
               <>
                 {isLoading ? (
@@ -1446,7 +1460,15 @@ function App() {
                   </>
                 ) : (
                   <>
-                    {currentView === 'board' ? (
+                    {isTeamSettingsPage ? (
+                      <div className="modern-container h-full w-full overflow-hidden relative">
+                        <div className="h-full w-full overflow-y-auto custom-scrollbar">
+                          <ErrorBoundary fallback={SimpleErrorFallback}>
+                            {renderViewContent()}
+                          </ErrorBoundary>
+                        </div>
+                      </div>
+                    ) : currentView === 'board' ? (
                       <div className="modern-container h-full board-content">
                         <div className="h-full overflow-x-auto overflow-y-hidden p-6 custom-scrollbar">
                           <ErrorBoundary fallback={SimpleErrorFallback}>

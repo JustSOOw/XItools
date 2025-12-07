@@ -5,6 +5,7 @@ import MoreButton, { MoreMenuItem } from './MoreButton';
 import ColorPickerModal from './ColorPickerModal';
 import { CardAnimation } from './animations';
 import { useI18n } from '../hooks/useI18n';
+import TaskAssigneeStack from './task/TaskAssigneeStack';
 
 interface TaskCardProps {
   task: Task;
@@ -142,19 +143,33 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onClick, onColorChange, onDel
                 )}
               </div>
 
-              {/* 任务ID */}
-              <span className="text-xs text-text-secondary">{task.id.substring(0, 6)}</span>
-            </div>
+              {/* 右侧：负责人头像 + 任务ID */}
+              <div className="flex items-center gap-2">
+                {/* 负责人头像 - 使用后端提供的 assigneeDetails */}
+                {(task.assigneeDetails?.length || task.assignees?.length || task.assignee) && (
+                  <TaskAssigneeStack
+                    assignees={
+                      task.assigneeDetails && task.assigneeDetails.length > 0
+                        ? task.assigneeDetails.map(detail => ({
+                            id: detail.id,
+                            name: detail.username,
+                            avatarUrl: detail.avatar || undefined,
+                          }))
+                        : task.assignees
+                          ? task.assignees.map(id => ({ id, name: id }))
+                          : task.assignee
+                            ? [{ id: task.assignee, name: task.assignee }]
+                            : []
+                    }
+                    size="sm"
+                    maxDisplay={2}
+                  />
+                )}
 
-            {/* 负责人 */}
-            {task.assignee && (
-              <div className="mt-1.5 flex items-center">
-                <span className="inline-block w-5 h-5 rounded-full bg-accent text-white text-xs flex items-center justify-center">
-                  {task.assignee.substring(0, 1).toUpperCase()}
-                </span>
-                <span className="ml-1 text-xs text-text-secondary">{task.assignee}</span>
+                {/* 任务ID */}
+                <span className="text-xs text-text-secondary">{task.id.substring(0, 6)}</span>
               </div>
-            )}
+            </div>
           </div>
         </Card>
       </CardAnimation>

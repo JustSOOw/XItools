@@ -4,15 +4,21 @@
 
 import { FastifyInstance } from 'fastify';
 import { taskService } from '../services/taskService';
+import { taskHistoryService } from '../services/taskHistoryService';
 import { extendedTaskSchema, extendedTaskUpdateSchema } from '../types/multiBoardSchema';
 import { authMiddleware, requireAuth, createOwnershipVerifier } from '../middleware/authMiddleware';
+import {
+  createOwnershipOrPermissionVerifier,
+  createWorkspaceAccessVerifier
+} from '../middleware/permissionMiddleware';
+import { ProjectPermissionType } from '../types/teamTypes';
 
 export default async function taskRoutes(fastify: FastifyInstance) {
-  // 获取指定看板的所有任务（需要验证看板所有权）
+  // 获取指定看板的所有任务（需要查看权限）
   fastify.get(
     '/boards/:boardId/tasks',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('board')],
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.VIEW)],
     },
     async (request, reply) => {
       try {
@@ -29,11 +35,11 @@ export default async function taskRoutes(fastify: FastifyInstance) {
 
   // 注意：获取看板列的路由已在 columnRoutes.ts 中定义，避免重复
 
-  // 获取指定项目的所有任务（需要验证项目所有权）
+  // 获取指定项目的所有任务（需要查看权限）
   fastify.get(
     '/projects/:projectId/tasks',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('project')],
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.VIEW)],
     },
     async (request, reply) => {
       try {
@@ -48,11 +54,11 @@ export default async function taskRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // 获取指定工作区的所有任务（需要验证工作区所有权）
+  // 获取指定工作区的所有任务（需要验证工作区访问权限，支持团队成员）
   fastify.get(
     '/workspaces/:workspaceId/tasks',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('workspace')],
+      preHandler: [authMiddleware, createWorkspaceAccessVerifier(ProjectPermissionType.VIEW)],
     },
     async (request, reply) => {
       try {
@@ -67,11 +73,11 @@ export default async function taskRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // 根据ID获取任务（需要验证任务所有权）
+  // 根据ID获取任务（需要查看权限）
   fastify.get(
     '/tasks/:id',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('task')],
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.VIEW)],
     },
     async (request, reply) => {
       try {
@@ -92,11 +98,37 @@ export default async function taskRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // 创建任务
+  // 创建任务（需要编辑权限）
   fastify.post('/tasks', { preHandler: authMiddleware }, async (request, reply) => {
     try {
       const userId = requireAuth(request);
       const taskData = extendedTaskSchema.parse(request.body);
+
+      // 检查用户是否对看板所属的项目有编辑权限
+      if (taskData.boardId) {
+        const { PrismaClient } = await import('@prisma/client');
+        const prisma = new PrismaClient();
+        const board = await prisma.board.findUnique({
+          where: { id: taskData.boardId },
+          include: { project: true },
+        });
+        await prisma.$disconnect();
+
+        if (board?.project) {
+          const { permissionService } = await import('../services/permissionService');
+          const hasPermission = await permissionService.checkProjectPermission(
+            userId,
+            board.project.id,
+            ProjectPermissionType.EDIT
+          );
+
+          if (!hasPermission) {
+            reply.status(403);
+            return { success: false, error: '您没有在该项目中创建任务的权限' };
+          }
+        }
+      }
+
       const task = await taskService.createTask(taskData, userId);
 
       // 广播任务创建事件
@@ -140,17 +172,77 @@ export default async function taskRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // 更新任务
+  // 更新任务（需要编辑权限）
   fastify.put(
     '/tasks/:id',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('task')],
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.EDIT)],
     },
     async (request, reply) => {
       try {
         const { id } = request.params as { id: string };
         const updateData = extendedTaskUpdateSchema.parse(request.body);
+
+        // 获取旧任务数据（用于比较assignees变化）
+        const oldTask = await taskService.getTaskById(id);
+        if (!oldTask) {
+          reply.status(404);
+          return { success: false, error: '任务不存在' };
+        }
+
         const task = await taskService.updateTask(id, updateData, request.user!.userId);
+
+        // 检测assignees变更并发送通知
+        if (updateData.assignees && Array.isArray(updateData.assignees)) {
+          const oldAssignees = new Set(oldTask.assignees || []);
+          const newAssignees = new Set(updateData.assignees);
+
+          // 找出新增的负责人
+          const addedAssignees = Array.from(newAssignees).filter(id => !oldAssignees.has(id));
+
+          if (addedAssignees.length > 0) {
+            const { NotificationService } = await import('../services/notificationService');
+            const notificationService = new NotificationService();
+            const assignerId = request.user!.userId;
+
+            // 获取分配者信息
+            const { PrismaClient } = await import('@prisma/client');
+            const prisma = new PrismaClient();
+            const assigner = await prisma.user.findUnique({
+              where: { id: assignerId },
+              select: { username: true },
+            });
+            await prisma.$disconnect();
+
+            // 为每个新增的负责人发送通知
+            for (const userId of addedAssignees) {
+              await notificationService.createNotification({
+                userId,
+                type: 'task_assigned' as any,
+                title: '任务分配给您',
+                content: assigner
+                  ? `${assigner.username} 将任务"${task.title}"分配给您`
+                  : `任务"${task.title}"已分配给您`,
+                resourceType: 'task' as any,
+                resourceId: id,
+              });
+
+              // WebSocket 推送通知
+              const io = fastify.io;
+              if (io) {
+                io.to(`user:${userId}`).emit('notification_received', {
+                  type: 'task_assigned',
+                  title: '任务分配给您',
+                  content: assigner
+                    ? `${assigner.username} 将任务"${task.title}"分配给您`
+                    : `任务"${task.title}"已分配给您`,
+                  resourceType: 'task',
+                  resourceId: id,
+                });
+              }
+            }
+          }
+        }
 
         // 广播任务更新事件
         const io = fastify.io;
@@ -167,16 +259,23 @@ export default async function taskRoutes(fastify: FastifyInstance) {
     },
   );
 
-  // 删除任务
+  // 删除任务（需要编辑权限）
   fastify.delete(
     '/tasks/:id',
     {
-      preHandler: [authMiddleware, createOwnershipVerifier('task')],
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.EDIT)],
     },
     async (request, reply) => {
       try {
         const { id } = request.params as { id: string };
-        await taskService.deleteTask(id);
+        const userId = request.user?.userId;
+
+        if (!userId) {
+          reply.status(401);
+          return { success: false, error: '未认证' };
+        }
+
+        await taskService.deleteTask(id, userId);
 
         // 广播任务删除事件
         const io = fastify.io;
@@ -189,6 +288,136 @@ export default async function taskRoutes(fastify: FastifyInstance) {
         console.error('删除任务失败:', error);
         reply.status(500);
         return { success: false, error: error instanceof Error ? error.message : '删除任务失败' };
+      }
+    },
+  );
+
+  // 分配任务（添加负责人）（需要编辑权限）
+  fastify.post(
+    '/tasks/:id/assign',
+    {
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.EDIT)],
+    },
+    async (request, reply) => {
+      try {
+        const { id } = request.params as { id: string };
+        const { userIds } = request.body as { userIds: string[] };
+
+        if (!Array.isArray(userIds) || userIds.length === 0) {
+          reply.status(400);
+          return { success: false, error: '必须提供用户ID数组' };
+        }
+
+        // 验证所有用户ID格式
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const invalidIds = userIds.filter(id => !uuidRegex.test(id));
+        if (invalidIds.length > 0) {
+          reply.status(400);
+          return { success: false, error: `无效的用户ID: ${invalidIds.join(', ')}` };
+        }
+
+        // 获取任务信息以获取 boardId
+        const task = await taskService.getTaskById(id);
+        if (!task) {
+          reply.status(404);
+          return { success: false, error: '任务不存在' };
+        }
+
+        // 验证用户是否为团队成员
+        const isValidMembers = await taskService.validateTeamMembers(userIds, task.boardId);
+        if (!isValidMembers) {
+          reply.status(403);
+          return { success: false, error: '只能将任务分配给团队成员' };
+        }
+
+        const updatedTask = await taskService.assignTask(id, userIds);
+
+        // 发送任务分配通知给新分配的负责人
+        const { NotificationService } = await import('../services/notificationService');
+        const notificationService = new NotificationService();
+        const assignerId = request.user!.userId;
+
+        // 获取分配者信息
+        const { PrismaClient } = await import('@prisma/client');
+        const prisma = new PrismaClient();
+        const assigner = await prisma.user.findUnique({
+          where: { id: assignerId },
+          select: { username: true },
+        });
+        await prisma.$disconnect();
+
+        // 为每个新分配的负责人发送通知
+        for (const userId of userIds) {
+          await notificationService.createNotification({
+            userId,
+            type: 'task_assigned' as any,
+            title: '任务分配给您',
+            content: assigner
+              ? `${assigner.username} 将任务"${updatedTask.title}"分配给您`
+              : `任务"${updatedTask.title}"已分配给您`,
+            resourceType: 'task' as any,
+            resourceId: id,
+          });
+
+          // WebSocket 推送通知
+          const io = fastify.io;
+          if (io) {
+            io.to(`user:${userId}`).emit('notification_received', {
+              type: 'task_assigned',
+              title: '任务分配给您',
+              content: assigner
+                ? `${assigner.username} 将任务"${updatedTask.title}"分配给您`
+                : `任务"${updatedTask.title}"已分配给您`,
+              resourceType: 'task',
+              resourceId: id,
+            });
+          }
+        }
+
+        // 广播任务更新事件
+        const io = fastify.io;
+        if (io) {
+          io.emit('task_updated', updatedTask);
+        }
+
+        return { success: true, data: updatedTask };
+      } catch (error) {
+        console.error('分配任务失败:', error);
+        reply.status(500);
+        return { success: false, error: error instanceof Error ? error.message : '分配任务失败' };
+      }
+    },
+  );
+
+  // 取消任务分配（移除负责人）（需要编辑权限）
+  fastify.post(
+    '/tasks/:id/unassign',
+    {
+      preHandler: [authMiddleware, createOwnershipOrPermissionVerifier(ProjectPermissionType.EDIT)],
+    },
+    async (request, reply) => {
+      try {
+        const { id } = request.params as { id: string };
+        const { userIds } = request.body as { userIds: string[] };
+
+        if (!Array.isArray(userIds) || userIds.length === 0) {
+          reply.status(400);
+          return { success: false, error: '必须提供用户ID数组' };
+        }
+
+        const updatedTask = await taskService.unassignTask(id, userIds);
+
+        // 广播任务更新事件
+        const io = fastify.io;
+        if (io) {
+          io.emit('task_updated', updatedTask);
+        }
+
+        return { success: true, data: updatedTask };
+      } catch (error) {
+        console.error('取消任务分配失败:', error);
+        reply.status(500);
+        return { success: false, error: error instanceof Error ? error.message : '取消任务分配失败' };
       }
     },
   );
@@ -263,8 +492,11 @@ export default async function taskRoutes(fastify: FastifyInstance) {
         if (filterOptions.priority) {
           where.priority = filterOptions.priority;
         }
-        if (filterOptions.assignee) {
-          where.assignee = filterOptions.assignee;
+        if (filterOptions.assignees && Array.isArray(filterOptions.assignees)) {
+          // 支持多负责人过滤
+          where.assignees = {
+            hasSome: filterOptions.assignees,
+          };
         }
         if (filterOptions.tags && filterOptions.tags.length > 0) {
           where.tags = {
@@ -294,4 +526,41 @@ export default async function taskRoutes(fastify: FastifyInstance) {
       return { success: false, error: '获取任务列表失败' };
     }
   });
+
+  /**
+   * 获取任务历史记录
+   */
+  fastify.get(
+    '/tasks/:taskId/history',
+    {
+      preHandler: [authMiddleware],
+    },
+    async (request: any, reply) => {
+      try {
+        const { taskId } = request.params;
+        const { page, pageSize, action } = request.query;
+
+        // 验证任务是否存在且用户有权访问
+        const task = await taskService.getTaskById(taskId);
+        if (!task) {
+          reply.status(404);
+          return { success: false, error: '任务不存在' };
+        }
+
+        // 获取历史记录
+        const history = await taskHistoryService.getTaskHistory(taskId, {
+          page: page ? parseInt(page) : 1,
+          pageSize: pageSize ? parseInt(pageSize) : 20,
+          action,
+        });
+
+        // 将 history 对象包装在 data 字段中，以便 apiService 正确解析
+        return { success: true, data: history };
+      } catch (error) {
+        console.error('获取任务历史失败:', error);
+        reply.status(500);
+        return { success: false, error: '获取任务历史失败' };
+      }
+    }
+  );
 }

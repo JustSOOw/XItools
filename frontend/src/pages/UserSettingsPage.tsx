@@ -25,7 +25,7 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ className = 
   const { t } = useTranslation();
   const { user } = useUserStore();
   const { currentTheme, setTheme, themeConfigs } = useThemeStore();
-  const { language, changeLanguage, supportedLanguages } = useI18n();
+  // const { language, changeLanguage, supportedLanguages } = useI18n(); // 已禁用多语言功能
 
   const [activeTab, setActiveTab] = useState<'profile' | 'appearance' | 'preferences' | 'api-keys'>(
     'profile',
@@ -141,8 +141,8 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ className = 
                   </div>
                 </div>
 
-                {/* 语言选择 */}
-                <div className="setting-group">
+                {/* 语言选择 - 已禁用多语言功能 */}
+                {/* <div className="setting-group">
                   <h3 className="setting-label">{t('settings.appearance.language')}</h3>
                   <div className="language-selector">
                     <select
@@ -157,7 +157,7 @@ export const UserSettingsPage: React.FC<UserSettingsPageProps> = ({ className = 
                       ))}
                     </select>
                   </div>
-                </div>
+                </div> */}
               </div>
             </div>
           )}

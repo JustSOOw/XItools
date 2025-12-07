@@ -40,12 +40,38 @@ export class WorkspaceService {
   }
 
   /**
-   * 获取指定用户的所有工作区
+   * 获取指定用户的所有工作区（包括个人工作区和团队工作区）
    */
   async getWorkspacesByUser(userId: string) {
     return await prisma.workspace.findMany({
-      where: { ownerId: userId },
+      where: {
+        OR: [
+          // 个人工作区：用户拥有的非团队工作区
+          {
+            ownerId: userId,
+            teamId: null,
+          },
+          // 团队工作区：用户是团队成员的工作区
+          {
+            team: {
+              members: {
+                some: {
+                  userId: userId,
+                },
+              },
+            },
+          },
+        ],
+      },
       include: {
+        team: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            ownerId: true,
+          },
+        },
         projects: {
           orderBy: { order: 'asc' },
           include: {
@@ -141,6 +167,12 @@ export class WorkspaceService {
     // 验证数据
     const validatedData = workspaceSchema.parse(data);
 
+    // 从请求数据中获取 teamId（如果有）
+    const teamId = validatedData.teamId;
+
+    // 检查名称是否重复（区分个人工作区和团队工作区）
+    await this.checkWorkspaceNameDuplicate(validatedData.name, userId, teamId);
+
     // 如果设置为默认工作区，先取消该用户其他工作区的默认状态
     if (validatedData.isDefault) {
       await prisma.workspace.updateMany({
@@ -170,6 +202,21 @@ export class WorkspaceService {
   async updateWorkspace(id: string, data: WorkspaceUpdate) {
     // 验证数据
     const validatedData = workspaceUpdateSchema.parse(data);
+
+    // 如果更新名称，检查是否重复
+    if (validatedData.name) {
+      const workspace = await prisma.workspace.findUnique({
+        where: { id },
+      });
+      if (workspace) {
+        await this.checkWorkspaceNameDuplicate(
+          validatedData.name,
+          workspace.ownerId,
+          workspace.teamId || undefined,
+          id,
+        );
+      }
+    }
 
     // 如果设置为默认工作区，先取消其他工作区的默认状态
     if (validatedData.isDefault) {
@@ -356,6 +403,51 @@ export class WorkspaceService {
     }
 
     return defaultWorkspace;
+  }
+
+  /**
+   * 检查工作区名称是否重复
+   * @param name 工作区名称
+   * @param userId 用户ID
+   * @param teamId 团队ID（可选，用于区分个人/团队工作区）
+   * @param excludeId 排除的工作区ID（用于更新时排除自身）
+   */
+  private async checkWorkspaceNameDuplicate(
+    name: string,
+    userId: string,
+    teamId?: string,
+    excludeId?: string,
+  ) {
+    const whereClause: {
+      name: string;
+      id?: { not: string };
+      ownerId?: string;
+      teamId?: string | null;
+    } = {
+      name,
+    };
+
+    if (excludeId) {
+      whereClause.id = { not: excludeId };
+    }
+
+    if (teamId) {
+      // 团队工作区：检查同一团队内是否有同名工作区
+      whereClause.teamId = teamId;
+    } else {
+      // 个人工作区：检查同一用户的个人工作区内是否有同名
+      whereClause.ownerId = userId;
+      whereClause.teamId = null;
+    }
+
+    const existingWorkspace = await prisma.workspace.findFirst({
+      where: whereClause,
+    });
+
+    if (existingWorkspace) {
+      const scopeDesc = teamId ? '该团队' : '您的个人工作区';
+      throw new Error(`${scopeDesc}中已存在名为"${name}"的工作区`);
+    }
   }
 }
 

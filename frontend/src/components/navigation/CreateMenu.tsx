@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { useNavigationStore } from '../../store/navigationStore';
 import { multiBoardService } from '../../services/multiBoardService';
 import { useI18n } from '../../hooks/useI18n';
+import { toast } from '../ui/Toast';
 import Modal from '../Modal';
 import Button from '../Button';
 import Input from '../ui/Input';
@@ -155,7 +156,9 @@ const CreateMenu: React.FC<CreateMenuProps> = ({ type, parentId, onClose, onConf
       onClose();
     } catch (error) {
       console.error(`创建${type}失败:`, error);
-      // TODO: 显示错误提示
+      // 显示错误提示
+      const errorMessage = error instanceof Error ? error.message : `创建${type}失败`;
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
