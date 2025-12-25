@@ -44,7 +44,7 @@ services:
       - JWT_SECRET=${JWT_SECRET:-xitools-production-secret-key-please-change}
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
       - RESEND_API_KEY=${RESEND_API_KEY}
-      - EMAIL_FROM=${EMAIL_FROM:-XItools <onboarding@resend.dev>}
+      - EMAIL_FROM=${EMAIL_FROM:-XItools <noreply@xitools.furdow.com>}
     depends_on:
       postgres:
         condition: service_healthy
