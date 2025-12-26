@@ -56,9 +56,10 @@ function getResendClient(): Resend | null {
 
 /**
  * 获取发件人地址（从环境变量或使用默认值）
+ * 注意：Resend 要求发件人地址必须是已验证域名下的邮箱地址
  */
 function getFromAddress(): string {
-  return process.env.EMAIL_FROM || 'XItools <onboarding@resend.dev>';
+  return process.env.EMAIL_FROM || 'XItools <noreply@xitools.furdow.com>';
 }
 
 /**
