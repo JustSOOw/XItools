@@ -43,8 +43,8 @@ services:
       - TRUST_PROXY=true
       - JWT_SECRET=${JWT_SECRET:-xitools-production-secret-key-please-change}
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
-      - RESEND_API_KEY=${RESEND_API_KEY}
-      - EMAIL_FROM=${EMAIL_FROM:-XItools <noreply@xitools.furdow.com>}
+      # RESEND_API_KEY 和 EMAIL_FROM 从 env_file (.env.production) 中读取
+      # 不在此处使用 ${VAR} 语法，避免 shell 变量为空时覆盖配置
     depends_on:
       postgres:
         condition: service_healthy
