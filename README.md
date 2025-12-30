@@ -430,23 +430,6 @@ XItools集成了MCP（Model Context Protocol）工具，支持通过AI编辑器�
 }
 ```
 
-**Augment配置（远程服务器｜双通道推荐）**：
-```json
-{
-  "mcpServers": {
-    "xitools": {
-      "url": "https://xitools.furdow.com/mcp-auth?api_key=xitool_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-      "headers": {
-        "Authorization": "Bearer xitool_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-        "X-Api-Key": "xitool_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-      }
-    }
-  }
-}
-```
-
-> **重要提示**：确保API密钥具有 `mcp:read` 和 `mcp:write` 权限。Cursor 必须包含 `type: "streamable-http"`；Augment Code 不支持 `type` 字段，且建议采用“URL 查询参数 + Headers（Authorization 与 X-Api-Key）”的双通道传递，以兼容其个别阶段可能不携带 Authorization 头的情况。
-
 **Claude Desktop配置**：
 ```json
 {
@@ -464,7 +447,7 @@ XItools集成了MCP（Model Context Protocol）工具，支持通过AI编辑器�
 }
 ```
 
-3. **开始使用**：重启AI客户端，询问"请列出我的任务"
+1. **开始使用**：重启AI客户端，询问"请列出我的任务"
 
 ### 🧭 创建任务的推荐流程（强约束）
 
@@ -488,26 +471,7 @@ XItools集成了MCP（Model Context Protocol）工具，支持通过AI编辑器�
 }
 ```
 
-### 测试账号（开发环境）
 
-**主账号（团队所有者）：**
-- test@test.com / test123
-
-**团队成员账号（密码统一为 test123）：**
-| 邮箱 | 密码 |
-|------|------|
-| tester01@test.com | test123 |
-| tester02@test.com | test123 |
-| tester03@test.com | test123 |
-| tester04@test.com | test123 |
-| tester05@test.com | test123 |
-| tester06@test.com | test123 |
-| tester07@test.com | test123 |
-| tester08@test.com | test123 |
-| tester09@test.com | test123 |
-| tester10@test.com | test123 |
-
-> 这些账号已加入到 test@test.com 的团队中，可用于团队协作功能测试。
 
 
 
