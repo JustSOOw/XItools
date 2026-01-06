@@ -82,8 +82,10 @@ services:
     environment:
       - NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx/conf.d
     depends_on:
-      - frontend
-      - backend
+      frontend:
+        condition: service_started
+      backend:
+        condition: service_healthy # 等待 backend 健康后再启动 nginx
     healthcheck:
       test: [ "CMD", "sh", "-c", "nginx -t && curl -f -k https://localhost/health" ]
       interval: 30s
